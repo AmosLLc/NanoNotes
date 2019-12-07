@@ -30,7 +30,74 @@
 
 ##### Java高级
 
+- 泛型程序设计
 
+    - 泛型概述
+    - 泛型约束与局限性
+    - 通配符
+    - 泛型面试题
+
+- 集合容器类
+
+    - 通用容器类
+    - 列表、队列、栈
+        - ArrayList
+        - LinkedList
+        - Vector
+        - ArrayDeque
+        - PriorityQueue
+
+    - Map、Set
+        - HashMap
+        - HashSet
+        - TreeMap与TreeSet
+        - LinkedHashMap
+        - WeakHashMap
+
+    - 集合面试题
+
+- 文件、IO、流
+
+    - 概述
+    - 字节操作
+    - 字符操作
+    - 对象操作
+    - 网络操作
+    - NIO
+
+- 并发
+
+    - 线程基础
+    - Synchronized
+    - 线程协作
+    - 线程中断
+    - Java内存模型
+    - 原子变量与CAS
+    - 显式锁
+    - 并发容器类
+    - Executors框架与线程池 
+    - 定时任务
+    - 协作与同步工具类
+    - ThreadLocal
+    - 线程安全总结
+    - 锁优化
+    - 并发面试题
+
+- 动态与函数式编程
+
+    - Lambda表达式
+    - 反射
+    - 注解
+    - 代理
+    - 动态与函数式编程面试题
+
+##### 设计模式
+
+- 面向对象思想
+- UML类图
+- 设计模式-创建型
+- 设计模式-行为型
+- 设计模式-结构型
 
 
 
