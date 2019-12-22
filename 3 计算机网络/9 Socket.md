@@ -2,7 +2,7 @@
 
 
 
-### 一、I/O 模型
+### 1 I/O 模型
 
 一个输入操作通常包括两个阶段：
 
@@ -102,7 +102,7 @@ ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *
 
 
 
-### 二、I/O 复用
+### 2 I/O 复用
 
 **select/poll/epoll** 都是 **I/O 多路复用**的具体实现，select 出现的最早，之后是 poll，再是 epoll。
 
