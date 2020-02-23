@@ -4,44 +4,93 @@
 
 ### ArrayList
 
-#### 1. 概览
+#### 1 概述
 
-- 使用时需要实例化泛型参数。
-- 不是线程安全的。
-- 可以随机访问，按照索引进行访问的效率很高，效率为 O(1)。
+- ArrayList 是一个采用类型参数的**泛型数组列表类**。保存元素的**类型**放在尖括号中。使用时需要实例化泛型参数。
+- 如果添加元素时数组满了，会自动创建更大的数组并把所有对象从小数组**拷贝**到大数组，自动扩容。
+- ArrayList 实现了Serializable, Cloneable, Iterable\<E>, Collection\<E>, List\<E>, RandomAccess 等接口。
+- ArrayList 对象**不能存储基本类型**，只能存储**引用类型**的数据。类似 \<int> 不能写，想要存储基本类型数据，<> 中的数据类型，需要使用==基本类型包装类==，如\<Integer> 也可能用到基本数据类型，JVM会根据场景进行自动拆箱、自动装箱。
+- 插入与删除元素效率低，因为需要移动其它元素。
+- ArrayLis t中的操作**不是线程安全**的。所以，建议在单线程中才使用 ArrayList，而在多线程中可以选择 Vector或者 **CopyOnWriteArrayList**。
+- ArrayList 实现 java.io.Serializable 的方式。当写入到输出流时，先写入“容量”，再依次写入“每一个元素”；当读出输入流时，先读取“容量”，再依次读取“每一个元素”。
+- 可以**随机访问**，按照索引进行访问的效率很高，效率为 O(1)。
 - 除非数组已经排序，否则按照内容查找元素效率较低，效率为 O(N)。
-- 添加元素效率还行，但是会面临数组扩容与内容复制等开销问题。
+- 添加元素效率视情况而定，可能会面临数组**扩容**与内容**复制**等开销问题。
 - 插入与删除元素效率较低，因为需要移动元素。
+- ArrayList 序列化时不会全部序列化其存储数组（因为不一定全部存完了的），而是自己实现了序列化与反序列化方法。
+
+```java
+ArrayList<Employee> staff = new ArrayList<Employee>();
+// 右边的类型参数可省并指定初始大小 一定要写，避免多次自动扩容影响性能
+ArrayList<Employee> staff = new ArrayList<>(100);  
+// 遍历方法
+for(Employee e : staff){
+    e.raiseMoney(300);
+}
+
+for(int i = 0; i < staff.size(); i++){
+    staff.get(i).raiseMoney(300);
+}
+```
 
 
 
-因为 ArrayList 是基于**数组**实现的，所以支持**快速随机访问**。RandomAccess 接口标识着该类支持快速随机访问，RandomAccess 是一个标记接口，没有任何方法。
+#### 2 ArrayList类 API
+
+```java
+public boolean add(E obj); 				// 将指定元素添加到此集合的尾部
+public boolean add(int index, E obj); 	// 在指定位置插入元素，后面的元素往后移动
+public E remove(int index); 			// 删除指定位置上的元素，返回被删除的元素
+public E get(int index);    			// 返回指定位置上的元素
+public int size();  					// 返回此集合中的元素数目
+public void trimToSize();  	// 将数组列表的存储容量削减到当前尺寸，确保数组不会有新元素添加的时候调用
+public void set(int index, E obj);		// 设置数组列表指定位置的值，覆盖原有内容。
+```
+
+
+
+#### 3 源码分析
+
+下面的分析基于 JDK8。最新的 ArrayList 源码是有**改动**的。
+
+因为 ArrayList 是基于**数组**实现的，所以支持**快速随机访问**。RandomAccess 接口标识着该类**支持快速随机访问**，RandomAccess 是一个**标记接口**，没有任何方法。
+
+##### ① 基本属性
 
 ```java
 public class ArrayList<E> extends AbstractList<E>
-        implements List<E>, RandomAccess, Cloneable, java.io.Serializable
+        implements List<E>, RandomAccess, Cloneable, java.io.Serializable {
+    // 版本号
+    private static final long serialVersionUID = 8683452581122892189L;
+    // 默认容量
+    private static final int DEFAULT_CAPACITY = 10;
+    // 空对象数组
+    private static final Object[] EMPTY_ELEMENTDATA = {};
+    // 缺省空对象数组
+    private static final Object[] DEFAULTCAPACITY_EMPTY_ELEMENTDATA = {};
+    // 存放元素数组
+    transient Object[] elementData;
+    // 实际元素大小，默认为0
+    private int size;
+    // 最大数组容量
+    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+}
 ```
 
-数组的默认大小为 10。
+存放元素数组为 elementData，其默认大小为 DEFAULT_CAPACITY = 10。
 
-```java
-private static final int DEFAULT_CAPACITY = 10;
-```
+![1582447809913](assets/E-2-1%20ArrayList/1582447809913.png)
 
-![1563604782084](assets/1563604782084.png)
+##### ② 添加元素
 
-
-
-#### 2. 扩容
-
-添加元素时使用 ensureCapacityInternal() 方法来保证容量足够，如果不够时，需要使用 grow() 方法进行扩容，新容量的大小为 `oldCapacity + (oldCapacity >> 1)`，也就是旧容量的 **1.5 倍**。elementData 数组会随着实际元素个数的增多而重新分配。
+添加元素时使用 **ensureCapacityInternal() 方法**来保证容量足够，如果不够时，需要使用 **grow() 方法**进行扩容，新容量的大小为 `oldCapacity + (oldCapacity >> 1)`，也就是旧容量的 **1.5 倍**。elementData 数组会随着实际元素个数的增多而重新分配。
 
 扩容操作需要调用 `Arrays.copyOf()` 把原数组整个复制到新数组中，这个操作代价很高，因此最好在创建 ArrayList 对象时就**指定**大概的容量大小，**减少扩容操作的次数**。
 
 ```java
 public boolean add(E e) {
-    ensureCapacityInternal(size + 1);  // Increments modCount!!
-    elementData[size++] = e;		// size 用于记录实际的元素个数	
+    ensureCapacityInternal(size + 1);   // Increments modCount!!
+    elementData[size++] = e;			// size 用于记录实际的元素个数	
     return true;
 }
 
@@ -76,9 +125,9 @@ private void grow(int minCapacity) {
 }
 ```
 
-#### 3. 删除元素
+##### ③ 删除元素
 
-需要调用 System.arraycopy() 将 index+1 后面的元素都复制到 index 位置上，该操作的时间复杂度为 O(N)，可以看出 ArrayList 删除元素的代价是**非常高**的。
+需要调用 **System.arraycopy()** 将 index + 1 后面的元素都复制到 index 位置上，该操作的时间复杂度为 O(N)，可以看出 ArrayList 删除元素的代价是**非常高**的。
 
 ```java
 public E remove(int index) {
@@ -93,9 +142,9 @@ public E remove(int index) {
 }
 ```
 
-**迭代与删除**
+##### ④ **迭代与删除**
 
-迭代器的常见误用就是在迭代的中间调用容器的删除方法。
+迭代器的常见误用就是在迭代的**中间**调用容器的删除方法。
 
 ```java
 List<String> list = new ArrayList<>();
@@ -104,6 +153,7 @@ list.add("str2");
 list.add("str3");
 for (String s : list) {
     if ("str1".equals(s)) {
+        // 这里使用了List提供的remove方法
         list.remove(s);
     }
 }
@@ -111,7 +161,7 @@ for (String s : list) {
 
 这段代码看起来好像没有什么问题，但是如果我们运行，就会抛出 **ConcurrentModificationException** 异常。
 
-其实这不是特例，每当我们使用迭代器遍历元素时，如果修改了元素内容（添加、删除元素），就会抛出异常，由于 **foreach** 同样使用的是迭代器，所以也有同样的情况。
+其实这不是特例，每当我们使用迭代器遍历元素时，如果**修改了元素内容**（添加、删除元素），就会抛出异常，由于 **foreach** 同样使用的是迭代器，所以也有同样的情况。
 
 remove 方法的源码
 
@@ -169,7 +219,7 @@ public class ArrayList<E> {
 }
 ```
 
-可以明显的看到共有两个`remove()`方法，一个属于 ArrayList 本身，还有一个属于其内部类 Itr。ArrayList 类中有一个 modCount 属性，这个属性是继承子AbstractList，其保存了我们对 ArrayList 进行的的**操作次数**，当我们添加或者删除元素时，modeCount 都会进行对应次数的**增加**。相当于记录了结构性变化，即添加、插入、删除元素，只是修改元素的内容不算结构性变化。
+可以明显的看到共有两个`remove()`方法，一个属于 ArrayList 本身，还有一个属于其内部类 Itr。ArrayList 类中有一个 **modCount** 属性，这个属性是继承自 AbstractList，其保存了我们对 ArrayList 进行的的**操作次数**，当我们添加或者删除元素时，modeCount 都会进行对应次数的**增加**。相当于记录了**结构性变化**，即**添加、插入、删除**元素，只是修改元素的内容不算结构性变化。
 
 在我们使用 ArrayList 的 `iterator()` 方法获取到迭代器进行遍历时，会把 ArrayList 当前状态下的 modCount 赋值给 Itr 类的 expectedModeCount 属性。如果我们在迭代过程中，使用了 ArrayList 的 `remove()`或`add()`方法，这时 modCount 就会加 1 ，但是迭代器中的expectedModeCount 并没有变化，当我们再使用迭代器的`next()`方法时，它会调用`checkForComodification()`方法，即
 
@@ -182,15 +232,19 @@ final void checkForComodification() {
 
 发现现在的 modCount 已经与 expectedModCount **不一致**了，则会抛出`ConcurrentModificationException`异常。
 
-但是如果我们使用迭代器提供的`remove()`方法，由于其有一个操作：`expectedModCount = modCount;`，会修改expectedModCount 的值，所以就不会存在上述问题。调用remove 方法之前需要先调用 next 方法。
+上述使用了 List 提供的 remove 方法，但是如果我们使用**迭代器提供的`remove()`方法**，由于其有一个操作：`expectedModCount = modCount;`会修改 expectedModCount 的值，所以就不会存在上述问题。记得调用 remove 方法之前需要先调用 next 方法。
+
+综上：**在单线程的遍历过程中，如果要进行 remove 操作，可以调用迭代器的 remove 方法而不是集合类的 remove 方法。**
 
 
 
-#### 4. Fail-Fast
+#### 4 Fail-Fast 机制
 
-fail-fast 机制在遍历一个集合时，当集合结构被修改，会抛出 ConcurrentModificationException。
+Fail-fast 机制，即快速失败机制，是 Java **集合**(Collection)中的一种错误检测机制。当在迭代集合的过程中该集合在==**结构**上发生**改变**==的时候，就有可能会发生 fail-fast，即抛出 ConcurrentModificationException 异常。Fail-fast机制并不保证在不同步的修改下一定会抛出异常，它只是尽最大努力去抛出，所以这种机制一般仅用于检测 bug。
 
-modCount 用来记录 ArrayList **结构发生变化的次数**。结构发生变化是指添加或者删除至少一个元素的所有操作，或者是调整内部数组的大小，仅仅只是设置元素的值不算结构发生变化。
+在我们常见的 Java 集合中就可能出现 fail-fast 机制,比如 ArrayList，HashMap。在**多线程和单线程**环境下都有可能出现快速失败。
+
+ArrayList  中 **modCount** 用来记录 **结构发生变化的次数**。结构发生变化是指添加或者删除至少一个元素的所有操作，或者是调整内部数组的大小，仅仅只是设置元素的值不算结构发生变化。
 
 在进行**序列化或者迭代**等操作时，需要**比较**操作前后 modCount 是否改变，如果改变了需要抛出 ConcurrentModificationException。
 
@@ -215,19 +269,31 @@ private void writeObject(java.io.ObjectOutputStream s)
 }
 ```
 
+**避免fail-fast**
+
+**方法1**
+
+在单线程的遍历过程中，如果要进行 remove 操作，可以调用迭代器的 remove 方法而不是集合类的 remove 方法。
+
+**方法2**
+
+ 使用并发包(java.util.concurrent)中的类来代替 ArrayList 和 HashMap。如 CopyOnWriterArrayLis t代替 ArrayList。使用 ConcurrentHashMap 替代 HashMap。
 
 
-#### 5. 序列化
 
-ArrayList 基于数组实现，并且具有动态扩容特性，因此保存元素的数组不一定都会被使用，那么**就没必要全部**进行序列化。
 
-保存元素的数组 elementData 使用 transient 修饰，该关键字声明数组默认**不会被序列化**。
+
+#### 5 序列化
+
+ArrayList 基于**数组**实现，并且具有**动态扩容**特性，因此保存元素的数组不一定都会被使用，那么**就没必要全部**进行序列化。
+
+保存元素的数组 elementData 使用 **transient** 修饰，该关键字声明数组默认**不会被序列化**。
 
 ```java
 transient Object[] elementData; // non-private to simplify nested class access
 ```
 
-ArrayList 实现了 writeObject() 和 readObject() 来控制**只序列化数组中有元素填充那部分**内容。数组没有存元素的部分不序列化。
+ArrayList 实现了 writeObject() 和 readObject() 来控制==**只序列化数组中有元素填充那部分**==内容。数组没有存元素的部分不序列化。
 
 ```java
 private void readObject(java.io.ObjectInputStream s)
@@ -282,9 +348,11 @@ ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file));
 oos.writeObject(list);
 ```
 
-#### 6. Arrays.asList()
 
-Arrays类的静态方法 asList() 将数组转为集合。
+
+#### 6 Arrays.asList()
+
+Arrays 类的静态方法 asList() 将数组转为**集合**。
 
 ```java
 String[] str = new String[]{"1","2","3"};
@@ -296,7 +364,7 @@ aslsit.add("4");
 //    at test.LinkedListTest.main(LinkedListTest.java:13)
 ```
 
-其实 asList() 返回的是 java.util.Arrays.ArrayList 对象，不是上述的 ArrayList 类！！！！
+其实 asList() 返回的是 java.util.Arrays.ArrayList 对象，**不是上述的 ArrayList 类**！！！！
 
 看 Arrays 类的部分源码
 
@@ -304,7 +372,7 @@ aslsit.add("4");
 public class Arrays {
     
     // 省略其他方法
-    
+ 
     public static <T> List<T> asList(T... a) {
         return new ArrayList<>(a);
     }

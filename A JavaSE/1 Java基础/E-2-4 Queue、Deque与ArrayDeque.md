@@ -1,20 +1,29 @@
 [TOC]
 
-### ArrayDeque
+### Queue、Deque与ArrayDeque
 
-#### 概述
+#### 0 本节要点
+
+- ArrayDeque 实现了 Dueue 接口，可用于队列、双端队列、栈等。
+- ArrayDeque 内部依然采用数组进行数据存储，但是要求**数组元素个数为 2 的幂次方**个，这样可以实现**环形索引**，更加高效。
+- ArrayDeque 扩容时元素会复制重排放在数组第一个位置。
+
+
+
+
+
+#### 1 概述
 
 - Queue 也是 Java 集合框架中定义的一种接口，直接继承自 Collection 接口。除了基本的 Collection 接口规定测操作外，Queue 接口还定义一组针对队列的特殊操作。通常来说，Queue 是按照先进先出 (FIFO) 的方式来管理其中的元素的，但是优先队列是一个例外。
-
-- Deque 接口继承自 Queue接口，但 Deque 支持同时从两端添加或移除元素，因此又被成为双端队列。鉴于此，Deque 接口的实现可以被当作  FIFO 队列使用，也可以当作LIFO队列（栈）来使用。官方也是推荐使用 Deque 的实现来替代 Stack。
-
-- ArrayDeque 是 Deque 接口的一种具体实现，是依赖于可变数组来实现的。ArrayDeque 没有容量限制，可根据需求自动进行扩容。ArrayDeque**不支持**值为 **null** 的元素。
-
+- **Deque** 接口继承自 Queue 接口，但 Deque 支持同时从两端添加或移除元素，因此又被成为**双端队列**。鉴于此，Deque 接口的实现可以被当作  FIFO 队列使用，也可以当作 LIFO 队列（栈）来使用。官方也是**推荐使用 Deque 的实现来替代 Stack**。
+- ArrayDeque 是 Deque 接口的一种具体实现，是依赖于**可变数组**来实现的。ArrayDeque 没有容量限制，可根据需求自动进行扩容。ArrayDeque **不支持**值为 **null** 的元素。
 - ArrayDeque 可以作为**栈**来使用，效率要高于 Stack；ArrayDeque 也可以作为**队列**来使用，效率相较于基于双向链表的 LinkedList 也要更好一些。
 
-#### 源码分析
 
-**Queue 接口**
+
+#### 2 ArrayDeque 源码分析
+
+##### ① **Queue 与 Deque  接口**
 
 ```java
 public interface Queue<E> extends Collection<E> {
@@ -55,7 +64,7 @@ Deque 和 Queue 方法的的对应关系如下：
 |  element()   |       getFirst()        |
 |    peek()    |       peekFirst()       |
 
-Deque 和 Stack 方法的对应关系如下：
+Deque 和 **Stack** 方法的对应关系如下：
 
 | Stack Method | Equivalent Deque Method |
 | :----------: | :---------------------: |
@@ -63,9 +72,9 @@ Deque 和 Stack 方法的对应关系如下：
 |    pop()     |      removeFirst()      |
 |    peek()    |       peekFirst()       |
 
-ArrayList 实现了 Deque 接口中的所有方法。因为 ArrayList 会根据需求自动扩充容量，因而在插入元素的时候不会抛出IllegalStateException异常。
+**ArrayDeque** 实现了 **Deque** 接口中的所有方法。因为 ArrayDeque 会根据需求自动扩充容量，因而在插入元素的时候不会抛出IllegalStateException异常。
 
-**底层结构**
+##### ② 基本属性
 
 ```java
 // 用数组存储元素
@@ -80,9 +89,9 @@ private static final int MIN_INITIAL_CAPACITY = 8;
 
 在 ArrayDeque 底部是使用**数组**存储元素，同时还使用了**两个索引**来表征当前数组的状态，分别是 head 和 tail。head 是头部元素的索引，但注意 **tail *不是尾部元素的索引，而是尾部元素的下一位***，即下一个将要被加入的元素的索引。
 
-**初始化**
+##### ③ 初始化
 
-ArrayDeque 提供了三个构造方法，分别是默认容量，指定容量及依据给定的集合中的元素进行创建。默认容量为16。
+ArrayDeque 提供了三个构造方法，分别是默认容量，指定容量及依据给定的集合中的元素进行创建。默认容量为**16**。
 
 ```java
 public ArrayDeque() {
@@ -99,7 +108,7 @@ public ArrayDeque(Collection<? extends E> c) {
 }
 ```
 
-ArrayDeque 对数组的大小(即队列的容量)有特殊的要求，必须是 **2^n**。通过 `allocateElements`方法计算初始容量：
+ArrayDeque 对**数组的大小**(即队列的容量)有特殊的要求，==必须是 **2^n**（2 的幂次方）==。通过 `allocateElements`方法计算初始容量：
 
 ```java
 private void allocateElements(int numElements) {
@@ -133,7 +142,7 @@ private void allocateElements(int numElements) {
 
 在进行 5 次位移操作和位或操作后就可以得到 **2^k-1**，最后加1即可
 
-**添加元素**
+##### ④ 添加元素
 
 向末尾添加元素：
 
@@ -165,7 +174,7 @@ length - 1 = 2^n-1，二进制表示为：低位(n-1位)全为1
 如果 tail + 1 = length，则位与后低 n 全为0，高位也全为0，结果为 0
 ```
 
-可见，在容量保证为 **2^n** 的情况下，仅仅通过**位与**操作就可以完成***环形*索引**的计算，而不需要进行边界的判断，在实现上更为高效。
+可见，在容量保证为 **2^n** 的情况下，仅仅通过**位与**操作就可以完成==**环形索引**==的计算，而不需要进行边界的判断，在实现上更为**高效**。
 
 向头部添加元素的代码如下：
 
@@ -181,9 +190,9 @@ public void addFirst(E e) {
 
 其它的诸如add，offer，offerFirst，offerLast 等方法都是基于上面这两个方法实现的，不再赘述。
 
-**扩容**
+##### ⑤ 扩容
 
-在每次添加元素后，如果**头索引和尾部索引**相遇，则说明数组空间已满，需要进行**扩容**操作。 ArrayDeque 每次扩容都会在原有的容量上**翻倍**，这也是对容量必须是 2 的幂次方的保证。如下图所示，扩容后会复制内容，复制的时候会进行重排，将 head 放在第一个。
+在每次添加元素后，如果**头索引和尾部索引**相遇，则说明数组空间**已满**，需要进行**扩容**操作。 ArrayDeque 每次扩容都会在原有的容量上**翻倍**，这也是对容量必须是 **2 的幂次方**的保证。如下图所示，扩容后会复制内容，**复制的时候会进行重排**，将 head 放在第一个。
 
 ![1567336287071](assets/1567336287071.png)
 
@@ -212,9 +221,9 @@ private void doubleCapacity() {
 }
 ```
 
-**移除元素**
+##### ⑥ 移除元素
 
-ArrayDeque 支持从**头尾两端**移除元素，remove 方法是通过 poll 来实现的。因为是基于数组的，在了解了环的原理后这段代码就比较容易理解了。
+ArrayDeque 支持从**头尾两端**移除元素，remove 方法是通过 poll 来实现的。因为是基于数组的，在了解了**环的原理**后这段代码就比较容易理解了。
 
 ```java
 public E pollFirst() {
@@ -241,7 +250,7 @@ public E pollLast() {
 }
 ```
 
-**获取队头和队尾的元素**
+##### ⑦ 获取队头和队尾的元素
 
 ```java
 @SuppressWarnings("unchecked")
@@ -256,9 +265,9 @@ public E peekLast() {
 }
 ```
 
-**迭代器**
+##### ⑧ 迭代器
 
-ArrayDeque 在迭代是检查并发修改**并没有使用**类似于 ArrayList 等容器中使用的 **modCount**，而是通过**尾部索引**来确定的。具体参考 next 方法中的注释。但是这样**不一定**能保证检测到所有的并发修改情况，加入先移除了尾部元素，又添加了一个尾部元素，这种情况下迭代器是没法检测出来的。
+ArrayDeque 在迭代是检查并发修改**并没有使用**类似于 ArrayList 等容器中使用的 **modCount**，而是通过**尾部索引**来确定的。具体参考 next 方法中的注释。但是这样**不一定**能保证检测到所有的**并发修改**情况，加入先移除了尾部元素，又添加了一个尾部元素，这种情况下迭代器是没法检测出来的。
 
 ```java
 private class DeqIterator implements Iterator<E> {
