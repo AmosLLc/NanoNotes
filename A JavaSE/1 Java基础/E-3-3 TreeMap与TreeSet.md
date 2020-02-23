@@ -2,24 +2,24 @@
 
 ### TreeMap
 
-#### 概述
+#### 1 概述
 
-- TreeMap 是一个**有序的key-value集合**，它是通过红黑树实现的。
+- TreeMap 是一个**有序的 key-value 集合**，它是通过**红黑树**实现的。
 - TreeMap 是按照键而不是值有序，都是对**键**进行比较。
 
 
 
-#### 基本使用
+#### 2 基本API与使用
 
-##### 构造方法
+##### ① 构造方法
 
-- `TreeMap()`：创建一个空 TreeMap，keys按照**自然排序**。要求 Map 中的键实现 Comparable 接口。
+- `TreeMap()`：创建一个空 TreeMap，keys 按照**自然排序**。要求 Map 中的键实现 **Comparable** 接口。
 
     ```java
     TreeMap<Integer, String> treeMap = new TreeMap<>();
     ```
 
-- `TreeMap(Comparator comparator)`：创建一个空TreeMap，按照指定的 **comparator** 排序。即创建自定义的比较器。
+- `TreeMap(Comparator comparator)`：创建一个空 TreeMap，按照指定的 **comparator** 排序。即创建自定义的比较器。
 
     ```java
     TreeMap<Integer, String> map = new TreeMap<>(Comparator.reverseOrder());
@@ -51,7 +51,7 @@
 
 
 
-##### 其他方法
+##### ② 其他方法
 
 **增添元素**
 
@@ -121,11 +121,12 @@ treeMap.forEach((integer, s) -> System.out.println(integer + "->" + s));
 // 3 -> c
 ```
 
-##### 遍历方式
+##### ③ 遍历方式
 
 - for循环
 
     ```java
+    // 与HashMap迭代类似
     for (Map.Entry entry : treeMap.entrySet()) {
           System.out.println(entry);
     }
@@ -142,9 +143,9 @@ treeMap.forEach((integer, s) -> System.out.println(integer + "->" + s));
 
 
 
-#### 源码解析
+#### 3 源码解析
 
-TreeMap 的基本数据结构 Entry 的部分源码：
+TreeMap 的基本数据结构 Entry 的部分源码，对比 HashMap 多了一些字段：
 
 ```java
 static final class Entry<K,V> implements Map.Entry<K,V> {
@@ -158,7 +159,7 @@ static final class Entry<K,V> implements Map.Entry<K,V> {
 }
 ```
 
-可以看出，Entry 中除了基本的 key、value  之外，还有左节点、右节点以及父节点，另外还有颜色黑色为 true，红色为 false。
+可以看出，Entry 中除了基本的 key、value  之外，还**有左节点、右节点以及父节点**，另外还有**颜色黑色**为 true，红色为 false。
 
 具体看看这个：
 
@@ -174,7 +175,7 @@ static final class Entry<K,V> implements Map.Entry<K,V> {
 
 - 需要传入一个 Comparator 比较器对象进行排序，或者添加的元素实现了 Comparable 接口。
 
-- 内部基于 TreeMap 实现。
+- 内部基于 **TreeMap** 实现。
 
     
 

@@ -2,22 +2,26 @@
 
 ### HashSet
 
-#### 概述
+#### 1 概述
 
-- HashSet 的底层通过 **HashMap** 实现的。而 HashMap 在1.7之前使用的是数组 + 链表实现，在1.8 + 使用的数组 + 链表 + 红黑树实现。其实也可以这样理解，HashSet 的底层实现和 HashMap 使用的是相同的方式，因为 Map 是无序的，因此 HashSet 也**无法保证顺序**。
+- HashSet 的底层通过 **HashMap** 实现的。而 HashMap 在1.7之前使用的是**数组 + 链表**实现，在1.8 + 使用的**数组 + 链表 + 红黑树**实现。其实也可以这样理解，HashSet 的底层实现和 HashMap 使用的是相同的方式，因为 Map 是无序的，因此 HashSet 也**无法保证顺序**。
 - Set **没有重复元素**。相同的元素添加进去也只会保留一份。
 - HashSet 的方法，也是借助 HashMap 的方法来实现的。
 - 可以高效的添加、删除元素、判断元素是否存在，效率都为O(1)。
+- transient 修饰存储数据的数组可以保证其序列化时不被序列化。
 
-#### 源码解析
+
+
+#### 2 源码解析
 
 ```java
 public class HashSet<E> extends AbstractSet<E>
     implements Set<E>, Cloneable, java.io.Serializable {
 
     static final long serialVersionUID = -5024744406713321676L; // 序列化版本号
-
-    private transient HashMap<E,Object> map;  // HashMap变量，用于存放HashSet的值
+    
+	// HashMap变量，用于存放HashSet的值 
+    private transient HashMap<E,Object> map;  
 
     private static final Object PRESENT = new Object(); // map中的值
 
@@ -93,7 +97,7 @@ public class HashSet<E> extends AbstractSet<E>
         }
     }
 
-    // 写入输出流操作
+    // 写入输出流操作 序列化 与ArrayList类似
     private void writeObject(java.io.ObjectOutputStream s)
         throws java.io.IOException {
         // Write out any hidden serialization magic
@@ -111,7 +115,7 @@ public class HashSet<E> extends AbstractSet<E>
             s.writeObject(e);
     }
 
-    // 从输入流中读取对象
+    // 从输入流中读取对象 反序列化
     private void readObject(java.io.ObjectInputStream s)
         throws java.io.IOException, ClassNotFoundException {
         // Read in any hidden serialization magic

@@ -2,7 +2,7 @@
 
 ### WeakHashMap
 
-#### 存储结构
+#### 1 存储结构
 
 WeakHashMap 的 Entry 继承自 WeakReference，被 WeakReference 关联的对象在下一次垃圾回收时会**被回收**。
 
@@ -12,7 +12,9 @@ WeakHashMap 主要用来**实现缓存**，通过使用 WeakHashMap 来引用缓
 private static class Entry<K,V> extends WeakReference<Object> implements Map.Entry<K,V>
 ```
 
-#### ConcurrentCache
+
+
+#### 2 ConcurrentCache
 
 Tomcat 中的 **ConcurrentCache** 使用了 WeakHashMap 来实现**缓存**功能。
 

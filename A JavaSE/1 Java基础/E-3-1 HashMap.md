@@ -2,15 +2,23 @@
 
 ### HashMap
 
-#### 概述
+#### 1 本节要点
 
-- 键不能重复，重复就会覆盖值。
+- 建议通看源码。
+- 内部使用 Entry 数组存储数据。
+- 使用拉链法解决哈希冲突。
+- capacity 为 2 的幂次方，输入不是也会转为 2 的幂次方。
+- 不够存储时会进行再哈希。
+- Java8 之后链表太长会转为红黑树。
+- 可以存储  null 类型的键值，将存放在 0 号键槽中。
 
 
+
+#### 2 源码解析
 
 为了便于理解，以下源码分析以 JDK 1.7 为主。
 
-#### 1. 存储结构
+##### ① 存储结构
 
 内部包含了一个 **Entry 类型**的数组 table。
 
@@ -18,7 +26,7 @@
 transient Entry[] table;
 ```
 
-Entry 存储着**键值对**。它包含了四个字段，从 next 字段我们可以看出 Entry 是一个**链表**。即数组中的每个位置被当成一个**桶**，一个桶存放一个**链表**。HashMap 使用**拉链法**来解决冲突，同一个链表中存放哈希值相同的 Entry。
+Entry 存储着**键值对**。它包含了四个字段，从 next 字段我们可以看出 Entry 是一个**链表**。即数组中的每个位置被当成一个**桶**，一个桶存放一个**链表**。HashMap 使用==**拉链法**==来解决**哈希冲突**，同一个链表中存放哈希值相同的 Entry。
 
 ![1563604844175](assets/1563604844175.png)
 
@@ -77,7 +85,9 @@ static class Entry<K,V> implements Map.Entry<K,V> {
 }
 ```
 
-#### 2. 拉链法的工作原理
+
+
+##### ② 拉链法与插入元素
 
 ```java
 HashMap<String, String> map = new HashMap<>();
@@ -87,20 +97,89 @@ map.put("K3", "V3");
 ```
 
 - 新建一个 HashMap，默认大小为 16；
-- 插入 &lt;K1,V1> 键值对，先计算 K1 的 hashCode 为 115，使用除留余数法得到所在的**桶下标** 115%16 = 3。
-- 插入 &lt;K2,V2> 键值对，先计算 K2 的 hashCode 为 118，使用除留余数法得到所在的桶下标 118%16 = 6。
-- 插入 &lt;K3,V3> 键值对，先计算 K3 的 hashCode 为 118，使用除留余数法得到所在的桶下标 118%16 = 6，插在 &lt;K2,V2> 前面。
+- 插入 &lt;K1, V1> 键值对，先计算 K1 的 hashCode 为 115，使用除留余数法得到所在的**桶下标** 115%16 = 3。
+- 插入 &lt;K2, V2> 键值对，先计算 K2 的 hashCode 为 118，使用除留余数法得到所在的**桶下标** 118%16 = 6。
+- 插入 &lt;K3, V3> 键值对，先计算 K3 的 hashCode 为 118，使用除留余数法得到所在的**桶下标** 118%16 = 6，插在 &lt;K2, V2> **前面**。
 
-应该注意到链表的插入是以==头插法方式==进行的，例如上面的 &lt;K3,V3> 不是插在 &lt;K2,V2> 后面，而是插入在**链表头部**。
+应该注意到链表的插入是以==**头插法**方式==进行的，例如上面的 &lt;K3, V3> 不是插在 &lt;K2, V2> 后面，而是插入在**链表头部**。
 
 **查找**需要分成两步进行：
 
 - 计算键值对所在的**桶**；
-- 在链表上顺序查找，时间复杂度显然和链表的长度成正比。
+- 在链表上**顺序**查找，时间复杂度显然和链表的长度成正比。
 
-![1563604859596](assets/1563604859596.png)
+![1582460415920](assets/E-3-1%20HashMap/1582460415920.png)
 
-#### 3. put 操作
+
+
+很多操作都需要先确定一个键值对所在的**桶下标**。
+
+```java
+int hash = hash(key);
+int i = indexFor(hash, table.length);
+```
+
+**计算 hash 值**
+
+```java
+final int hash(Object k) {
+    int h = hashSeed;
+    if (0 != h && k instanceof String) {
+        return sun.misc.Hashing.stringHash32((String) k);
+    }
+
+    h ^= k.hashCode();
+
+    // This function ensures that hashCodes that differ only by
+    // constant multiples at each bit position have a bounded
+    // number of collisions (approximately 8 at default load factor).
+    h ^= (h >>> 20) ^ (h >>> 12);
+    return h ^ (h >>> 7) ^ (h >>> 4);
+}
+```
+
+```java
+public final int hashCode() {
+    return Objects.hashCode(key) ^ Objects.hashCode(value);
+}
+```
+
+**取模** 
+
+令 x = 1<<4，即 x 为 2 的 4 次方，它具有以下性质：
+
+```
+x   : 00010000
+x-1 : 00001111
+```
+
+令一个数 y 与 x-1 做与运算，可以去除 y 位级表示的第 4 位以上数：
+
+```
+y       : 10110010
+x-1     : 00001111
+y&(x-1) : 00000010
+```
+
+这个性质和 y 对 x 取模效果是一样的：
+
+```
+y   : 10110010
+x   : 00010000
+y%x : 00000010
+```
+
+我们知道，位运算的代价比求模运算小的多，因此在进行这种计算时用**位运算**的话能带来更高的性能。
+
+确定桶下标的最后一步是将 key 的 hash 值对桶个数取模：hash % capacity，如果能保证 **capacity 为 2 的 n 次方**，那么就可以将这个操作转换为==**位运算**==。
+
+```java
+static int indexFor(int h, int length) {
+    return h & (length - 1);
+}
+```
+
+put 方法如下。
 
 ```java
 public V put(K key, V value) {
@@ -130,7 +209,7 @@ public V put(K key, V value) {
 }
 ```
 
-HashMap **允许**插入键为 **null** 的键值对。但是因为无法调用 null 的 hashCode() 方法，也就无法确定该键值对的桶下标，只能通过强制指定一个桶下标来存放。HashMap 使用**第0 个桶存放键为 null 的键值对**。
+HashMap ==**允许**==插入键为 **null** 的键值对。但是因为无法调用 null 的 hashCode() 方法，也就无法确定该键值对的桶下标，只能通过**强制指定一个桶下标**来存放。HashMap 使用**第0 个桶存放键为 null 的键值对**。
 
 ```java
 private V putForNullKey(V value) {
@@ -148,7 +227,7 @@ private V putForNullKey(V value) {
 }
 ```
 
-使用链表的头插法，也就是新的键值对插在链表的**头部**，而不是链表的尾部。
+使用链表的**头插法**，也就是新的键值对插在链表的**头部**，而不是链表的尾部。
 
 ```java
 void addEntry(int hash, K key, V value, int bucketIndex) {
@@ -178,76 +257,7 @@ Entry(int h, K k, V v, Entry<K,V> n) {
 }
 ```
 
-#### 4. 确定桶下标
-
-很多操作都需要先确定一个键值对所在的**桶下标**。
-
-```java
-int hash = hash(key);
-int i = indexFor(hash, table.length);
-```
-
-##### 4.1 计算 hash 值
-
-```java
-final int hash(Object k) {
-    int h = hashSeed;
-    if (0 != h && k instanceof String) {
-        return sun.misc.Hashing.stringHash32((String) k);
-    }
-
-    h ^= k.hashCode();
-
-    // This function ensures that hashCodes that differ only by
-    // constant multiples at each bit position have a bounded
-    // number of collisions (approximately 8 at default load factor).
-    h ^= (h >>> 20) ^ (h >>> 12);
-    return h ^ (h >>> 7) ^ (h >>> 4);
-}
-```
-
-```java
-public final int hashCode() {
-    return Objects.hashCode(key) ^ Objects.hashCode(value);
-}
-```
-
-##### 4.2 取模 
-
-令 x = 1<<4，即 x 为 2 的 4 次方，它具有以下性质：
-
-```
-x   : 00010000
-x-1 : 00001111
-```
-
-令一个数 y 与 x-1 做与运算，可以去除 y 位级表示的第 4 位以上数：
-
-```
-y       : 10110010
-x-1     : 00001111
-y&(x-1) : 00000010
-```
-
-这个性质和 y 对 x 取模效果是一样的：
-
-```
-y   : 10110010
-x   : 00010000
-y%x : 00000010
-```
-
-我们知道，位运算的代价比求模运算小的多，因此在进行这种计算时用**位运算**的话能带来更高的性能。
-
-确定桶下标的最后一步是将 key 的 hash 值对桶个数取模：hash % capacity，如果能保证 **capacity 为 2 的 n 次方**，那么就可以将这个操作转换为**位运算**。
-
-```java
-static int indexFor(int h, int length) {
-    return h & (length - 1);
-}
-```
-
-#### 5. 扩容-基本原理
+##### ③ 扩容-基本原理
 
 设 HashMap 的 table 长度为 M，需要存储的键值对数量为 N，如果哈希函数满足均匀性的要求，那么每条链表的**长度**大约为 **N/M**，因此平均查找次数的复杂度为 **O(N/M)**。
 
@@ -292,7 +302,7 @@ void addEntry(int hash, K key, V value, int bucketIndex) {
 }
 ```
 
-扩容使用 resize() 实现，需要注意的是，**扩容**操作同样需要把 oldTable 的所有键值对**重新插入 newTable** 中，因此这一步是很**费时**的。
+扩容使用 resize() 实现，需要注意的是，**扩容**操作同样需要把 oldTable 的所有键值对进行**再哈希之后重新插入 newTable** 中，因此这一步是很**费时**的。
 
 ```java
 void resize(int newCapacity) {
@@ -327,23 +337,7 @@ void transfer(Entry[] newTable) {
 }
 ```
 
-#### 6. 扩容-重新计算桶下标
-
-在进行扩容时，需要把键值对**重新**放到对应的桶上。HashMap 使用了一个特殊的机制，可以降低重新计算桶下标的操作。
-
-假设原数组长度 capacity 为 16，扩容之后 new capacity 为 32：
-
-```html
-capacity     : 00010000
-new capacity : 00100000
-```
-
-对于一个 **Key**，
-
-- 它的哈希值如果在**第 5 位上为 0**，那么取模得到的结果和之前**一样**；
-- 如果为 **1**，那么得到的结果为原来的**结果 +16**。
-
-#### 7. 计算数组容量
+##### ④ 计算数组容量
 
 HashMap 构造函数允许用户传入的容量不是 2 的 n 次方，因为它可以**自动地**将传入的容量转换为 2 的 n 次方。
 
@@ -376,14 +370,36 @@ static final int tableSizeFor(int cap) {
 }
 ```
 
-#### 8. 链表转红黑树
 
-从 JDK 1.8 开始，一个桶存储的**链表长度大于 8** 时会将链表转换为**红黑树**。
 
-#### 9. 与 HashTable 的比较
+##### ⑤ 扩容-重新计算桶下标
+
+在进行扩容时，需要把键值对**重新**放到对应的**桶**上。HashMap 使用了一个特殊的机制，可以降低重新计算桶下标的操作。
+
+假设原数组长度 **capacity** 为 16，扩容之后 new capacity 为 32：
+
+```html
+capacity     : 00010000
+new capacity : 00100000
+```
+
+对于一个 **Key**，
+
+- 它的哈希值如果在**第 5 位上为 0**，那么取模得到的结果和之前**一样**；
+- 如果为 **1**，那么得到的结果为原来的**结果 + 16**。
+
+##### ⑥ ==链表转红黑树==
+
+从 JDK 1.8 开始，一个桶存储的**链表长度大于 8** 时会将**链表**转换为**红黑树**。
+
+![1582461193160](assets/E-3-1%20HashMap/1582461193160.png)
+
+
+
+#### 3 与 HashTable 的比较
 
 - HashTable 使用 **synchronized** 来进行同步。
-- HashMap 可以插入键为 null 的 Entry。
+- HashMap 可以插入键值为 **null** 的 Entry。
 - HashMap 的迭代器是 fail-fast 迭代器。
 - HashMap 不能保证随着时间的推移 Map 中的元素次序是不变的。
 
