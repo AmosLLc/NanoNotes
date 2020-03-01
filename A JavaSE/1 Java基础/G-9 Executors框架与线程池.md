@@ -2,17 +2,19 @@
 
 ### 异步任务Executors框架与线程池
 
+#### 0 概述
+
 - 此节与**异步任务**相关。
 
 Executor 管理**多个异步任务**的执行，而无需程序员显式地管理线程的**生命周期**。这里的异步是指多个任务的执行互不干扰，**不需要进行同步**操作。
 
 ==**Executor 框架**包括：**线程池**，Executor，Executors，ExecutorService，CompletionService，Future，Callable等。==
 
-Executor接口中之定义了一个方法 execute（Runnable command），该方法接收一个 Runable 实例，它用来执行一个任务，任务即一个实现了 Runnable 接口的类。
+**Executor** 接口中之定义了一个方法 **execute**（Runnable command），该方法接收一个 **Runnable** 实例，它用来执行一个**任务**，任务即一个实现了 Runnable 接口的类。
 
-ExecutorService 接口继承自 Executor 接口，它提供了更丰富的实现多线程的方法，比如 ExecutorService 提供了关闭自己的方法，以及可为跟踪一个或多个异步任务执行状况而生成 **Future** 的方法。 
+**ExecutorService** 接口继承自 Executor 接口，它提供了更丰富的实现多线程的方法，比如 ExecutorService 提供了关闭自己的方法，以及可为跟踪一个或多个异步任务执行状况而生成 **Future** 的方法。 
 
-Executors 提供了一系列工厂方法用于**创建线程池**，返回的线程池都实现了 ExecutorService 接口。   
+Executors 提供了一系列**工厂方法**用于**创建线程池**，返回的线程池都实现了 ExecutorService 接口。   
 
 ```java
 // 创建固定线程数量的线程池
@@ -29,11 +31,11 @@ public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize);
 
 
 
-#### 创建线程池
+#### 1 线程池分类
 
-##### newFixedThreadPool
+##### ① newFixedThreadPool
 
-创建固定数目线程的线程池，使用固定数目 nThreads 个线程，使用**无界队列 LinkedBlockingQueue**，线程创建后不会超时终止，由于是无界队列，如果排队任务过多，可能消耗过多**内存**。
+创建**固定数目**线程的线程池，使用固定数目 nThreads 个线程，使用==**无界阻塞队列 LinkedBlockingQueue**== **存放任务**，线程创建后不会超时终止，由于是无界队列，如果**排队任务**过多，可能消耗过多**内存**。
 
 `newFixedThreadPool`方法簇用于创建固定线程数的`ThreadPoolExecutor`线程池。包括两个构造方法：
 
@@ -53,14 +55,14 @@ public static ExecutorService newFixedThreadPool(int nThreads, ThreadFactory thr
 
 各构造参数总结：
 
-1. 核心线程数与最大线程数`nThreads`：构建的`ThreadPoolExecutor`核心线程数与最大线程数相等且均为`nThreads`，这说明当前线程池不会存在非核心线程，即不会存在线程的回收（`allowCoreThreadTimeOut`默认为`false`），随着任务的提交，线程数增加到`nThreads`个后就不会变化；
-2. 存活时间为0：线程存在非核心线程，该时间没有特殊效果；
-3. 等待队列`LinkedBlockingQueue`：该等待队列为`LinkedBlockingQueue`类型，没有长度限制；
-4. `ThreadFactory`参数：默认为DefaultThreadFactory，也可通过构造函数设置。
+1. **核心线程数与最大线程数**`nThreads`：构建的`ThreadPoolExecutor`核心线程数与最大线程数相等且均为`nThreads`，这说明当前线程池不会存在非核心线程，即不会存在线程的回收（`allowCoreThreadTimeOut`默认为`false`），随着任务的提交，线程数增加到`nThreads`个后就不会变化；
+2. **存活时间**为 0：线程存在非核心线程，该时间没有特殊效果；
+3. **等待队列**`LinkedBlockingQueue`：该等待队列为`LinkedBlockingQueue`类型，**没有长度限制**；
+4. `ThreadFactory`参数：默认为 DefaultThreadFactory，也可通过构造函数设置。
 
-##### newCachedThreadPool
+##### ② newCachedThreadPool
 
-使用的队列是 **SynchronousQueue** 创建一个可缓存的线程池，调用 execute 将重用以前构造的线程（如果线程空闲可用），如果现有线程没有可用的，则创建一个**新线程**并添加到池中。终止并从缓存中移除那些已有 60 秒钟未被使用的线程。其 corePoolSize 是 0，maximumPoolSize 是 Integer.MAX_VALUE，keepAliveTime 是60秒。因此可以创建的线程数量是没有限制的。
+使用的队列是 **SynchronousQueue** 创建一个**可缓存**的线程池，调用 execute 将重用以前构造的线程（如果线程空闲可用），如果现有线程没有可用的，则创建一个**新线程**并添加到池中。终止并从缓存中移除那些已有 60 秒钟未被使用的线程。其 **corePoolSize** 是 0，**maximumPoolSize** 是 Integer.MAX_VALUE，keepAliveTime 是60秒。因此可以==**创建的线程数量是没有限制**==的。
 
 `newCachedThreadPool`方法簇用于创建可缓存任务的`ThreadPoolExecutor`线程池。包括两个重构方法：
 
@@ -80,17 +82,17 @@ public static ExecutorService newCachedThreadPool(ThreadFactory threadFactory) {
 
 结合上文分析的`ThreadPoolExecutor`各构造参数，可总结如下：
 
-1. 核心线程数为0：没有核心线程，即在没有任务运行时所有线程均会被回收；
-2. 最大线程数为`Integer.MAX_VALUE`，即线程池中最大可存在的线程为`Integer.MAX_VALUE`，由于此值在通常情况下远远大于系统可新建的线程数，可简单理解为此线程池不限制最大可建的线程数，此处可出现逻辑风险，在提交任务时可能由于超过系统处理能力造成无法再新建线程时会出现OOM异常，提示无法创建新的线程；
-3. 存活时间60秒：线程数量超过核心线程后，空闲60秒的线程将会被回收，根据第一条可知核心线程数为0，则本条表示所有线程空闲超过60秒均会被回收；
-4. 等待队列`SynchronousQueue`：构建`CachedThreadPool`时，使用的等待队列为`SynchronousQueue`类型，此类型的等待队列较为特殊，可认为这是一个容量为0的阻塞队列，在调用其`offer`方法时，如当前有消费者正在等待获取元素，则返回`true`，否则返回`false`。使用此等待队列可做到快速提交任务到空闲线程，没有空闲线程时触发新建线程；
+1. **核心线程数**为 0：没有核心线程，即在没有任务运行时所有线程**均会**被回收；
+2. **最大线程数**为`Integer.MAX_VALUE`，即线程池中最大可存在的线程为`Integer.MAX_VALUE`，由于此值在通常情况下远远大于系统可新建的线程数，可简单理解为此线程池**不限制最大可建的线程数**，此处可出现逻辑风险，在提交任务时可能由于超过系统处理能力造成无法再新建线程时会出现 **OOM** 异常，提示无法创建新的线程；
+3. **存活时间** 60 秒：线程数量超过核心线程后，**空闲** 60 秒的线程将会**被回收**，根据第一条可知核心线程数为 0，则本条表示所有线程空闲超过 60 秒均会被回收；
+4. 等待队列`SynchronousQueue`：构建`CachedThreadPool`时，使用的等待队列为`SynchronousQueue`类型，此类型的等待队列较为特殊，可认为这是一个**容量为 0** 的**阻塞队列**，在调用其`offer`方法时，如当前有消费者正在等待获取元素，则返回 `true`，否则返回`false`。使用此等待队列可做到快速提交任务到空闲线程，没有空闲线程时触发**新建线程**；
 5. `ThreadFactory`参数：默认为`DefaultThreadFactory`，也可通过构造函数设置。
 
 
 
-##### newSingleThreadExecutor
+##### ③ newSingleThreadExecutor
 
-只使用一个线程，使用无界队列 LinkedBlockingQueue，线程创建后不会超时终止，该线程顺序执行所有任务，适用于需要确保所有任务被顺序执行的场景。
+只使用**一个**线程，使用**无界队列 LinkedBlockingQueue**，线程创建后不会超时终止，该线程顺序执行所有任务，适用于**需要确保==所有任务被顺序执行==**的场景。
 
 `newSingleThreadExecutor`方法簇用于创建只包含一个线程的线程池。包括两个构造方法：
 
@@ -112,48 +114,48 @@ public static ExecutorService newSingleThreadExecutor(ThreadFactory threadFactor
 
 结合上文分析的`ThreadPoolExecutor`各构造参数，可总结如下：
 
-1. 核心线程数与最大线程数1:当前线程池中有且仅有一个核心线程；
-2. 存活时间为0：当前线程池不存在非核心线程，不会存在线程的超时回收；
-3. 等待队列`LinkedBlockingQueue`：该等待队列为`LinkedBlockingQueue`类型，没有长度限制；
-4. `ThreadFactory`参数：默认为DefaultThreadFactory，也可通过构造函数设置。
+1. **核心线程数与最大线程数 1**:当前线程池中有且仅有**一个**核心线程；
+2. 存活时间为 0：当前线程池不存在非核心线程，不会存在线程的超时回收；
+3. 等待队列`LinkedBlockingQueue`：该等待队列为`LinkedBlockingQueue`类型，**没有长度限制**；
+4. `ThreadFactory`参数：默认为 DefaultThreadFactory，也可通过构造函数设置。
 
 
 
-##### **比较**
+##### ④ 比较
 
-当系统负载不太高时，单个任务执行的时间也短的话，newCachedThreadPool 效率可能更高，因为任务不需要排队，直接交给一个空闲线程进行处理。
+当系统**负载不太高**时，单个任务执行的时间也**短**的话，**newCachedThreadPool** 效率可能更高，因为**任务不需要排队**，直接交给一个空闲线程进行处理。
 
-系统负载很高时，newFixedThreadPool 可以通过队列对新任务排队，保证有足够的资源处理实际的任务，而newSingleThreadExecutor 则会为每个任务创建一个线程，导致创建过多的线程竞争 CPU 和内存资源，这时候使用newFixedThreadPool 较为合理。
+系统**负载很高**时，newFixedThreadPool 可以通过**队列对新任务**排队，保证有足够的资源处理实际的任务，而newSingleThreadExecutor 则会为每个任务创建一个线程，导致创建过多的线程竞争 CPU 和内存资源，这时候使用 newFixedThreadPool 较为合理。
 
-系统负载极高时，newFixedThreadPool 和 newCachedThreadPool 都不是很好的选择，newFixedThreadPool 的问题是任务**队列过长**，newCachedThreadPool 的问题是创建**线程过多**。这时候应该根据情况自定义 ThreadPoolExecutor，传递合适的参数。
+系统负载**极高**时，newFixedThreadPool 和 newCachedThreadPool 都不是很好的选择，newFixedThreadPool 的问题是任务==**队列过长**==，newCachedThreadPool 的问题是创建==**线程过多**==。这时候应该根据情况**自定义** ThreadPoolExecutor，传递合适的参数。
 
 `Executors`工具类创建常见线程池的方法，现对三种线程池区别进行比较。
 
-|     线程池类型     |                  CachedThreadPool                  |             FixedThreadPool              |                     SingleThreadExecutor                     |
-| :----------------: | :------------------------------------------------: | :--------------------------------------: | :----------------------------------------------------------: |
-|     核心线程数     |                         0                          |          `nThreads`（用户设定）          |                              1                               |
-|     最大线程数     |                 Integer.MAX_VALUE                  |          `nThreads`（用户设定）          |                              1                               |
-| 非核心线程存活时间 |                        60s                         |               无非核心线程               |                         无非核心线程                         |
-|  等待队列最大长度  |                         1                          |                  无限制                  |                            无限制                            |
-|        特点        | 提交任务优先复用空闲线程，没有空闲线程则创建新线程 | 固定线程数，等待运行的任务均放入等待队列 | 有且仅有一个线程在运行，等待运行任务放入等待队列，可保证任务运行顺序与提交顺序一直 |
-|      内存溢出      |     大量提交任务后，可能出现无法创建线程的OOM      |  大量提交任务后，可能出现内存不足的OOM   |            大量提交任务后，可能出现内存不足的OOM             |
+|     线程池类型     |                  CachedThreadPool                  |              FixedThreadPool               |                     SingleThreadExecutor                     |
+| :----------------: | :------------------------------------------------: | :----------------------------------------: | :----------------------------------------------------------: |
+|     核心线程数     |                         0                          |           `nThreads`（用户设定）           |                              1                               |
+|     最大线程数     |                 Integer.MAX_VALUE                  |           `nThreads`（用户设定）           |                              1                               |
+| 非核心线程存活时间 |                        60s                         |                无非核心线程                |                         无非核心线程                         |
+|  等待队列最大长度  |                         1                          |                   无限制                   |                            无限制                            |
+|        特点        | 提交任务优先复用空闲线程，没有空闲线程则创建新线程 |  固定线程数，等待运行的任务均放入等待队列  | 有且仅有一个线程在运行，等待运行任务放入等待队列，可保证任务运行顺序与提交顺序一直 |
+|      内存溢出      |   大量提交任务后，可能出现**无法创建线程的 OOM**   | 大量提交任务后，可能出现**内存不足的 OOM** |          大量提交任务后，可能出现**内存不足的 OOM**          |
 
 
 
-##### 三种类型的线程池与GC关系
+##### ⑤ 三种类型的线程池与GC关系
 
 **原理说明**
 
-一般情况下 JVM 中的 GC 根据可达性分析确认一个对象是否可被回收(eligible for GC)，而在运行的线程被视为 ‘GCRoot’。因此被在运行的线程引用的对象是不会被 GC 回收的。在`ThreadPoolExecutor`类中具有非静态内部类`Worker`，用于表示当前线程池中的线程，并且根据[Java语言规范](https://docs.oracle.com/javase/specs/jls/se8/html/jls-8.html#jls-8.1.3)`An instance i of a direct inner class C of a class or interface O is associated with an instance of O, known as the immediately enclosing instance of i. The immediately enclosing instance of an object, if any, is determined when the object is created (§15.9.2).`可知非静态内部类对象具有外部包装类对象的引用（此处也可通过查看字节码来验证），因此`Worker`类的对象即作为线程对象（‘GCRoot’）有持有外部类`ThreadPoolExecutor `对象的引用，则在其运行结束之前，外部内不会被 GC 回收。 
+一般情况下 JVM 中的 GC 根据可达性分析确认一个对象是否可被回收(eligible for GC)，而在运行的**线程**被视为 ‘**GCRoot**’。因此被在运行的线程引用的对象是不会被 GC 回收的。在`ThreadPoolExecutor`类中具有非静态内部类`Worker`，用于表示当前线程池中的线程，并且根据[Java语言规范](https://docs.oracle.com/javase/specs/jls/se8/html/jls-8.html#jls-8.1.3)`An instance i of a direct inner class C of a class or interface O is associated with an instance of O, known as the immediately enclosing instance of i. The immediately enclosing instance of an object, if any, is determined when the object is created (§15.9.2).`可知非静态内部类对象具有外部包装类对象的引用（此处也可通过查看字节码来验证），因此 `Worker`类的对象即作为**线程对象**（‘GCRoot’）有**持有外部类`ThreadPoolExecutor `对象的引用**，则在其运行结束之前，外部内不会被 GC 回收。 
 根据以上分析，再次观察以上三个线程池：
 
-1、CachedThreadPool：没有核心线程，且线程具有超时时间，可见在其引用消失后，等待任务运行结束且所有线程空闲回收后，GC 开始回收此线程池对象；
+1、CachedThreadPool：没有核心线程，且线程具有超时时间，可见在其引用消失后，等待任务运行结束且所有线程空闲回收后，**GC 开始回收此线程池对象**；
 
-2、FixedThreadPool：核心线程数及最大线程数均为`nThreads`，并且在默认`allowCoreThreadTimeOut`为`false`的情况下，其引用消失后，核心线程即使空闲也不会被回收，故 GC 不会回收该线程池；
+2、FixedThreadPool：核心线程数及最大线程数均为`nThreads`，并且在默认`allowCoreThreadTimeOut`为`false`的情况下，其引用消失后，核心线程即使空闲**也不会**被回收，故 GC **不会回收该线程池**；
 
-3、SingleThreadExecutor：默认与`FixedThreadPool`情况一致，但由于其语义为单线程线程池，JDK 开发人员为其提供了`FinalizableDelegatedExecutorService`包装类，在创建`FixedThreadPool`对象时实际返回的是`FinalizableDelegatedExecutorService`对象，该对象持有`FixedThreadPool`对象的引用，但`FixedThreadPool`对象并不引用`FinalizableDelegatedExecutorService`对象，这使得在`FinalizableDelegatedExecutorService`对象的外部引用消失后，GC将会对其进行回收，触发`finalize`函数，而该函数仅仅简单的调用`shutdown`函数关闭线程，是的所有当前的任务执行完成后，回收线程池中线程，则GC可回收线程池对象。
+3、SingleThreadExecutor：默认与`FixedThreadPool`情况一致，但由于其语义为单线程线程池，JDK 开发人员为其提供了`FinalizableDelegatedExecutorService`包装类，在创建`FixedThreadPool`对象时实际返回的是`FinalizableDelegatedExecutorService`对象，该对象持有`FixedThreadPool`对象的引用，但`FixedThreadPool`对象并不引用`FinalizableDelegatedExecutorService`对象，这使得在`FinalizableDelegatedExecutorService`对象的外部引用消失后，**GC将会对其进行回收**，触发`finalize`函数，而该函数仅仅简单的调用`shutdown`函数关闭线程，是的所有当前的任务执行完成后，回收线程池中线程，则 GC 可回收线程池对象。
 
-因此可得出结论，`CachedThreadPool`及`SingleThreadExecutor`的对象在不显式调用`shutdown`函数（或`shutdownNow`函数），且其对象引用消失的情况下，**可以被GC回收**；`FixedThreadPool`对象在不显式调用`shutdown`函数（或`shutdownNow`函数），且其对象引用消失的情况下**不会被GC回收，会出现内存泄露**。
+因此可得出**结论**，**`CachedThreadPool`**及**`SingleThreadExecutor`**的对象在**不显式调用**`shutdown`函数（或`shutdownNow`函数），且其对象引用消失的情况下，**可以被GC回收**；**`FixedThreadPool`**对象在**不显式调用**`shutdown`函数（或`shutdownNow`函数），且其对象引用消失的情况下**不会被GC回收，会出现内存泄露**。
 
 **实验验证**
 
@@ -175,12 +177,14 @@ public static void main(String[] args) throws InterruptedException {
 }
 ```
 
-使用以上代码，分别创建三种不同的线程池，可发现最终`FixedThreadPool`不会打印出‘Shutdown.’，JVM没有退出。另外两种线程池均能退出JVM。
-因此无论使用什么线程池线程池使用完毕后均**调用`shutdown`**以保证其最终会被GC回收是一个较为安全的编程习惯。
+使用以上代码，分别创建三种不同的线程池，可发现最终 `FixedThreadPool` 不会打印出‘Shutdown.’，JVM 没有退出。另外两种线程池均能**退出** JVM。
+因此无论使用什么线程池线程池使用完毕后均==**调用 shutdown()**==以保证其最终会被 GC 回收是一个较为安全的编程习惯。
 
 
 
-#### Executor 执行任务
+
+
+#### 2 Executor 执行任务
 
 在Java 5之后，任务分两类：一类是实现了 Runnable 接口的类，一类是实现了 Callable 接口的类。两者都可以被ExecutorService 执行，但是 Runnable 任务没有返回值，而 Callable 任务有返回值。
 
@@ -327,7 +331,7 @@ future.cancel(true);
 
 
 
-#### ThreadPoolExecutor
+#### 3 ThreadPoolExecutor
 
 java.uitl.concurrent.ThreadPoolExecutor 类是线程池中**最核心**的一个类，因此如果要透彻地了解Java中的线程池，必须先了解这个类。下面我们来看一下ThreadPoolExecutor类的具体实现源码。
 
@@ -459,7 +463,7 @@ shutdown() 和 shutdownNow() 是用来**关闭**线程池的。
 
 
 
-#### 线程池现原理详解
+#### 4 线程池现原理详解
 
 ![1567596929323](assets/1567596929323.png)
 
