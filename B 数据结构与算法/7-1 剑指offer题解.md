@@ -39,7 +39,6 @@ Output:
 以 (2, 3, 1, 0, 2, 5) 为例，遍历到位置 4 时，该位置上的数为 2，但是第 2 个位置上已经有一个 2 的值了，因此可以知道 2 重复：
 
 <div align="center"> <img src="assets/49d2adc1-b28a-44bf-babb-d44993f4a2e3.gif" width="250px"> </div><br>
-
 ```java
 public boolean duplicate(int[] nums, int length, int[] duplication) {
     if (nums == null || length <= 0)
@@ -89,12 +88,11 @@ Given target = 20, return false.
 
 #### 解题思路
 
-要求时间复杂度 O(M + N)，空间复杂度 O(1)。其中 M 为行数，N 为 列数。
+要求时间复杂度 **O(M + N)**，空间复杂度 **O(1)**。其中 M 为行数，N 为 列数。
 
-该二维数组中的一个数，小于它的数一定在其左边，大于它的数一定在其下边。因此，从右上角开始查找，就可以根据 target 和当前元素的大小关系来缩小查找区间，当前元素的查找区间为左下角的所有元素。
+该二维数组中的一个数，**小于它的数一定在其左边**，大于它的数一定在**其下边**。因此，从**右上角开始查找**，就可以根据 target 和当前元素的大小关系来缩小查找区间，当前元素的查找区间为左下角的所有元素 。
 
 <div align="center"> <img src="assets/0ad9f7ba-f408-4999-a77a-9b73562c9088.gif" width="200px"> </div><br>
-
 ```java
 public boolean Find(int target, int[][] matrix) {
     if (matrix == null || matrix.length == 0 || matrix[0].length == 0)
@@ -141,7 +139,6 @@ Output:
 从后向前遍是为了在改变 P2 所指向的内容时，不会影响到 P1 遍历原来字符串的内容。
 
 <div align="center"> <img src="assets/6980aef0-debe-4b4b-8da5-8b1befbc1408.gif" width="230px"> </div><br>
-
 ```java
 public String replaceSpace(StringBuffer str) {
     int P1 = str.length() - 1;
@@ -203,7 +200,6 @@ public ArrayList<Integer> printListFromTailToHead(ListNode listNode) {
 - 第一个节点就是链表的第一个真正存储值的节点。
 
 <div align="center"> <img src="assets/0dae7e93-cfd1-4bd3-97e8-325b032b716f.gif" width="370px"> </div><br>
-
 ```java
 public ArrayList<Integer> printListFromTailToHead(ListNode listNode) {
     // 头插法构建逆序链表
@@ -230,7 +226,6 @@ public ArrayList<Integer> printListFromTailToHead(ListNode listNode) {
 栈具有后进先出的特点，在遍历链表时将值按顺序放入栈中，最后出栈的顺序即为逆序。
 
 <div align="center"> <img src="assets/9d1deeba-4ae1-41dc-98f4-47d85b9831bc.gif" width="300px"> </div><br>
-
 ```java
 public ArrayList<Integer> printListFromTailToHead(ListNode listNode) {
     Stack<Integer> stack = new Stack<>();
@@ -262,7 +257,6 @@ public ArrayList<Integer> printListFromTailToHead(ListNode listNode) {
 前序遍历的第一个值为根节点的值，使用这个值将中序遍历结果分成两部分，左部分为树的左子树中序遍历结果，右部分为树的右子树中序遍历的结果。
 
 <div align="center"> <img src="assets/c269e362-1128-4212-9cf3-d4c12b363b2f.gif" width="330px"> </div><br>
-
 ```java
 // 缓存中序遍历数组每个值对应的索引
 private Map<Integer, Integer> indexForInOrders = new HashMap<>();
@@ -316,11 +310,9 @@ public class TreeLinkNode {
 ① 如果一个节点的右子树不为空，那么该节点的下一个节点是右子树的最左节点；
 
 <div align="center"> <img src="assets/b0611f89-1e5f-4494-a795-3544bf65042a.gif" width="220px"/> </div><br>
-
 ② 否则，向上找第一个左链接指向的树包含该节点的祖先节点。
 
 <div align="center"> <img src="assets/95080fae-de40-463d-a76e-783a0c677fec.gif" width="200px"/> </div><br>
-
 ```java
 public TreeLinkNode GetNext(TreeLinkNode pNode) {
     if (pNode.right != null) {
@@ -357,7 +349,6 @@ public TreeLinkNode GetNext(TreeLinkNode pNode) {
 in 栈用来处理入栈（push）操作，out 栈用来处理出栈（pop）操作。一个元素进入 in 栈之后，出栈的顺序被反转。当元素要出栈时，需要先进入 out 栈，此时元素出栈顺序再一次被反转，因此出栈顺序就和最开始入栈顺序是相同的，先进入的元素先退出，这就是队列的顺序。
 
 <div align="center"> <img src="assets/3ea280b5-be7d-471b-ac76-ff020384357c.gif" width="350"/> </div><br>
-
 ```java
 Stack<Integer> in = new Stack<Integer>();
 Stack<Integer> out = new Stack<Integer>();
@@ -462,7 +453,6 @@ public class Solution {
 我们可以用 2\*1 的小矩形横着或者竖着去覆盖更大的矩形。请问用 n 个 2\*1 的小矩形无重叠地覆盖一个 2\*n 的大矩形，总共有多少种方法？
 
 <div align="center"> <img src="assets/b903fda8-07d0-46a7-91a7-e803892895cf.gif" width="100px"> </div><br>
-
 #### 解题思路
 
 当 n 为 1 时，只有一种覆盖方法：
@@ -1232,7 +1222,7 @@ private void swap(int[] nums, int i, int j) {
 
 #### 解题思路
 
-设链表的长度为 N。设置两个指针 P1 和 P2，先让 P1 移动 K 个节点，则还有 N - K 个节点可以移动。此时让 P1 和 P2 同时移动，可以知道当 P1 移动到链表结尾时，P2 移动到第 N - K 个节点处，该位置就是倒数第 K 个节点。
+设链表的长度为 N。设置两个指针 P1 和 P2，先让 P1 移动 K 个节点，则还有 **N - K** 个节点可以移动。此时让 P1 和 P2 同时移动，可以知道当 P1 移动到**链表结尾**时，P2 移动到第 N - K 个节点处，该位置就是倒数第 K 个节点。
 
 ![1563522317094](assets/1563522317094.png)
 
