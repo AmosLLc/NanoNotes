@@ -34,7 +34,7 @@ private static class BinaryNode<AnyType> {
         this(theElement, null, null );
     }
 
-    BinaryNode( AnyType theElement, BinaryNode<AnyType> lt, BinaryNode<AnyType> rt ) {
+    BinaryNode(AnyType theElement, BinaryNode<AnyType> lt, BinaryNode<AnyType> rt ) {
         element  = theElement;
         leftChild = lt;
         rightChild = rt;
