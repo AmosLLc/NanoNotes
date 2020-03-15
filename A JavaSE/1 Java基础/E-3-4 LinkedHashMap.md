@@ -51,7 +51,7 @@ while(iterator.hasNext()) {
 // key:name3,value:josan3
 ```
 
-结果可知，LinkedHashMap 是有序的，且**默认**为==**插入顺序**==（还有一种访问顺序）。
+结果可知，LinkedHashMap 是**有序**的，且**默认**为==**插入顺序**==（还有一种访问顺序）。
 
 跟 HashMap 一样，它也是提供了 key-value 的存储方式，并提供了 **put** 和 **get** 方法来进行数据存取。
 
@@ -130,7 +130,7 @@ while(iterator2.hasNext()) {
 // key:name1,value:josan1
 ```
 
-因为调用了get("name1")导致了 name1 对应的 Entry 移动到了 Map 最后。
+因为调用了 get("name1") 导致了 name1 对应的 Entry 移动到了 Map 最后。
 
 ##### ② 初始化
 
@@ -154,31 +154,26 @@ void init() {
 
 ##### ==③ 结点结构==
 
-**HashMap** 中**静态内部类** Entry 是这样定义的。
+**HashMap** 中**静态内部类** Node 是这样定义的。
 
 ```java
-static class Entry<K,V> implements Map.Entry<K,V> {
+static class Node<K,V> implements Map.Entry<K,V> {
+    final int hash;
     final K key;
     V value;
-    Entry<K,V> next;
-    int hash;
-}    
+    Node<K,V> next;
+}
 ```
 
-LinkedHashMap 有自己的静态内部类 Entry，它**继承**了上述的 HashMap.Entry，定义如下:
+LinkedHashMap 有自己的静态内部类 Entry，它**继承**了上述的 HashMap.Node，定义如下:
 
 ```java
-/**
- * LinkedHashMap entry.
- */
-private static class Entry<K,V> extends HashMap.Entry<K,V> {
-    // These fields comprise the doubly linked list used for iteration.
+static class Entry<K,V> extends HashMap.Node<K,V> {
     Entry<K,V> before, after;
-
-    Entry(int hash, K key, V value, HashMap.Entry<K,V> next) {
+    Entry(int hash, K key, V value, Node<K,V> next) {
         super(hash, key, value, next);
-	}
-}    
+    }
+}
 ```
 
 所以 LinkedHashMap 构造函数，主要就是调用 HashMap 构造函数初始化了一个 Entry[] table，然后调用自身的init 初始化了一个**只有头结点的==双向链表==**。用来维护插入顺序或者 **LRU** 顺序。参数 **accessOrder** 用于指定是否按**访问顺序**，默认为 false，此时维护的是**插入顺序**。如果为 true，就是**访问顺序**。
@@ -271,7 +266,7 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
 }
 ```
 
-当 put 元素时，不但要把它加入到 **HashMap** 中去，还要加入到**双向链表**中，所以可以看出 LinkedHashMap 就是 ==**HashMap + 双向链表**== ，下面用图来表示逐步往 LinkedHashMap 中添加数据的过程，红色部分是双向链表，黑色部分是 HashMap 结构，header 是一个 Entry 类型的双向链表表头，本身不存储数据。
+当 put 元素时，不但要把它加入到 **HashMap** 中去，还要加入到**双向链表**中，所以可以看出 LinkedHashMap 就是 ==**HashMap + 双向链表**== ，下面用图来表示逐步往 LinkedHashMap 中添加数据的过程，红色部分是双向链表，黑色部分是 HashMap 结构，header 是一个 Entry 类型的**双向链表表头**，本身不存储数据。
 
 加入一个元素 Entry1， 假设 index 为 0，如下图。
 
@@ -289,11 +284,11 @@ final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
 
 ##### ⑤ 扩容
 
-在 HashMap 的 put 方法中，如果发现前元素个数超过了扩容阀值时，会调用 **resize** 方法。LinkedHashMap 重写了 **transfer** 方法，数据的迁移。可以看出，LinkedHashMap 扩容时，数据的再散列和 HashMap 是不一样的。
+在 HashMap 的 put 方法中，如果发现前元素个数超过了扩容阀值时，会调用 **resize** 方法。LinkedHashMap 重写了 **transfer** 方法，数据的迁移。可以看出，LinkedHashMap 扩容时，数据的再散列和 HashMap 是**不一样**的。
 
 HashMap 是先遍历旧 table，再遍历旧 table 中每个元素的单向链表，取得 Entry 以后，重新计算 hash 值，然后存放到新 table 的对应位置。
 
-LinkedHashMap 是遍历的双向链表，取得每一个 Entry，然后重新计算 hash 值，然后存放到新 table 的对应位置。
+LinkedHashMap 是遍历的**双向链表**，取得每一个 Entry，然后重新计算 hash 值，然后存放到新 table 的对应位置。
 
 从遍历的效率来说，**遍历双向链表的效率要高于遍历 table**，因为遍历双向链表是 N 次（N为元素个数）；而遍历table 是 N + table 的空余个数（N为元素个数）。
 
@@ -394,7 +389,7 @@ protected boolean removeEldestEntry(Map.Entry<K,V> eldest) {
 - HashMap 无序；LinkedHashMap 有序，可分为插入顺序和访问顺序两种。如果是访问顺序，那 put 和 get操作已存在的 Entry 时，都会把 Entry 移动到双向链表的表尾(其实是先删除再插入)。
 - LinkedHashMap 存取数据，还是跟 HashMap 一样使用的 Entry[] 的方式，双向链表只是为了保证顺序。
 - LinkedHashMap 是线程不安全的。
-- LinkedHashMap 及其节点类 LinkedHashMap.Entry 重写了部分方法来实现了对顺序的控制。
+- LinkedHashMap 及其节点类 LinkedHashMap.Node 重写了部分方法来实现了对顺序的控制。
 
 
 
@@ -404,7 +399,7 @@ protected boolean removeEldestEntry(Map.Entry<K,V> eldest) {
 
 - 设定**最大缓存**空间 MAX_ENTRIES  为 3；
 - 使用 LinkedHashMap 的构造函数将 accessOrder 设置为 **true**，开启 LRU 顺序；
-- **覆盖** removeEldestEntry() 方法实现，在节点多于 MAX_ENTRIES 就会将最近最久未使用的数据移除。
+- **覆盖** **removeEldestEntry**() 方法实现，在节点多于 MAX_ENTRIES 就会将最近最久未使用的数据移除。
 
 ```java
 class LRUCache<K, V> extends LinkedHashMap<K, V> {

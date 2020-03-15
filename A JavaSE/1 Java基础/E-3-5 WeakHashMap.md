@@ -6,13 +6,15 @@
 
 WeakHashMap 的 Entry 继承自 WeakReference，被 WeakReference 关联的对象在下一次垃圾回收时会**被回收**。
 
-WeakHashMap 主要用来**实现缓存**，通过使用 WeakHashMap 来引用缓存对象，由 JVM 对这部分**缓存进行回收**。
+WeakHashMap 主要用来**实现缓存**，通过使用 WeakHashMap 来引用缓对象，由 JVM 对这部分**缓存进行回收**。
 
 ```java
 private static class Entry<K,V> extends WeakReference<Object> implements Map.Entry<K,V>
 ```
 
 
+
+h
 
 #### 2 ConcurrentCache
 

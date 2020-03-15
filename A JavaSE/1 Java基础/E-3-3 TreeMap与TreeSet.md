@@ -77,8 +77,8 @@
 - `Map.Entry<K, V> lastEntry()`：返回该TreeMap的最后一个（最大的）映射
 - `K lastKey()`：返回该TreeMap的最后一个（最大的）映射的key
 - `v get(K key)`：返回指定key对应的value
-- `SortedMap<K, V> headMap(K toKey)`：返回该TreeMap中严格小于指定key的映射集合
-- `SortedMap<K, V> subMap(K fromKey, K toKey)`：返回该TreeMap中指定范围的映射集合（大于等于fromKey，小于toKey）
+- `SortedMap<K, V> headMap(K toKey)`：返回该 TreeMap 中严格小于指定 key 的映射集合
+- `SortedMap<K, V> subMap(K fromKey, K toKey)`：返回该 TreeMap 中指定范围的映射集合（大于等于fromKey，小于toKey）
 
 **遍历接口**
 
@@ -171,7 +171,7 @@ static final class Entry<K,V> implements Map.Entry<K,V> {
 
 ### TreeSet
 
-- TreeSet 是 Set 的一个子类，TreeSet 集合是用来对象元素进行排序的，没有重复元素。实现了**排重与有序**。
+- TreeSet 是 Set 的一个子类，TreeSet 集合没有重复元素。实现了**去重与有序**。
 
 - 需要传入一个 Comparator 比较器对象进行排序，或者添加的元素实现了 Comparable 接口。
 

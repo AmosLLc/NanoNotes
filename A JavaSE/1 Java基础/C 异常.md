@@ -7,7 +7,7 @@
 Throwable 可以用来表示任何可以作为异常抛出的**类**，分为两种： **Error**  和 **Exception**。其中 Error 用来表示 JVM 无法处理的错误，Exception 分为两种：
 
 - **受查异常** ：需要用 try...catch... 语句捕获并进行处理，并且可以从异常中恢复；就是可以检查到的，与 IO 操作相关的很多异常就是这个。比如 ：ClassNotFoundException，NoSuchFieldException，NoSuchMetodException。
-- **非受查异常** ：是程序运行时错误，例如除 0 会引发 Arithmetic Exception，此时程序崩溃并且无法恢复。派生于**Error**类和**RuntimeException类**的异常。运行时才能发现的异常，所以是不能检查的异常。
+- **非受查异常** ：是程序运行时错误，例如除 0 会引发 ArithmeticException，此时程序崩溃并且无法恢复。派生于 **Error** 类和 **RuntimeException 类**的异常。运行时才能发现的异常，所以是不能检查的异常。
 
 常见的 RuntimeException 表（非受查异常）
 
@@ -67,7 +67,7 @@ String getMessage(); // 获得Throwable 对象的详细描述信息
 
 
 
-#### 5 受查异常声明与抛出
+#### 5 异常声明与抛出
 
 受查异常使用 ==throws== 关键词声明异常。
 
@@ -118,7 +118,7 @@ Throwable e = se.getCause();
 - finally 多用于**回收资源**。涉及资源操作的都需要执行！！比如文件打开，Redis 或 MySQL 连接等。
 - 不管是否有异常被捕获， finally 子句中的代码都被执行。
 - try 语句可以只有 finally 子句，而没有 catch 子句。
-- finally语句中可能也会产生异常！如资源关闭close()方法的异常。此时原始的异常将会丢失，转而抛出 close 方法的异常。
+- finally 语句中**可能也会产生异常**！如资源关闭 close() 方法的异常。此时原始的异常将会丢失，转而抛出 close 方法的异常。
 
 ##### ① ==带 return 的 finally 语句==
 
@@ -170,7 +170,7 @@ try 块正常或者发生异常退出时，会**自动调用 res.close()**。就
 还可以指定多个资源。例如：
 
 ```java
-try (Scanner in = new Scanne「(new FileInputStream('7usr/share/dict/words"),  "UTF-8");
+try (Scanner in = new Scanner (new FileInputStream('7usr/share/dict/words"),  "UTF-8");
 PrintWriter out = new Pri ntWriter("out.txt")){
     while (in.hasNex())
     System.out.println(in.next().toUpperCase());
@@ -219,14 +219,14 @@ public class SubClass extends SuperClass {
 
 #### 8 使用异常技巧
 
-- 多使用代码检查机制。捕获异常的开销非常大。
+- 多使用代码检查机制。**捕获异常的开销非常大**。
 - 不要过分细化异常。
 - 利用异常层次结构，不要只抛出 RuntimeException 异常。应该寻找更加适当的子类或创建自己的异常类。不要只捕获 Thowable 异常， 否则，会使程序代码更难读、更难维护。将一种异常转换成另一种更加适合的异常时不要犹豫。
 - 不要压制异常。
 - 在检测错误时，“ 苛刻 ” 要比放任更好。
 - 不要羞于传递异常。
 - 早抛出，晚捕获。
-- 多个catch块的次序应该是具体异常放在其祖先类的前面，否则后面的catch语句可能进入不了。
+- 多个 catch 块的次序应该是具体异常放在其祖先类的前面，否则后面的 catch 语句可能进入不了。
 
 - [Java 入门之异常处理](https://www.tianmaying.com/tutorial/Java-Exception)
 - [Java 异常的面试问题及答案 -Part 1](http://www.importnew.com/7383.html)

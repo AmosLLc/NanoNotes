@@ -25,6 +25,7 @@ public synchronized E get(int index) {
 
 - Vector 是**同步**的，因此==**开销**==就比 ArrayList 要**大**，访问速度更慢。最好使用 ArrayList 而不是 Vector，因为同步操作完全可以由程序员自己来控制；
 - Vector 每次扩容请求其大小的 **2 倍**空间，而 ArrayList 是 **1.5 倍**。
+- 内部也有 modCount 记录结构性变化次数。
 
 #### 3 替代方案
 
