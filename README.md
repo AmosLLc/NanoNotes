@@ -20,7 +20,7 @@
 
 #### JVM
 
--  [JVM运行时数据区域](JVM\1 JVM运行时数据区域.md) 
+-  [JVM运行时数据区域](https://github.com/nanodaemony/NanoNotes/blob/master/JVM/1%20JVM%E8%BF%90%E8%A1%8C%E6%97%B6%E6%95%B0%E6%8D%AE%E5%8C%BA%E5%9F%9F.md) 
 
 -  [对象解析](JVM\2 对象解析.md) 
 
