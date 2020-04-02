@@ -35,7 +35,7 @@
 - 《深入理解Java虚拟机》 周志明
 - 《计算机网络第七版》 谢希仁
 - 《Java Core》 凯S.霍斯特曼
-- BruceEckel. Java 编程思想: 第 4 版 [M]. 机械工业出版社, 2007.
+- BruceEckel. Java 编程思想: 第 4 版 [M]. 机械工业出版社, 2007
 - https://github.com/CyC2018/CS-Notes
 
 
