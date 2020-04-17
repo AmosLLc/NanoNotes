@@ -1,9 +1,3 @@
-<div align="center">
-    <a href="..."> <img src="https://badgen.net/badge/Rank/20?icon=github&color=4ab8a1"></a>
-    <a href="assets/download.md"> <img src="https://badgen.net/badge/OvO/%E7%A6%BB%E7%BA%BF%E4%B8%8B%E8%BD%BD?icon=telegram&color=4ab8a1"></a>
-    <a href=""> <img src="https://badgen.net/badge/CyC/%E5%9C%A8%E7%BA%BF%E9%98%85%E8%AF%BB?icon=sourcegraph&color=4ab8a1"></a>
-    <a href="#好好学习"> <img src="https://badgen.net/badge/%e5%85%ac%e4%bc%97%e5%8f%b7/CyC2018?icon=rss&color=4ab8a1"></a>
-</div>
 
 
 | ![image-20200317230215494](README.assets/image-20200317230215494.png) | ![image-20200317230339393](README.assets/image-20200317230339393.png) | ![image-20200318080237857](README.assets/image-20200318080237857.png) | ![image-20200318080416391](README.assets/image-20200318080416391.png) | <img src="README.assets/image-20200318080710502.png" alt="image-20200318080710502" style="zoom:90%;" /> | ![image-20200318080804629](README.assets/image-20200318080804629.png) | ![image-20200318080907764](README.assets/image-20200318080907764.png) | ![image-20200318081002237](README.assets/image-20200318081002237.png) | ![image-20200318081120263](README.assets/image-20200318081120263.png) |

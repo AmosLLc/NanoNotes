@@ -29,7 +29,7 @@ https://www.nowcoder.com/discuss/108655来源：牛客网
 2. 印象最深的项目？承担职责？学到了什么，技术、业务都可以说？项目里的blabla是怎么实现的，用到了什么技术？项目分工？项目工程数量？项目分区和分层？ 	
 3. Servlet规范了解吗？Servlet的整个业务流程？session和cookie的区别？session怎么变成cookie，怎么变回session？谁来实现整个流程？ 	
 4. 项目提到的SSM框架里面了解哪些？Spring IoC中Bean的生命周期？谁来管理Bean的生命周期？BeanFactory和ApplicationContext的关系？@Autowired和@Resource的区别？ Spring的自动扫描怎么实现的？谁实现的？ 	
-5.  MyBatis介绍一下？你说到这是一个持久层框架，那你了解JPA规范吗？（不知道） 	
+5.  MyBatis 介绍一下？你说到这是一个持久层框架，那你了解JPA规范吗？（不知道） 	
 6. UML了解吗？（不会）设计模式？ 	
 7. Zookeeper了解吗？（不会） 	
 8. 刚才提到的分布式实现多个应用的Session共享问题？ 	
