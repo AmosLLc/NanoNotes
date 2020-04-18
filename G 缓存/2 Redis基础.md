@@ -1,0 +1,871 @@
+[TOC]
+
+## Redis基础
+
+### 概述
+
+> 啥是 Redis？
+
+Redis 是速度非常快的**非关系型（NoSQL）内存键值数据库**，可以存储键和五种不同类型的值之间的映射。
+
+**==键==的类型只能为==字符串==，==值==支持五种数据类型：==字符串、列表、集合、散列表、有序集合==**。
+
+Redis 支持很多特性，例如将内存中的数据持久化到硬盘中，使用复制来扩展读性能，使用分片来扩展写性能。
+
+#### Redis特性
+
+- **速度快**：单线程模型、数据都在内存中
+- 基于**键值对**的数据结构服务器：NoSQL 非关系型
+- 丰富的功能：缓存、发布订阅、Lua 脚本、简单事务、流水线
+- 简单稳定
+- 客户端语言多：使用 TCP 通信
+- **可以持久化**：RDB 和 AOF
+- **主从复制**：实现数据多个副本
+- **高可用与分布式**：Redis Sentinel、Redis Cluster
+
+---
+
+#### Redis的应用场景
+
+##### 1. 缓存
+
+将热点数据放到**内存**中，设置内存的**最大使用量**以及**淘汰策略**来保证缓存的命中率。经常使用的就这个吧。
+
+- **缓存热点数据**：缓存热点数据，可以降低数据库压力。
+- **缓存 Session**：可以使用 Redis 来统一存储多台应用服务器的**会话信息**。当应用服务器不再存储用户的会话信息，使得服务器**无状态**，一个用户可以请求任意一个应用服务器，从而更容易实现高可用性以及**可伸缩性**。
+
+##### 2. 消息队列与发布订阅系统
+
+**List 是一个双向链表**，可以通过 lpush 和 rpop 写入和读取消息，从而实现简单的消息队列或发布订阅系统（但是不够强大）。不过最好使用 Kafka、RabbitMQ 等**消息中间件**。
+
+##### 3. 分布式锁实现
+
+在分布式场景下，无法使用单机环境下的锁来对多个节点上的进程进行同步。
+
+可以使用 ==Redis 自带的 SETNX 命令实现分布式锁==，除此之外，还可以使用官方提供的 ==RedLock 分布式锁==实现。
+
+##### 4. 其它
+
+- **社交网络**：**Set** 可以实现交集、并集等操作，从而实现**共同好友**等功能。
+
+- **排行榜系统**：**ZSet** 可以实现**有序性**操作，从而实现**排行榜**等功能。
+
+- **计数器**：可以对 **String** 进行自增自减运算，从而实现计数器功能。Redis 这种内存型数据库的读写性能非常高，很适合**存储频繁读写的计数量**。比如视频的播放量、商品浏览次数等。
+- 查找表：例如 **DNS** 记录就很适合使用 Redis 进行存储。查找表和缓存类似，也是利用了 **Redis 快速**的查找特性。但是查找表的内容不能失效，而缓存的内容可以失效，因为缓存不作为可靠的数据来源。
+
+#### 单线程架构
+
+Redis 是单线程架构，单线程也没有了并发问题。
+
+> **为什么单线程还能这么快**？
+
+- **纯内存访问**。Redis 数据都存放在内存中，访问速度极快。
+- **非阻塞 IO**。Redis 使用 epoll 作为 IO 多路复用技术的实现，再加上 Redis 自身的事件处理模型将 epoll 中的连接、读写、关闭等都转化为事件，在 IO 上浪费时间少。
+- 单线程简化了数据结构和算法的实现，同时**单线程避免了线程切换**的竞争产生的开销。
+
+> **单线程的问题**？
+
+如果每个命令**执行时间过长**，会造成其他命令的**阻塞**，这非常难受。
+
+
+
+### 数据类型与API
+
+#### 全局命令
+
+列举一些常见的全部数据结构都通用的命令。
+
+|        命令         |                             释义                             |
+| :-----------------: | :----------------------------------------------------------: |
+|       keys *        |         查看所有键（遍历所有键，O(N)，线上禁止使用）         |
+|       dbsize        |        键总数（不会遍历所有键，直接从遍历获取，O(1)）        |
+|     exists key      |            查看键是否存在（存在为 1，不存在为 0）            |
+|  del key [key ...]  |                   删除键（可多个键同时删）                   |
+| expire key seconds  | 对键添加过期时间（大于等于 0 即是过期时间，-1 是没有设置，-2 键不存在） |
+|       ttl key       |                     查看键剩余的过期时间                     |
+|      type key       |                       查看键的数据结构                       |
+| object encoding key |                       获取键的内部编码                       |
+
+#### 数据结构与内部编码
+
+有五种基本的数据结构，还有一些拓展的结构都是基于它们实现的。
+
+|  数据类型  |        可以存储的值        |                             操作                             |
+| :--------: | :------------------------: | :----------------------------------------------------------: |
+| **STRING** |   字符串、整数或者浮点数   | 1. 对整个字符串或者字符串的其中一部分执行操作 <br/> 2.对整数和浮点数执行自增或者自减操作 |
+|  **LIST**  |            列表            | 1. 从两端**压入或者弹出**元素 <br/> 2. 对单个或者多个元素  <br/>3.进行修剪，只保留一个范围内的元素 |
+|  **SET**   |        **无序**集合        | 1. 添加、获取、移除单个元素 <br/>2. 检查一个元素是否存在于集合中 <br/>3.计算交集、并集、差集<br/> 4.从集合里面随机获取元素 |
+|  **HASH**  | 包含**键值对**的无序散列表 | 1. 添加、获取、移除单个键值对  <br/>2. 获取所有键值对 <br/> 3. 检查某个键是否存在 |
+|  **ZSET**  |        **有序集合**        | 1. 添加、获取、删除元素 <br/> 2. 根据分值范围或者成员来获取元素  <br/>3.计算一个键的排名 |
+
+每一种数据结构都有**两种以上**的**内部编码**实现。
+
+> **为什么这样设计**？
+
+- 可以改进内部编码但是**不影响对外**的数据结构和命令，可以平滑升级。
+- 多种内部编码可以在不同的应用场景下**发挥各自的优势**，比如有的数据结构可以节省内存。
+
+| 数据结构 |      内部编码       |
+| :------: | :-----------------: |
+|  string  |  raw、int、embstr   |
+|   hash   | hashtable、ziplist  |
+|   list   | linkedlist、ziplist |
+|   set    |  hashtable、intset  |
+|   zset   |  skiplist、ziplist  |
+
+
+
+####  STRING
+
+非常重要啊，其他的都是基于这个来的。
+
+字符串类型的**值**可以是：**简单字符串、复复杂字符串（JSON、XML等）、数字（整数、浮点数）、甚至是二进制（图片、视频、音频等）**，最大 512M。
+
+<img src="2 Redis基础.assets/1563520176475.png" alt="1563520176475" style="zoom: 50%;" />
+
+##### 1. 常用命令
+
+###### ① 设置值
+
+```mysql
+set key value [ex seconds] [px milliseconds] [nx|xx]
+```
+
+- **ex seconds**: 设置**秒级**过期时间
+- **px milliseconds**: 设置**毫秒级**过期时间
+- **nx**: 键必须**不存在**才可以设置成功，用于**添加**
+- **xx**: 键必须**存在**才可以设置成功，用于**更新**
+
+除了 set 之外，还有两个命令：setex，extnx。其作用与上述的 ex 和 nx 选项相同。
+
+```mysql
+setex key seconds value
+setnx key value
+```
+
+>  **extnx 的应用**
+
+由于 Redis 的**单线程**机制，如果**多个**客户端同时执行 setex key seconds value，根据 setnx 的特性则**只有一个**客户端能够设置成功，所以 setnx 可以作为**分布式锁**的一种实现方案。
+
+###### ② 获取值
+
+```mysql
+get key
+```
+
+键不存在返回 nil（空）。
+
+###### ③ 批量设置值
+
+```mysql
+mset key value [key value ...]
+```
+
+一次性设置多个值。
+
+###### ④ 批量获取值
+
+```mysql
+mget key [key ...]
+```
+
+```mysql
+mget a b c d
+```
+
+批量设置与获取可以提高效率，因为如果执行 N 次单个 get 命令会在网络中**往返 N 次**，而批量操作只会在网络中**往返 1 次**，可以**预防 Redis 或网络阻塞**。
+
+###### ⑤ 计数
+
+```mysql
+incr key
+decr key
+incrby key increment
+decrby key decrement
+incrbyfloat key increment
+```
+
+可以自增、自减、设置增量。
+
+Redis 由于其**单线程**架构，计数的时候贼方便，都不需要使用 CAS 来保证计数准确性。
+
+###### ⑥ 其他
+
+```mysql
+append key value   	# 在字符串后面追加value，变长
+strlen key			# 字符串长度
+getset key value	# 设置并返回原值，返回键原来的值
+getrange key start end  # 获取部分字符串
+```
+
+##### 2. 内部编码
+
+- int：8 字节的长整形。
+- embstr：小于等于39 个字节的字符串。
+- raw：大于 39 个字节的字符串。
+
+Redis 会根据当前值的**类型和长度**决定使用哪种内部编码实现。
+
+##### 3. 典型使用场景
+
+###### ① 缓存功能
+
+推荐的键名定义方式：
+
+```
+业务名：对象名：id：[属性]
+```
+
+###### ② 计数
+
+快速计数、查询缓存，比如实现视频播放数计数。
+
+###### ③ 共享 session
+
+使用 Redis 存储各个 Web 服务器的 session 信息，集中管理。
+
+###### ④ 限速
+
+防止短信功接口不被频繁访问，限制一分钟内只能请求一次。
+
+限制一个 IP 地址在一分钟内的访问次数。
+
+
+
+#### HASH
+
+结构像下面这样，KEY 里面的 **value** 才包含**真正的 key 和 value**。
+
+<img src="2 Redis基础.assets/1570179783509.png" alt="1570179783509" style="zoom:70%;" />
+
+Hash 类型的**值**本身又是一个**键值对结构**。注意业务重点关注 **Filed ：Value** 关系。
+
+##### 1. 命令
+
+###### ① 设置值
+
+```mysql
+hset key field value
+```
+
+```mysql
+例子：hest user:1 name tom
+```
+
+###### ② 获取值
+
+```mysql
+hget key field
+```
+
+````mysql
+例子：hget user:1 name
+````
+
+###### ③ 删除 field
+
+```mysql
+hdel key field [field ...]
+```
+
+可以批量删除 field 的个数。
+
+```mysql
+例子：hdel user:1 name address class
+```
+
+###### ④ 计算 field 个数
+
+```mysql
+hlen key
+```
+
+###### ⑤ 批量设置与获取
+
+```mysql
+hmget key field [field ...]		# 批量获取
+hmset key field value [field value...]  # 批量设置
+```
+
+###### ⑥ 判断 filed 是否存在
+
+```mysql
+hexists key field
+```
+
+###### ⑦ 其他
+
+```mysql
+hkeys key  		# 获取所有field
+hvals key		# 获取所有value
+hgetall key		# 获取所有的field-value，即返回Map
+hincrby key field 		# 自增，作用在field上
+hincrbyfloat key field  # 自增
+```
+
+##### 2. 内部编码
+
+- **ziplist**（压缩列表）：当 filed 个数少且没有大的 value 时使用
+- **hashtable**（哈希表）：当 filed 个数多或有大的 value 时使用
+
+ziplist 更加紧凑，在数据量较少时可以连续存储元素，更节约内存。
+
+##### 3. 使用场景
+
+###### 缓存用户信息
+
+可以用于记录的**用户信息**，比如 key 是用户的 id，field 是用的信息（如名字、学校等），value 是信息的值。好处：hash 是紧凑的，有这个值才设置，而关系型数据库是稀疏的，没有也会占位置。比如有的用户没有电话信息，在关系型数据库也会为 null，而在 hash 中直接不管即可。
+
+缓存用户信息的几种实现方式：
+
+- 原生字符串：每个属性一个键（键太多了）。
+- 序列号字符串类型：将用户信息序列号之后用一个键保存（需要反序列化）。
+- 使用 hash：只用一个键保存 id，用户信息用 field-value 保存。
+
+#### 列表
+
+<img src="2 Redis基础.assets/1571794865284.png" alt="1571794865284" style="zoom:50%;" />
+
+
+
+<img src="2 Redis基础.assets/1563520200394.png" alt="1563520200394" style="zoom:50%;" />
+
+```mysql
+> rpush list-key item
+(integer) 1
+> rpush list-key item2
+(integer) 2
+> rpush list-key item
+(integer) 3
+
+> lrange list-key 0 -1
+1) "item"
+2) "item2"
+3) "item"
+
+> lindex list-key 1
+"item2"
+
+> lpop list-key
+"item"
+
+> lrange list-key 0 -1
+1) "item2"
+2) "item"
+```
+
+----
+
+#### SET
+
+<img src="2 Redis基础.assets/1563520228097.png" alt="1563520228097" style="zoom:50%;" />
+
+```java
+> sadd set-key item
+(integer) 1
+> sadd set-key item2
+(integer) 1
+> sadd set-key item3
+(integer) 1
+> sadd set-key item
+(integer) 0
+
+> smembers set-key
+1) "item"
+2) "item2"
+3) "item3"
+
+> sismember set-key item4
+(integer) 0
+> sismember set-key item
+(integer) 1
+
+> srem set-key item2
+(integer) 1
+> srem set-key item2
+(integer) 0
+
+> smembers set-key
+1) "item"
+2) "item3"
+```
+
+-----
+
+#### HASH
+
+
+
+<img src="2 Redis基础.assets/1570180099837.png" alt="1570180099837" style="zoom:80%;" />
+
+<img src="2 Redis基础.assets/1563520251588.png" alt="1563520251588" style="zoom:50%;" />
+
+
+
+```html
+> hset hash-key sub-key1 value1
+(integer) 1
+> hset hash-key sub-key2 value2
+(integer) 1
+> hset hash-key sub-key1 value1
+(integer) 0
+
+> hgetall hash-key
+1) "sub-key1"
+2) "value1"
+3) "sub-key2"
+4) "value2"
+
+> hdel hash-key sub-key2
+(integer) 1
+> hdel hash-key sub-key2
+(integer) 0
+
+> hget hash-key sub-key1
+"value1"
+
+> hgetall hash-key
+1) "sub-key1"
+2) "value1"
+```
+
+----
+
+#### ZSET
+
+相当于在 SET 类型的基础上增加了一个**分数**。
+
+<img src="2 Redis基础.assets/1563520269089.png" alt="1563520269089" style="zoom:50%;" />
+
+```html
+> zadd zset-key 728 member1
+(integer) 1
+> zadd zset-key 982 member0
+(integer) 1
+> zadd zset-key 982 member0
+(integer) 0
+
+> zrange zset-key 0 -1 withscores
+1) "member1"
+2) "728"
+3) "member0"
+4) "982"
+
+> zrangebyscore zset-key 0 800 withscores
+1) "member1"
+2) "728"
+
+> zrem zset-key member1
+(integer) 1
+> zrem zset-key member1
+(integer) 0
+
+> zrange zset-key 0 -1 withscores
+1) "member0"
+2) "982"
+```
+
+
+
+### 命令行操作
+
+#### 1.基本操作
+
+##### ①切换数据库
+
+``` html
+Redis默认有16个数据库。
+115 # Set the number of databases. The default database is DB 0, you can select
+116 # a different one on a per-connection basis using SELECT <dbid> where
+117 # dbid is a number between 0 and 'databases'-1
+118 databases 16
+使用select进行切换，数据库索引从0开始
+127.0.0.1:6379> select 2
+OK
+127.0.0.1:6379[2]> select 0
+OK
+127.0.0.1:6379> 
+```
+
+##### ②查看数据库长度
+
+``` html
+127.0.0.1:6379> dbsize
+(integer) 3
+```
+
+#### 2.KEY操作
+
+``` mysql
+● KEYS PATTERN
+● TYPE KEY
+	# 返回KEY对应的值的类型
+● MOVE KEY DB
+	# 把一组键值对数据移动到另一个数据库中
+●DEL KEY [KEY ...]
+	# 根据KEY进行删除，至少要指定一个KEY
+●EXISTS KEY
+	# 检查指定的KEY是否存在。指定一个KEY时，存在返回1，不存在返回0。可以指定多个，返回存在的KEY的数量。
+●RANDOMKEY
+	# 在现有的KEY中随机返回一个
+●RENAME KEY NEWKEY
+	# 重命名一个KEY，NEWKEY不管是否是已经存在的都会执行，如果NEWKEY已经存在则会被覆盖。
+●RENAMENX KEY NEWKEY
+	# 只有在NEWKEY不存在时能够执行成功，否则失败
+●TIME
+	# 返回当前UNIX时间戳
+●TTL KEY
+	# 以秒为单位查看KEY还能存在多长时间
+●PTTL KEY
+	# 以毫秒为单位查看KEY还能存在多长时间
+●EXPIRE KEY SECONDS
+	# 给一个KEY设置在SECONDS秒后过期，过期会被Redis移除。
+●EXPIREAT KEY TIMESTAMP
+	# # 设置一个KEY在TIMESTAMP指定的时间过期
+●PEXPIRE KEY MILLISECONDS
+	# 以毫秒为单位指定过期时间
+●PEXPIREAT KEY MILLISECONDS-TIMESTAMP
+	# 以毫秒为单位指定过期的时间戳
+●PERSIST KEY
+	# 移除过期时间，变成永久key
+```
+
+#### 2.string操作
+
+``` mysql
+●SET KEY VALUE [EX SECONDS] [PX MILLISECONDS] [NX|XX]
+	# 给KEY设置一个string类型的值。
+	# EX参数用于设置存活的秒数。
+	# PX参数用于设置存活的毫秒数。
+	# NX参数表示当前命令中指定的KEY不存在才行。
+	# XX参数表示当前命令中指定的KEY存在才行。
+●GET KEY
+	# 根据key得到值，只能用于string类型。
+●APPEND KEY VALUE
+	# 把指定的value追加到KEY对应的原来的值后面，返回值是追加后字符串长度
+●STRLEN KEY
+	# 直接返回字符串长度
+●INCR KEY
+	# 自增1
+●DECR KEY
+	# 自减1
+●INCRBY KEY INCREMENT
+	# 原值+INCREMENT
+●DECRBY KEY DECREMENT
+	# 原值-DECREMENT
+●GETRANGE KEY START END
+	# 从字符串中取指定的一段
+●SETRANGE KEY OFFSET VALUE
+	# 从offset开始使用VALUE进行替换
+●SETEX KEY SECONDS VALUE
+	# 设置KEY,VALUE时指定存在秒数
+●SETNX KEY VALUE
+	# 新建字符串类型的键值对
+●MSET KEY VALUE [KEY VALUE ...]
+	# 一次性设置一组多个键值对
+●MGET KEY [KEY ...]
+	# 一次性指定多个KEY，返回它们对应的值，没有值的KEY返回值是(nil)
+●MSETNX KEY VALUE [KEY VALUE ...]
+	# 一次性新建多个值
+●GETSET KEY VALUE
+	# 设置新值，同时能够将旧值返回
+
+```
+
+#### 3.list操作
+
+``` mysql
+●LPUSH key value [value ...]
+●RPUSH key value [value ...]
+●LRANGE key start stop
+	# 根据list集合的索引打印元素数据
+	# 正着数：0,1,2,3,...
+	# 倒着数：-1,-2,-3,...
+●LLEN key
+●LPOP key
+	# 从左边弹出一个元素。
+	# 弹出=返回+删除。
+●RPOP key
+	# 从右边弹出一个元素。
+●RPOPLPUSH source destination
+	# 从source中RPOP一个元素，LPUSH到destination中
+●LINDEX key index
+	# 根据索引从集合中取值
+●LINSERT key BEFORE|AFTER pivot value
+	# 在pivot指定的值前面或后面插入value
+●LPUSHX key value
+	# 只能针对存在的list执行LPUSH
+●LREM key count value
+	# 根据count指定的数量从key对应的list中删除value
+●LSET key index value
+	# 把指定索引位置的元素替换为另一个值
+●LTRIM key start stop
+	# 仅保留指定区间的数据，两边的数据被删除
+```
+
+#### 4.set操作
+
+``` mysql
+●SADD key member [member ...]
+●SMEMBERS key
+●SCARD key
+	# 返回集合中元素的数量
+●SISMEMBER key member
+	# 检查当前指定member是否是集合中的元素
+●SREM key member [member ...]
+	# 从集合中删除元素
+●SINTER key [key ...]
+	# 将指定的集合进行“交集”操作
+	# 集合A：a,b,c
+	# 集合B：b,c,d
+	# # 交集：b,c
+●SINTERSTORE destination key [key ...]
+	# 取交集后存入destination
+●SDIFF key [key ...]
+	# 将指定的集合执行“差集”操作
+	# 集合A：a,b,c
+	# 集合B：b,c,d
+	# A对B执行diff：a
+	# 相当于：A-交集部分
+●SDIFFSTORE destination key [key ...]
+●SUNION key [key ...]
+	# 将指定的集合执行“并集”操作
+	# 集合A：a,b,c
+	# 集合B：b,c,d
+	# 并集：a,b,c,d
+●SUNIONSTORE destination key [key ...]
+●SMOVE source destination member
+	# 把member从source移动到destination
+●SPOP key [count]
+	# 从集合中随机弹出count个数量的元素，count不指定就弹出1个
+●SRANDMEMBER key [count]
+	# 从集合中随机返回count个数量的元素，count不指定就返回1个
+●SSCAN key cursor [MATCH pattern] [COUNT count]
+	# 基于游标的遍历
+
+```
+
+#### 5.hash操作
+
+``` mysql
+●HSET key field value
+●HGETALL key
+●HGET key field
+●HLEN key
+●HKEYS key
+●HVALS key
+●HEXISTS key field
+●HDEL key field [field ...]
+●HINCRBY key field increment
+●HMGET key field [field ...]
+●HMSET key field value [field value ...]
+●HSETNX key field value
+●HSCAN key cursor [MATCH pattern] [COUNT count]
+```
+
+#### 6.zset操作
+
+``` mysql
+●ZADD key [NX|XX] [CH] [INCR] score member [score member ...]
+●ZRANGE key start stop [WITHSCORES]
+●ZCARD key
+●ZCOUNT key min max
+	# 根据分数在min，max之间查找元素
+●ZSCORE key member
+●ZINCRBY key increment member
+●ZLEXCOUNT key min max
+●ZRANGEBYLEX key min max [LIMIT offset count]
+	# 按照字母顺序在区间内返回member
+	# min和max使用“[a”表示闭区间，使用“(a”表示开区间
+	# -表示负无穷
+	# +表示正无穷
+●ZRANGEBYSCORE key min max [WITHSCORES] [LIMIT offset count]
+	# 在分数的指定区间内返回数据
+●ZRANK key member
+	# 先对分数进行升序排序，返回member的排名
+●ZREM key member [member ...]
+●ZREMRANGEBYLEX key min max
+●ZREMRANGEBYRANK key start stop
+●ZREMRANGEBYSCORE key min max
+●ZREVRANGE key start stop [WITHSCORES]
+●ZREVRANGEBYSCORE key max min [WITHSCORES] [LIMIT offset count]
+●ZREVRANK key member
+●ZINTERSTORE destination numkeys key [key ...] [WEIGHTS weight [weight ...]] [AGGREGATE SUM|MIN|MAX]
+●ZUNIONSTORE destination numkeys key [key ...] [WEIGHTS weight] [AGGREGATE SUM|MIN|MAX]
+	# 把指定集合的member取交集，分数会相加
+●ZSCAN key cursor [MATCH pattern] [COUNT count]
+```
+
+
+
+
+
+
+
+
+
+### 三、数据结构
+
+#### 字典
+
+**dictht** 是一个**散列表**结构，使用**拉链法保存哈希冲突**。
+
+```c
+/* This is our hash table structure. Every dictionary has two of this as we
+ * implement incremental rehashing, for the old to the new table. */
+typedef struct dictht {
+    dictEntry **table;
+    unsigned long size;
+    unsigned long sizemask;
+    unsigned long used;
+} dictht;
+```
+
+```c
+typedef struct dictEntry {
+    void *key;
+    union {
+        void *val;
+        uint64_t u64;
+        int64_t s64;
+        double d;
+    } v;
+    struct dictEntry *next;
+} dictEntry;
+```
+
+Redis 的字典 dict 中包含**两个哈希表 dictht**，这是为了方便进行 rehash 操作。在扩容时，将其中一个 dictht 上的键值对 rehash 到另一个 dictht 上面，完成之后释放空间并交换两个 dictht 的角色。
+
+```c
+typedef struct dict {
+    dictType *type;
+    void *privdata;
+    dictht ht[2];
+    long rehashidx; /* rehashing not in progress if rehashidx == -1 */
+    unsigned long iterators; /* number of iterators currently running */
+} dict;
+```
+
+rehash 操作不是一次性完成，而是采用**渐进方式**，这是为了避免一次性执行过多的 rehash 操作给服务器带来过大的负担。
+
+渐进式 rehash 通过记录 dict 的 rehashidx 完成，它从 0 开始，然后每执行一次 rehash 都会递增。例如在一次 rehash 中，要把 dict[0] rehash 到 dict[1]，这一次会把 dict[0] 上 table[rehashidx] 的键值对 rehash 到 dict[1] 上，dict[0] 的 table[rehashidx] 指向 null，并令 rehashidx++。
+
+在 rehash 期间，每次对字典执行添加、删除、查找或者更新操作时，都会执行一次渐进式 rehash。
+
+采用渐进式 rehash 会导致字典中的数据分散在两个 dictht 上，因此对字典的查找操作也需要到对应的 dictht 去执行。
+
+```c
+/* Performs N steps of incremental rehashing. Returns 1 if there are still
+ * keys to move from the old to the new hash table, otherwise 0 is returned.
+ *
+ * Note that a rehashing step consists in moving a bucket (that may have more
+ * than one key as we use chaining) from the old to the new hash table, however
+ * since part of the hash table may be composed of empty spaces, it is not
+ * guaranteed that this function will rehash even a single bucket, since it
+ * will visit at max N*10 empty buckets in total, otherwise the amount of
+ * work it does would be unbound and the function may block for a long time. */
+int dictRehash(dict *d, int n) {
+    int empty_visits = n * 10; /* Max number of empty buckets to visit. */
+    if (!dictIsRehashing(d)) return 0;
+
+    while (n-- && d->ht[0].used != 0) {
+        dictEntry *de, *nextde;
+
+        /* Note that rehashidx can't overflow as we are sure there are more
+         * elements because ht[0].used != 0 */
+        assert(d->ht[0].size > (unsigned long) d->rehashidx);
+        while (d->ht[0].table[d->rehashidx] == NULL) {
+            d->rehashidx++;
+            if (--empty_visits == 0) return 1;
+        }
+        de = d->ht[0].table[d->rehashidx];
+        /* Move all the keys in this bucket from the old to the new hash HT */
+        while (de) {
+            uint64_t h;
+
+            nextde = de->next;
+            /* Get the index in the new hash table */
+            h = dictHashKey(d, de->key) & d->ht[1].sizemask;
+            de->next = d->ht[1].table[h];
+            d->ht[1].table[h] = de;
+            d->ht[0].used--;
+            d->ht[1].used++;
+            de = nextde;
+        }
+        d->ht[0].table[d->rehashidx] = NULL;
+        d->rehashidx++;
+    }
+
+    /* Check if we already rehashed the whole table... */
+    if (d->ht[0].used == 0) {
+        zfree(d->ht[0].table);
+        d->ht[0] = d->ht[1];
+        _dictReset(&d->ht[1]);
+        d->rehashidx = -1;
+        return 0;
+    }
+
+    /* More to rehash... */
+    return 1;
+}
+
+```
+
+---
+
+
+
+#### 跳跃表
+
+是**有序集合**的底层实现之一。
+
+跳跃表是基于==多指针有序链表==实现的，可以看成多个**有序链表**。
+
+![1563520311808](2 Redis基础.assets/1563520311808.png)
+
+在**查找**时，从**上层指针**开始查找，找到对应的区间之后再到下一层去查找。下图演示了查找 22 的过程。
+
+![1563520325342](2 Redis基础.assets/1563520325342.png)
+
+与红黑树等平衡树相比，跳跃表具有以下优点：
+
+- **插入速度非常快速，因为不需要进行旋转等操作来维护平衡性**；
+- 更容易实现；
+- 支持**无锁操作**。
+
+----
+
+
+
+
+
+
+
+### 四、使用场景
+
+
+
+
+
+### 五、Redis 与 Memcached
+
+两者都是**非关系型内存键值数据库**，主要有以下不同：
+
+#### 数据类型
+
+Memcached **仅支持字符串类型**，而 Redis 支持五种不同的数据类型，可以更灵活地解决问题。
+
+#### 数据持久化
+
+Redis 支持两种持久化策略：**RDB 快照和 AOF 日志**，而 Memcached **不支持**持久化。
+
+#### 分布式
+
+Memcached **不支持分布式**，只能通过在客户端使用**一致性哈希**来实现分布式存储，这种方式在存储和查询时都需要先在客户端计算一次数据所在的节点。
+
+Redis Cluster 实现了**分布式**的支持。
+
+#### 内存管理机制
+
+- 在 Redis 中，并不是所有数据都一直存储在内存中，可以将一些**很久没用的 value 交换到磁盘**，而 Memcached 的数据则会**一直**在内存中。
+- Memcached 将内存分割成**特定长度的块**来存储数据，以完全解决内存碎片的问题。但是这种方式会使得内存的利用率不高，例如块的大小为 128 bytes，只存储 100 bytes 的数据，那么剩下的 28 bytes 就浪费掉了。

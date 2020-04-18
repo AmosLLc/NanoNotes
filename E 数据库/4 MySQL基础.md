@@ -2,7 +2,7 @@
 
 ## MySQL 基础
 
-### 基础
+### 一、基础
 
 #### 基本概念
 
@@ -102,7 +102,7 @@ mysql -u root -p  # 然后输入密码登录
 
 
 
-### DDL 数据定义语言
+### 二、DDL 数据定义语言
 
 #### 库的管理
 
@@ -410,7 +410,7 @@ SET auto_increment_increment = 3;
 
 
 
-### DQL 数据查询语言
+### 三、DQL 数据查询语言
 
 #### 查询所用的数据库表格
 
@@ -1429,9 +1429,9 @@ ORDER BY MIN(salary) DESC;
 
 
 
-#### 多表连接查询
+#### 连接查询
 
-又称**多表查询**，当查询的字段来自于多个表时，就会用到**连接查询**。
+又称**多表查询**，用于连接多个表，使用 **JOIN** 关键字，并且条件语句是 **ON** 而不是 WHERE。
 
 ##### 1. 连接查询分类
 
@@ -1446,8 +1446,8 @@ ORDER BY MIN(salary) DESC;
 
 ② **内连接**：只连接**匹配**的行。
 
-- **等值连接**：连接条件中**使用等于号**(=)运算符比较被连接列的列值。
-- **非等值连接**：连接条件中**不使用等于号**(=)运算符比较被连接列的列值。
+- **等值连接**：连接条件中**使用等值方法**连接两个表。
+- **非等值连接**：连接条件中**使用非等值方法**连接两个表。
 - **自连接**：自己和自己做**笛卡尔积**。
 
 ③ **外连接**：
@@ -1460,7 +1460,7 @@ ORDER BY MIN(salary) DESC;
 
 SQL92标准仅仅支持**内连接**(即等值连接、非等值连接和自连接)。
 
-###### ① 等值连接(SQL92标准)
+###### ① 等值连接(SQL92标准)（不太建议）
 
 等值的含义就是连接条件中**使用等于号**(=)运算符比较被连接列的列值。
 
@@ -1816,6 +1816,17 @@ select * from person ,dept;
 ```
 
 用处不大。解决办法：添加上连接条件。
+
+###### ④ 自然连接
+
+自然连接是把**同名列**通过**等值测试**连接起来的，同名列可以**有多个**。
+
+内连接和自然连接的区别：内连接**提供**连接的列，而自然连接**自动连接**所有**同名列**。
+
+```sql
+SELECT A.value, B.value
+FROM tablea AS A NATURAL JOIN tableb AS B;
+```
 
 
 
@@ -2194,7 +2205,7 @@ LIMIT 10;
 
 
 
-#### 联合查询
+#### 组合查询
 
 将**多条**查询语句的结果**合并成一个结果**。
 
@@ -2216,6 +2227,7 @@ SELECT 字段|常量|表达式|函数 【FROM 表】 【WHERE 条件】
 - 多条查询语句的查询的**列数**必须是**一致**的
 - 多条查询语句的查询的**列的类型几乎相同**
 - **UNION** 代表**去重**，**UNION ALL**代表**不去重**
+- 只能包含**一个 OEDER BY** 子句，并且必须位于语句的最后。
 
 ```mysql
 # 案例：查询部门编号>90或邮箱包含a的员工信息
@@ -2235,7 +2247,7 @@ SELECT t_id, tname FROM t_ua WHERE tGender = 'male';
 
 
 
-### DML数据操作语言
+### 四、DML数据操作语言
 
 #### 插入
 
@@ -2459,5 +2471,96 @@ DELETE 与 TRUNCATE 两种方式的区别
 
 
 
+### 五、其他
 
+#### 字符集
+
+基本术语：
+
+- **字符集**为**字母和符号**的集合；
+- **编码**为某个字符集成员的内部表示；
+- **校对字符**指定**如何比较**，主要用于**排序和分组**。
+
+除了给表指定字符集和校对外，也可以给列指定：
+
+```sql
+CREATE TABLE mytable
+(col VARCHAR(10) CHARACTER SET latin COLLATE latin1_general_ci)
+DEFAULT CHARACTER SET hebrew COLLATE hebrew_general_ci;
+```
+
+可以在**排序、分组时指定校对**：
+
+```sql
+SELECT *
+FROM mytable
+ORDER BY col COLLATE latin1_general_ci;
+```
+
+
+
+#### 权限管理
+
+MySQL 的**账户信息**保存在 **mysql** 这个数据库中。
+
+```sql
+USE mysql;
+SELECT user FROM user;
+```
+
+**创建账户** 
+
+新创建的账户**没有任何**权限。
+
+```sql
+CREATE USER myuser IDENTIFIED BY 'mypassword';
+```
+
+**修改账户名** 
+
+```sql
+RENAME myuser TO newuser;
+```
+
+**删除账户** 
+
+```sql
+DROP USER myuser;
+```
+
+**查看权限★** 
+
+```sql
+SHOW GRANTS FOR myuser;
+```
+
+**授予权限★** 
+
+账户用 **username@host** 的形式定义，**username@%** 使用的是**默认主机名**。
+
+```sql
+GRANT SELECT, INSERT ON mydatabase.* TO myuser;
+```
+
+**删除权限** 
+
+**GRANT** 和 **REVOKE** 可在几个层次上控制访问权限：
+
+- 整个服务器，使用 GRANT ALL 和 REVOKE ALL；
+- 整个数据库，使用 **ON database.\*；**
+- 特定的表，使用 ON database.table；
+- 特定的列；
+- 特定的**存储过程**。
+
+```sql
+REVOKE SELECT, INSERT ON mydatabase.* FROM myuser;
+```
+
+**更改密码** 
+
+必须使用 Password() 函数进行**加密**。
+
+```sql
+SET PASSWROD FOR myuser = Password('new_password');
+```
 

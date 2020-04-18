@@ -8,7 +8,12 @@
 
 <img src="10 MySQL事务.assets/image-20200417090308146.png" alt="image-20200417090308146" style="zoom:70%;" />
 
+基本术语：
 
+- **事务**（transaction）指一组 SQL 语句；
+- **回滚**（rollback）指撤销指定 SQL 语句的过程；
+- **提交**（commit）指将未存储的 SQL 语句结果写入数据库表；
+- **保留点**（savepoint）指事务处理中设置的**临时占位符**（placeholder），你可以对它发布回退（与回退整个事务处理不同）。
 
 #### 事务四大特性
 
@@ -493,9 +498,17 @@ SELECT c FROM t WHERE c BETWEEN 10 and 20 FOR UPDATE;
 
 #### MySQL 事务相关操作
 
+**不能回退 SELECT** 语句，回退 SELECT 语句也没意义；也**不能回退 CREATE 和 DROP 语句**。
+
 ##### 1. 隐式事务 AUTOCOMMIT
 
 隐式事务，没有明显的开启和结束事务的标志。MySQL 默认采用**自动提交**模式。也就是说，如果不显式使用`START TRANSACTION`语句来开始一个事务，那么**每个查询**都会被当做一个**事务自动提交**。
+
+MySQL 的事务提交默认是**隐式提交**，每执行一条语句就把这条语句当成一个事务然后进行**提交**。当出现 START TRANSACTION 语句时，会关闭隐式提交；当 COMMIT 或 ROLLBACK 语句执行后，事务会自动关闭，重新恢复隐式提交。
+
+设置 autocommit 为 0 可以**取消自动提交**；autocommit 标记是针对**每个连接**而不是针对服务器的。
+
+如果**没有设置保留点**，ROLLBACK 会回退到 **START TRANSACTION** 语句处；如果设置了**保留点**，并且在 ROLLBACK 中**指定**该保留点，则会回退到该保留点。
 
 ##### 2. 关键语句
 
@@ -512,7 +525,7 @@ ROLLBACK TO 断点 	   # 回滚到SAVEPOINT
 
 ##### 3. 综合实例
 
-默认情况下自动提交是开启的。
+默认情况下自动提交是**开启**的。
 
 ```java
 mysql> SHOW VARIABLES LIKE 'autocommit';
