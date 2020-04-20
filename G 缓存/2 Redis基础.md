@@ -60,7 +60,7 @@ Redis 是单线程架构，单线程也没有了并发问题。
 > **为什么单线程还能这么快**？
 
 - **纯内存访问**。Redis 数据都存放在内存中，访问速度极快。
-- **非阻塞 IO**。Redis 使用 epoll 作为 IO 多路复用技术的实现，再加上 Redis 自身的事件处理模型将 epoll 中的连接、读写、关闭等都转化为事件，在 IO 上浪费时间少。
+- **非阻塞 IO**。Redis 使用 **epoll 作为 IO 多路复用技术的实现**，再加上 Redis 自身的事件处理模型将 **epoll** 中的连接、读写、关闭等都转化为事件，在 IO 上浪费时间少。
 - 单线程简化了数据结构和算法的实现，同时**单线程避免了线程切换**的竞争产生的开销。
 
 > **单线程的问题**？
@@ -85,6 +85,70 @@ Redis 是单线程架构，单线程也没有了并发问题。
 |       ttl key       |                     查看键剩余的过期时间                     |
 |      type key       |                       查看键的数据结构                       |
 | object encoding key |                       获取键的内部编码                       |
+
+
+
+#### 键管理
+
+##### 1. 单个键管理
+
+###### ① 键重命名
+
+键重命名的时候会执行 del 命令删除旧的键，如果键对应的值较大，可能造成阻塞。
+
+```mysql
+rename key newkey
+```
+
+###### ② 随机返回一个键
+
+```mysql
+randomkey
+```
+
+###### ③ 键过期
+
+与键过期相关的指令。
+
+```mysql
+expire key seconds		# 键在seconds秒后过期
+expire key timestamp	# 键在秒级时间戳timestamp后过期
+ttl key					# 查看键过期剩余时间，秒级
+pttl key				# 查看键过期剩余时间，毫秒级
+expireat key timestamp	# 设置键的秒级过期时间戳
+pexpire key milliseconds# 键在milliseconds毫秒后过期
+setex 					# 设置键并设置过期时间，多用！！
+```
+
+**过期时间**
+
+```mysql
+大于等于0的整数:键剩余过期时间
+-1:键没有设置过期时间
+-2:键不存在
+```
+
+与过期相关的命令需要**注意**：
+
+- 如果 expire key 不存在，返回结果为 0。
+- 如果设置过期时间为负值，键会立即被删除，犹如使用了 del 命令一样。
+- persist 命令可以将键的过期时间清除，清除后 ttl 变为 -1，这样键就不会过期了。
+- 对于**字符串类型的键**，执行 **set 命令**会**去掉**过期时间（ttl 变为 -1），这个问题在开发中很容易被忽视。**setex 命令**做为 **set + expire** 命令的组合，即是原子命令，而且少了一次网络时间，开发多用！！
+- Redis **不支持二级数据结构**（如hash、list）**内部元素的过期功能**，如不能对 hash 中某个元素设置过期。
+
+###### ④ 迁移键
+
+
+
+##### 2. 遍历键
+
+
+
+
+
+##### 3. 数据库管理
+
+
 
 #### 数据结构与内部编码
 
@@ -238,6 +302,8 @@ Redis 会根据当前值的**类型和长度**决定使用哪种内部编码实�
 
 <img src="2 Redis基础.assets/1570179783509.png" alt="1570179783509" style="zoom:70%;" />
 
+<img src="2 Redis基础.assets/1563520251588.png" alt="1563520251588" style="zoom:50%;" />
+
 Hash 类型的**值**本身又是一个**键值对结构**。注意业务重点关注 **Filed ：Value** 关系。
 
 ##### 1. 命令
@@ -322,7 +388,13 @@ ziplist 更加紧凑，在数据量较少时可以连续存储元素，更节约
 - 序列号字符串类型：将用户信息序列号之后用一个键保存（需要反序列化）。
 - 使用 hash：只用一个键保存 id，用户信息用 field-value 保存。
 
-#### 列表
+#### List
+
+列表用于存储多个**有序**的字符串，每个字符串称为元素。由于元素是有序的，所以可以通过索引来访问元素或者进行范围访问。
+
+可以充当栈与队列的角色。
+
+列表从左到右索引为 **0 ~ N - 1**，从右到左为 **-1 ~ -N**。
 
 <img src="2 Redis基础.assets/1571794865284.png" alt="1571794865284" style="zoom:50%;" />
 
@@ -330,140 +402,332 @@ ziplist 更加紧凑，在数据量较少时可以连续存储元素，更节约
 
 <img src="2 Redis基础.assets/1563520200394.png" alt="1563520200394" style="zoom:50%;" />
 
+
+
+##### 1. 命令
+
+###### ① 插入元素
+
+左右两边插入元素：插入两端。
+
 ```mysql
-> rpush list-key item
-(integer) 1
-> rpush list-key item2
-(integer) 2
-> rpush list-key item
-(integer) 3
-
-> lrange list-key 0 -1
-1) "item"
-2) "item2"
-3) "item"
-
-> lindex list-key 1
-"item2"
-
-> lpop list-key
-"item"
-
-> lrange list-key 0 -1
-1) "item2"
-2) "item"
+lpush key value [value...]
+rpush key value [value...]
 ```
 
-----
+指定位置处插入元素：找到**等于 pivot** 的元素并在前或后插入元素。
+
+```mysql
+linsert key before|after pivot value
+```
+
+###### ② 查找元素
+
+- 获取指定范围元素。
+
+```mysql
+lrange key start end 
+```
+
+```mysql
+lrange key 0 -1 	# 列出全部元素
+```
+
+- 获取列表指定索引下标的元素
+
+```mysql
+lindex key index
+```
+
+```mysql
+lindex name -1	# 获取最后一个元素
+```
+
+- 列表长度。
+
+```mysql
+llen key
+```
+
+###### ③ 删除元素
+
+- 左右两边弹出删除。
+
+```mysql
+lpop key
+rpop key
+```
+
+- 按照索引范围修建列表
+
+```mysql
+ltrim key start end
+```
+
+###### ④ 修改元素
+
+- 修改指定索引处的元素。
+
+```mysql
+lset key index newValue
+```
+
+###### ⑤ 阻塞弹出
+
+- 阻塞式弹出元素。从左右阻塞式弹出元素，即普通弹出的阻塞版本。
+
+```mysql
+blpop key [key...] timeout
+brpop key [key...] timeout
+```
+
+`key [key...]` 多个列表的键。
+
+`timeout` 阻塞时间。
+
+- 若列表为空，timeout = 3，则客户端等待 3 秒后返回，若 timeout = 0，则此时客户端一直阻塞等下去。若等待期间插入元素则立即返回。
+
+- 列表不为空，立即返回。
+
+> **使用 brpop 需要注意的点**
+
+- 如果是多个键，那么 brpop 会从左到右遍历键，一旦有一个键能弹出元素，客户端立即返回。
+- 如果多个客户端对一个同一个键执行 brpop，那么最先执行 brpop 命令的客户端可以先获取到弹出值。然后后面的继续阻塞。
+
+##### 2. 内部编码
+
+- ziplist：压缩列表。元素少且元素长度小时使用，减少内存消耗。
+- linkedlist：链表。元素多使用。
+
+##### 3. 使用场景
+
+###### ① 消息队列
+
+使用 lpush + brpop 可以实现阻塞队列，生产者客户端使用 lpush 生产，多个消费者客户端从使用 brpop 命令阻塞式“抢”列表中的元素，多个客户端保证了消费的负载均衡和高可用。
+
+- **lpush + lpop = Stack**（栈）
+- lpush + rpop = Queue（队列）
+- lpush + ltrim = Capped Collection（有限集合）
+- **lpush + brpop = Message Queue**（消息队列）
+
+###### ② 文章列表
+
+每个用户的文章列表用 list 存储，然后可以分页获取列表。
+
+
 
 #### SET
 
+用于保存多个字符串元素，与列表不同，set 中元素**不能重复**，并且集合中元素是**无序**的。
+
+除增删改查之外还可以做多个集合的交集、并集、差集。
+
 <img src="2 Redis基础.assets/1563520228097.png" alt="1563520228097" style="zoom:50%;" />
 
-```java
-> sadd set-key item
-(integer) 1
-> sadd set-key item2
-(integer) 1
-> sadd set-key item3
-(integer) 1
-> sadd set-key item
-(integer) 0
+##### 1. 命令
 
-> smembers set-key
-1) "item"
-2) "item2"
-3) "item3"
+###### ① 集合内操作
 
-> sismember set-key item4
-(integer) 0
-> sismember set-key item
-(integer) 1
+- 添加元素
 
-> srem set-key item2
-(integer) 1
-> srem set-key item2
-(integer) 0
-
-> smembers set-key
-1) "item"
-2) "item3"
+```mysql
+sadd key element [element...]
 ```
 
------
+- 删除元素
 
-#### HASH
-
-
-
-<img src="2 Redis基础.assets/1570180099837.png" alt="1570180099837" style="zoom:80%;" />
-
-<img src="2 Redis基础.assets/1563520251588.png" alt="1563520251588" style="zoom:50%;" />
-
-
-
-```html
-> hset hash-key sub-key1 value1
-(integer) 1
-> hset hash-key sub-key2 value2
-(integer) 1
-> hset hash-key sub-key1 value1
-(integer) 0
-
-> hgetall hash-key
-1) "sub-key1"
-2) "value1"
-3) "sub-key2"
-4) "value2"
-
-> hdel hash-key sub-key2
-(integer) 1
-> hdel hash-key sub-key2
-(integer) 0
-
-> hget hash-key sub-key1
-"value1"
-
-> hgetall hash-key
-1) "sub-key1"
-2) "value1"
+```mysql
+srem key element [element...]
 ```
+
+- 计算元素个数：是 **O(1)** 的命令，不会遍历集合的元素，而是直接用 Redis 的内部计数变量。
+
+```mysql
+scard key
+```
+
+- 判断元素是否在集合中：是则返回 1，不是返回 0。
+
+```mysql
+sismember key element
+```
+
+- 随机返回集合汇总指定个数元素，默认返回一个，不删除元素。
+
+```mysql
+srandmember key [count]
+```
+
+- 从集合随机弹出元素，并且删除。
+
+```mysql
+spop key
+```
+
+- 获取所有元素，结果无序。是比较重的指令，元素过多会**阻塞**。
+
+```mysql
+smembers key
+```
+
+###### ② 集合间操作
+
+- 求多个集合的交集。
+
+```mysql
+sinter key [key...]
+```
+
+- 求多个集合的并集。
+
+```mysql
+sunion key [key...]
+```
+
+- 求多个集合的差集。
+
+```mysql
+sdiff key [key...]
+```
+
+- 将**结果进行保存**。将集合间交集、并集、差集的结果保存在 destination key 中。
+
+```mysql
+sinterstore destination key [key...]
+sunionstore destination key [key...]
+sdiffstore destination key [key...]
+```
+
+##### 2. 内部编码
+
+- intset：元素是整数且个数较少时使用。
+- hashtable：元素较多或不全是整数时使用。
+
+##### 3. 使用场景
+
+###### ① 标签
+
+集合类型的典型场景是**标签**。比如一个用户的兴趣点就是标签，使用集合间的交并差就可以用在社交上了，比如计算共同兴趣。
+
+- sadd = Tagging（标签）
+- spop/srandmember = Random item（生成随机数，比如抽奖）
+- sadd + sinter = Social Graph（社交需求）
 
 ----
 
 #### ZSET
 
-相当于在 SET 类型的基础上增加了一个**分数**。
+相当于在 **SET 类型**的基础上增加了一个**分数**，其特性为元素不可重复且多了**排序**的功能。元素不能重复但是 score 可以重复。
 
 <img src="2 Redis基础.assets/1563520269089.png" alt="1563520269089" style="zoom:50%;" />
 
-```html
-> zadd zset-key 728 member1
-(integer) 1
-> zadd zset-key 982 member0
-(integer) 1
-> zadd zset-key 982 member0
-(integer) 0
+比较一下 列表、集合、有序集合。
 
-> zrange zset-key 0 -1 withscores
-1) "member1"
-2) "728"
-3) "member0"
-4) "982"
+| 数据结构 | 是否允许元素重复 | 是否有序 | 有序实现方式 |       应用场景       |
+| :------: | :--------------: | :------: | :----------: | :------------------: |
+|   List   |        是        |    是    |   索引下标   |  时间轴、消息队列等  |
+|   Set    |        否        |    否    |      无      |   标签、社交系统等   |
+|   Zset   |        否        |    是    |    分数值    | 排行榜系统、设计等。 |
 
-> zrangebyscore zset-key 0 800 withscores
-1) "member1"
-2) "728"
+##### 1. 命令
 
-> zrem zset-key member1
-(integer) 1
-> zrem zset-key member1
-(integer) 0
+###### ① 集合内操作
 
-> zrange zset-key 0 -1 withscores
-1) "member0"
-2) "982"
+- 添加成员
+
+```mysql
+zadd key score member [score member...]
 ```
+
+- 计算成员个数
+
+```mysql
+zcard key
+```
+
+- 计算某个成员分数
+
+```mysql
+zscore key member
+```
+
+- 计算成员排名
+
+```mysql
+zrank key member	# 从低到高排名
+zrevrank key member	# 从高到低排名
+```
+
+- 删除成员
+
+```mysql
+zrem key member [member...]
+```
+
+- 增加成员分数
+
+```mysql
+zincrby key increment member
+```
+
+- 返回**指定排名范围**的成员
+
+```mysql
+zrange key start end [withscores]	# 从低到高返回
+zrevrank key start end [withscores] # 从高到低返回
+```
+
+- 返回**指定分数范围**的成员，也有正反两种方式。具体参数查资料吧。
+
+```mysql
+zrangescore key min max [withscores] [limit offset count]
+zrevrankscore key min max [withscores] [limit offset count]
+```
+
+- 返回指定分数范围成员的**个数**。
+
+```mysql
+zcount key min max
+```
+
+- 删除指定**排名内**的升序元素。
+
+```mysql
+zremrangebyrank key start end
+```
+
+- 删除指定**分数范围**的成员。
+
+```mysql
+zremrangebyscore key start end
+```
+
+###### ②  集合间操作
+
+- 交集
+
+```mysql
+zinterstore destination numkeys key [key...] [weights weight [weight...]] [aggregate sum|min|max]
+```
+
+- 并集
+
+```mysql
+zunionstore destination numkeys key [key...] [weights weight [weight...]] [aggregate sum|min|max]
+```
+
+##### 2. 内部编码
+
+- ziplist：压缩列表。元素个数较少且值较小时用。
+- skiplist：跳跃表。元素个数多或值大时用。
+
+##### 3. 使用场景
+
+###### ① 排行榜系统
+
+典型应用就是排行榜系统啊。比如按用户点赞数，按播放数排名。可以轻易获取排行榜前十的内容。
+
+
 
 
 

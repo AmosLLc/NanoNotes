@@ -26,13 +26,13 @@ Scope 用来声明容器中的对象所应该处的限定场景或者说该对�
 
 #### Bean生命周期
 
-Spring容器将对其所管理的对象全部给予统一的生命周期管理，这些被管理的对象完全摆脱了原来那种“new完后被使用，脱离作用域后即被回收”的命运。
+Spring 容器将对其所管理的对象全部给予**统一的生命周期**管理，这些被管理的对象完全摆脱了原来那种“new 完后被使用，脱离作用域后即被回收”的命运。
 
  ![1573540627894](assets/1573540627894.png) 
 
 **==什么时候创建Bean？==**
 
-容器启动之后，并不会马上就实例化相应的bean定义。容器现在仅仅拥有所有对象的 **BeanDefinition** 来保存实例化阶段将要用的必要信息。只有当请求方通过 BeanFactory 的 **getBean**() 方法来请求某个**对象实例**的时候，才**有可能触发**Bean实例化阶段的活动。BeanFactory 的 getBean() 方法可以被客户端对象显式调用，也可以在容器**内部隐式**地被调用。
+容器启动之后，并不会马上就实例化相应的 bean 定义。容器现在仅仅拥有所有对象的 **BeanDefinition** 来保存**实例化**阶段将要用的必要信息。只有当请求方通过 **BeanFactory** 的 **getBean**() 方法来请求某个**对象实例**的时候，才**有可能触发** Bean实例化阶段的活动。BeanFactory 的 getBean() 方法可以被客户端对象显式调用，也可以在容器**内部隐式**地被调用。
 
 隐式调用有如下两种情况:
 
@@ -45,11 +45,9 @@ Spring容器将对其所管理的对象全部给予统一的生命周期管理�
 
 #### BeanFactory 与 FactoryBean
 
- 两个特别像，但是功能却千差万别。有关于 **BeanFactory**，我们都知道，这是 Spring **容器的基础实现类**，它负责生产和管理 Bean 的一个工厂。当然 BeanFactory 只是一个**接口**，它的常用实现有 XmlBeanFactory、DefaultListableBeanFactory、**ApplicationContext **等。
+ 两个特别像，但是功能却千差万别。有关于 **BeanFactory**，我们都知道，这是 Spring **容器的基础实现类**，它负责生产和管理 Bean 的一个**工厂**。当然 BeanFactory 只是一个**接口**，它的常用实现有 XmlBeanFactory、DefaultListableBeanFactory、**ApplicationContext **等。
 
 ![1573545313232](assets/1573545313232.png)
-
-
 
 FactoryBean 是一个接口，具体方法如下： 
 
@@ -64,7 +62,7 @@ public interface FactoryBean<T> {
 }
 ```
 
-**我们常规的Bean都是使用Class的反射获取具体实例，如果Bean的获取过程比较复杂，那么常规的xml配置需要配置大量属性值，这个时候我们就可以使用FactoryBean，实现这个接口，在其getObject()方法中初始化这个bean。** 
+**我们常规的 Bean 都是使用 Class 的反射获取具体实例，如果 Bean 的获取过程比较复杂，那么常规的 xml 配置需要配置大量属性值，这个时候我们就可以使用 FactoryBean，实现这个接口，在其 getObject() 方法中初始化这个 bean。** 
 
 FactoryBean 使用实例：
 

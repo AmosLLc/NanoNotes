@@ -228,7 +228,7 @@ $ tar [-z|-j|-J] [xv] [-f 已有的 tar 文件] [-C 目录]     ==解压缩
 
 管道是将一个命令的标准输出作为另一个命令的标准输入，在数据需要经过多个步骤的处理之后才能得到我们想要的内容时就可以使用管道。
 
-在命令之间使用 ==| 分隔==各个管道命令。
+在命令之间使用 **==| 分隔==**各个管道命令。
 
 ```bash
 $ ls -al /etc | less
@@ -238,9 +238,9 @@ $ ls -al /etc | less
 
 #### 提取指令
 
-cut 对数据进行切分，取出想要的部分。
+**cut** 对数据进行**切分**，取出想要的部分。
 
-切分过程一行一行地进行。
+切分过程**一行一行**地进行。
 
 ```bash
 $ cut
@@ -348,7 +348,7 @@ $ tr [-ds] SET1 ...
 $ last | tr '[a-z]' '[A-Z]'
 ```
 
-  **col**  将 tab 字符转为空格字符。
+ **col**  将 tab 字符转为空格字符。
 
 ```bash
 $ col [-xb]
@@ -396,7 +396,7 @@ $ split [-bl] file PREFIX
 
 #### grep
 
-g/re/p（globally search a regular expression and print)，使用正则表示式进行全局查找并打印。
+g/re/p（globally search a regular expression and print)，使用**正则表示式**进行**全局查找**并打印。
 
 ```bash
 $ grep [-acinv] [--color=auto] 搜寻字符串 filename
@@ -475,7 +475,7 @@ bin 1
 daemon 2
 ```
 
-awk 变量：
+**awk 变量：**
 
 | 变量名称 |           代表意义           |
 | :------: | :--------------------------: |
