@@ -2,9 +2,13 @@
 
 ## Redis基础
 
-### 概述
+- 五种基本数据结构：string、list、hash、set、zset。
+- 每种数据结构都有多种内部编码，用于不同的场景，可以节约内存。
+- 单线程架构下，使用指令是需要注意有的指令可能会造成**阻塞**！！这个对性能影响很大。
 
-> 啥是 Redis？
+### 一、概述
+
+> **啥是 Redis？**
 
 Redis 是速度非常快的**非关系型（NoSQL）内存键值数据库**，可以存储键和五种不同类型的值之间的映射。
 
@@ -47,11 +51,12 @@ Redis 支持很多特性，例如将内存中的数据持久化到硬盘中，�
 ##### 4. 其它
 
 - **社交网络**：**Set** 可以实现交集、并集等操作，从而实现**共同好友**等功能。
-
 - **排行榜系统**：**ZSet** 可以实现**有序性**操作，从而实现**排行榜**等功能。
-
 - **计数器**：可以对 **String** 进行自增自减运算，从而实现计数器功能。Redis 这种内存型数据库的读写性能非常高，很适合**存储频繁读写的计数量**。比如视频的播放量、商品浏览次数等。
 - 查找表：例如 **DNS** 记录就很适合使用 Redis 进行存储。查找表和缓存类似，也是利用了 **Redis 快速**的查找特性。但是查找表的内容不能失效，而缓存的内容可以失效，因为缓存不作为可靠的数据来源。
+- **附近位置、摇一摇**：Redis 的 GEO 功能可以用于实现附近位置，摇一摇这种基于位置信息的功能。
+
+---
 
 #### 单线程架构
 
@@ -60,16 +65,31 @@ Redis 是单线程架构，单线程也没有了并发问题。
 > **为什么单线程还能这么快**？
 
 - **纯内存访问**。Redis 数据都存放在内存中，访问速度极快。
-- **非阻塞 IO**。Redis 使用 **epoll 作为 IO 多路复用技术的实现**，再加上 Redis 自身的事件处理模型将 **epoll** 中的连接、读写、关闭等都转化为事件，在 IO 上浪费时间少。
-- 单线程简化了数据结构和算法的实现，同时**单线程避免了线程切换**的竞争产生的开销。
+- **IO 多路复用**。Redis 使用 **epoll 作为 IO 多路复用技术的实现**，再加上 Redis 自身的事件处理模型将 **epoll** 中的连接、读写、关闭等都转化为事件，在 IO 上浪费时间少。
+- **单线程架构**。简化了数据结构和算法的实现，同时**单线程避免了线程切换**的竞争产生的开销。
 
 > **单线程的问题**？
 
 如果每个命令**执行时间过长**，会造成其他命令的**阻塞**，这非常难受。
 
+---
+
+#### 命令执行基本流程
+
+Redis 命令执行流程如下图。
+
+<img src="2 Redis基础.assets/image-20200421124358100.png" alt="image-20200421124358100" style="zoom:60%;" />
+
+- 发送命令
+- 命令排队
+- 执行命令
+- 返回结果
+
+其中 **发送命令 + 返回结果** 是通过网络进行的，使用命令时可以考虑尽量**减少这个次数**。由于是**单线程**架构，所以如果命令过多或者前面的命令执行阻塞着，后面的命令在队列中**排队执行**。慢查询主要统计执行命令的时间。
 
 
-### 数据类型与API
+
+### 二、数据类型与API
 
 #### 全局命令
 
@@ -86,7 +106,7 @@ Redis 是单线程架构，单线程也没有了并发问题。
 |      type key       |                       查看键的数据结构                       |
 | object encoding key |                       获取键的内部编码                       |
 
-
+---
 
 #### 键管理
 
@@ -138,15 +158,60 @@ setex 					# 设置键并设置过期时间，多用！！
 
 ###### ④ 迁移键
 
+- move：不建议使用。仅在实例内部用。
+- dump + restore：dump 会将键值序列化，采用 RDB 格式。restore 将序列化的数据还原。
+- migrate：实际就是将 dump 、restore、del 三个命令进行组合，从而简化了流程，而且具有原子性。==**推荐使用** ==。
 
+对比一下
+
+|      命令      |     作用域     | 原子性 | 支持多个键 |
+| :------------: | :------------: | :----: | :--------: |
+|      move      | Redis 实例内部 |   是   |     否     |
+| dump + restore | Redis 实例之间 |   否   |     否     |
+|  **migrate**   | Redis 实例之间 |   是   |     是     |
 
 ##### 2. 遍历键
 
+提供了两种遍历键的方式：keys 和 scan。
 
+###### ① keys全量遍历键
 
+即使用 keys 命令。支持 pattern 匹配，如果是全部键则 **pattern 为 ***。可以进行正则表达式匹配遍历键。
 
+注意：如果包含大量的键，那么可能会造成 Redis **阻塞**！**生产环境别用**！
+
+###### ② scan渐进式遍历键
+
+采用 scan 命令以**渐进式**的方式遍历键，以解决 keys 指令可能造成的阻塞问题，每次 scan 命令的时间**复杂度是 O(1)**。每次执行 scan 可以想象成只扫描一个字典中的一部分键，直到将字典中的所有键遍历完成。
+
+```mysql
+scan cursor [match pattern] [count number]
+```
+
+- cursor：游标，必备参数。第一次遍历从 0 开始，每次 scan 遍历完会返回当前的 cursor 值，直到其值为 0， 表示遍历结束。
+- match pattern：匹配模式，可选。
+- count number：每次要遍历的键的个数，默认 10。
+
+注意：每次 scan 完成都会返回上一次遍历的游标值，下一次请求时携带上从这个 cursor 开始遍历。
+
+此外还有其他集合类型的遍历指令。如 **hscan、sscan、zscan** 等来解决 hgetall、smembers、zrange 等可能带来的阻塞问题。
+
+但是：如果 scan 过程中如果有键的变化（增删改等），可能会造成键的遍历不完全或重复的问题。
 
 ##### 3. 数据库管理
+
+- 切换数据库：
+
+```mysql
+select dbIndex
+```
+
+- 清除数据库：数据量大的话存在阻塞的可能性。
+
+```mysql
+flushdb		# 清除当前数据库
+flushall	# 清除全部数据库
+```
 
 
 
@@ -719,7 +784,7 @@ zunionstore destination numkeys key [key...] [weights weight [weight...]] [aggre
 ##### 2. 内部编码
 
 - ziplist：压缩列表。元素个数较少且值较小时用。
-- skiplist：跳跃表。元素个数多或值大时用。
+- skiplist：**跳跃表**。元素个数多或值大时用。（后面详细介绍跳表）
 
 ##### 3. 使用场景
 
@@ -729,246 +794,7 @@ zunionstore destination numkeys key [key...] [weights weight [weight...]] [aggre
 
 
 
-
-
-### 命令行操作
-
-#### 1.基本操作
-
-##### ①切换数据库
-
-``` html
-Redis默认有16个数据库。
-115 # Set the number of databases. The default database is DB 0, you can select
-116 # a different one on a per-connection basis using SELECT <dbid> where
-117 # dbid is a number between 0 and 'databases'-1
-118 databases 16
-使用select进行切换，数据库索引从0开始
-127.0.0.1:6379> select 2
-OK
-127.0.0.1:6379[2]> select 0
-OK
-127.0.0.1:6379> 
-```
-
-##### ②查看数据库长度
-
-``` html
-127.0.0.1:6379> dbsize
-(integer) 3
-```
-
-#### 2.KEY操作
-
-``` mysql
-● KEYS PATTERN
-● TYPE KEY
-	# 返回KEY对应的值的类型
-● MOVE KEY DB
-	# 把一组键值对数据移动到另一个数据库中
-●DEL KEY [KEY ...]
-	# 根据KEY进行删除，至少要指定一个KEY
-●EXISTS KEY
-	# 检查指定的KEY是否存在。指定一个KEY时，存在返回1，不存在返回0。可以指定多个，返回存在的KEY的数量。
-●RANDOMKEY
-	# 在现有的KEY中随机返回一个
-●RENAME KEY NEWKEY
-	# 重命名一个KEY，NEWKEY不管是否是已经存在的都会执行，如果NEWKEY已经存在则会被覆盖。
-●RENAMENX KEY NEWKEY
-	# 只有在NEWKEY不存在时能够执行成功，否则失败
-●TIME
-	# 返回当前UNIX时间戳
-●TTL KEY
-	# 以秒为单位查看KEY还能存在多长时间
-●PTTL KEY
-	# 以毫秒为单位查看KEY还能存在多长时间
-●EXPIRE KEY SECONDS
-	# 给一个KEY设置在SECONDS秒后过期，过期会被Redis移除。
-●EXPIREAT KEY TIMESTAMP
-	# # 设置一个KEY在TIMESTAMP指定的时间过期
-●PEXPIRE KEY MILLISECONDS
-	# 以毫秒为单位指定过期时间
-●PEXPIREAT KEY MILLISECONDS-TIMESTAMP
-	# 以毫秒为单位指定过期的时间戳
-●PERSIST KEY
-	# 移除过期时间，变成永久key
-```
-
-#### 2.string操作
-
-``` mysql
-●SET KEY VALUE [EX SECONDS] [PX MILLISECONDS] [NX|XX]
-	# 给KEY设置一个string类型的值。
-	# EX参数用于设置存活的秒数。
-	# PX参数用于设置存活的毫秒数。
-	# NX参数表示当前命令中指定的KEY不存在才行。
-	# XX参数表示当前命令中指定的KEY存在才行。
-●GET KEY
-	# 根据key得到值，只能用于string类型。
-●APPEND KEY VALUE
-	# 把指定的value追加到KEY对应的原来的值后面，返回值是追加后字符串长度
-●STRLEN KEY
-	# 直接返回字符串长度
-●INCR KEY
-	# 自增1
-●DECR KEY
-	# 自减1
-●INCRBY KEY INCREMENT
-	# 原值+INCREMENT
-●DECRBY KEY DECREMENT
-	# 原值-DECREMENT
-●GETRANGE KEY START END
-	# 从字符串中取指定的一段
-●SETRANGE KEY OFFSET VALUE
-	# 从offset开始使用VALUE进行替换
-●SETEX KEY SECONDS VALUE
-	# 设置KEY,VALUE时指定存在秒数
-●SETNX KEY VALUE
-	# 新建字符串类型的键值对
-●MSET KEY VALUE [KEY VALUE ...]
-	# 一次性设置一组多个键值对
-●MGET KEY [KEY ...]
-	# 一次性指定多个KEY，返回它们对应的值，没有值的KEY返回值是(nil)
-●MSETNX KEY VALUE [KEY VALUE ...]
-	# 一次性新建多个值
-●GETSET KEY VALUE
-	# 设置新值，同时能够将旧值返回
-
-```
-
-#### 3.list操作
-
-``` mysql
-●LPUSH key value [value ...]
-●RPUSH key value [value ...]
-●LRANGE key start stop
-	# 根据list集合的索引打印元素数据
-	# 正着数：0,1,2,3,...
-	# 倒着数：-1,-2,-3,...
-●LLEN key
-●LPOP key
-	# 从左边弹出一个元素。
-	# 弹出=返回+删除。
-●RPOP key
-	# 从右边弹出一个元素。
-●RPOPLPUSH source destination
-	# 从source中RPOP一个元素，LPUSH到destination中
-●LINDEX key index
-	# 根据索引从集合中取值
-●LINSERT key BEFORE|AFTER pivot value
-	# 在pivot指定的值前面或后面插入value
-●LPUSHX key value
-	# 只能针对存在的list执行LPUSH
-●LREM key count value
-	# 根据count指定的数量从key对应的list中删除value
-●LSET key index value
-	# 把指定索引位置的元素替换为另一个值
-●LTRIM key start stop
-	# 仅保留指定区间的数据，两边的数据被删除
-```
-
-#### 4.set操作
-
-``` mysql
-●SADD key member [member ...]
-●SMEMBERS key
-●SCARD key
-	# 返回集合中元素的数量
-●SISMEMBER key member
-	# 检查当前指定member是否是集合中的元素
-●SREM key member [member ...]
-	# 从集合中删除元素
-●SINTER key [key ...]
-	# 将指定的集合进行“交集”操作
-	# 集合A：a,b,c
-	# 集合B：b,c,d
-	# # 交集：b,c
-●SINTERSTORE destination key [key ...]
-	# 取交集后存入destination
-●SDIFF key [key ...]
-	# 将指定的集合执行“差集”操作
-	# 集合A：a,b,c
-	# 集合B：b,c,d
-	# A对B执行diff：a
-	# 相当于：A-交集部分
-●SDIFFSTORE destination key [key ...]
-●SUNION key [key ...]
-	# 将指定的集合执行“并集”操作
-	# 集合A：a,b,c
-	# 集合B：b,c,d
-	# 并集：a,b,c,d
-●SUNIONSTORE destination key [key ...]
-●SMOVE source destination member
-	# 把member从source移动到destination
-●SPOP key [count]
-	# 从集合中随机弹出count个数量的元素，count不指定就弹出1个
-●SRANDMEMBER key [count]
-	# 从集合中随机返回count个数量的元素，count不指定就返回1个
-●SSCAN key cursor [MATCH pattern] [COUNT count]
-	# 基于游标的遍历
-
-```
-
-#### 5.hash操作
-
-``` mysql
-●HSET key field value
-●HGETALL key
-●HGET key field
-●HLEN key
-●HKEYS key
-●HVALS key
-●HEXISTS key field
-●HDEL key field [field ...]
-●HINCRBY key field increment
-●HMGET key field [field ...]
-●HMSET key field value [field value ...]
-●HSETNX key field value
-●HSCAN key cursor [MATCH pattern] [COUNT count]
-```
-
-#### 6.zset操作
-
-``` mysql
-●ZADD key [NX|XX] [CH] [INCR] score member [score member ...]
-●ZRANGE key start stop [WITHSCORES]
-●ZCARD key
-●ZCOUNT key min max
-	# 根据分数在min，max之间查找元素
-●ZSCORE key member
-●ZINCRBY key increment member
-●ZLEXCOUNT key min max
-●ZRANGEBYLEX key min max [LIMIT offset count]
-	# 按照字母顺序在区间内返回member
-	# min和max使用“[a”表示闭区间，使用“(a”表示开区间
-	# -表示负无穷
-	# +表示正无穷
-●ZRANGEBYSCORE key min max [WITHSCORES] [LIMIT offset count]
-	# 在分数的指定区间内返回数据
-●ZRANK key member
-	# 先对分数进行升序排序，返回member的排名
-●ZREM key member [member ...]
-●ZREMRANGEBYLEX key min max
-●ZREMRANGEBYRANK key start stop
-●ZREMRANGEBYSCORE key min max
-●ZREVRANGE key start stop [WITHSCORES]
-●ZREVRANGEBYSCORE key max min [WITHSCORES] [LIMIT offset count]
-●ZREVRANK key member
-●ZINTERSTORE destination numkeys key [key ...] [WEIGHTS weight [weight ...]] [AGGREGATE SUM|MIN|MAX]
-●ZUNIONSTORE destination numkeys key [key ...] [WEIGHTS weight] [AGGREGATE SUM|MIN|MAX]
-	# 把指定集合的member取交集，分数会相加
-●ZSCAN key cursor [MATCH pattern] [COUNT count]
-```
-
-
-
-
-
-
-
-
-
-### 三、数据结构
+### 三、重要数据结构
 
 #### 字典
 
@@ -1010,7 +836,7 @@ typedef struct dict {
 } dict;
 ```
 
-rehash 操作不是一次性完成，而是采用**渐进方式**，这是为了避免一次性执行过多的 rehash 操作给服务器带来过大的负担。
+**rehash** 操作不是一次性完成，而是采用**渐进方式**，这是为了避免一次性执行过多的 rehash 操作给服务器带来过大的负担（阻塞）。
 
 渐进式 rehash 通过记录 dict 的 rehashidx 完成，它从 0 开始，然后每执行一次 rehash 都会递增。例如在一次 rehash 中，要把 dict[0] rehash 到 dict[1]，这一次会把 dict[0] 上 table[rehashidx] 的键值对 rehash 到 dict[1] 上，dict[0] 的 table[rehashidx] 指向 null，并令 rehashidx++。
 
@@ -1075,61 +901,254 @@ int dictRehash(dict *d, int n) {
 
 ```
 
----
-
-
-
 #### 跳跃表
 
-是**有序集合**的底层实现之一。
+是 **zset** 的底层实现之一。
 
-跳跃表是基于==多指针有序链表==实现的，可以看成多个**有序链表**。
+跳跃表是基于**==多指针有序链表==**实现的，可以看成多个**有序链表**。
 
 ![1563520311808](2 Redis基础.assets/1563520311808.png)
 
-在**查找**时，从**上层指针**开始查找，找到对应的区间之后再到下一层去查找。下图演示了查找 22 的过程。
+在**查找**时，从**上层指针**开始查找，找到对应的区间之后再到**下一层**去查找。下图演示了查找 22 的过程。
 
 ![1563520325342](2 Redis基础.assets/1563520325342.png)
 
 与红黑树等平衡树相比，跳跃表具有以下优点：
 
-- **插入速度非常快速，因为不需要进行旋转等操作来维护平衡性**；
+- **==插入速度==非常快速，因为不需要进行旋转等操作来维护平衡性**；
 - 更容易实现；
 - 支持**无锁操作**。
 
+
+
+### 四、Redis拓展功能
+
+#### 慢查询分析
+
+通过慢查询分析找到有问题的命令进行优化。可以通过慢查询日志来进行分析。
+
+慢查询只统计执行命令的时间，而不统计网络传输的时间和排队时间。
+
+慢查询记录保存在**慢查询日志**中，这是一个**先进先出队列**，可以**设置队列大小**。
+
+##### 1. 配置参数
+
+在**配置文件**中配置下面参数
+
+```mysql
+slowlog-log-slower-than	time # 记录超过time时间的命令，判定为慢查询，单位微秒，默认10000微秒
+slowlog-max-len	# 设置慢查询结果列表的最大长度
+```
+
+也可命令行动态修改
+
+```mysql
+config slowlog-log-slower-than	20000
+config slowlog-max-len 1000
+config rewrite	# 将配置持久化到配置文件中
+```
+
+##### 2. 查看慢查询日志
+
+慢查询日志记录其实是放在列表中的。
+
+- 获取慢查询日志（指定条数 n）
+
+```mysql
+slowlog get [n]	
+```
+
+- 获取当前慢查询列表长度
+
+```mysql
+slowlog len
+```
+
+- 重置慢查询日志
+
+```mysql
+slowlog reset
+```
+
+##### 3. 最佳实践
+
+- slowlog-log-slower-than：默认值 10000微秒，也就是超过10毫秒判定为慢查询，需要根据Redis的并发量调整该值。高流量场景建议设置低一些。
+- slowlog-max-len：建议线上调大慢查询列表，可以保存更多慢查询记录。
+- **慢查询记录持久化**。防止慢查询日志队列溢出，可以定期使用 slowlog get 指令获取慢查询记录并持久化到 MySQL中，然后清理已经持久化的慢查询记录。
+
+---
+
+#### Pipeline
+
+流水线技术采用将多条**命令打包**的方式将命令发送到 Redis 进行执行，并将多条命令的执行结果以**打包**的方式返回给客户端，这样多条命令只在网络中传输一次，这就大大**节省了网络中传输命令的**时间。
+
+许多客户端带有这个功能，如 Jedis。
+
+客户端与服务端网络延时越大，效果越明显。而且组装后的命令比单个命令逐一执行要快。
+
+注意：如果一次 Pipeline 操作数据量或命令太多，可能导致**阻塞**，可以分成几次执行。
+
+> **原生的批量操作命令**如 mget 一次也能批量操作数据，和 **Pipeline** 有什么不同？
+
+- 原生批量操作命令是原子的，Pipeline 是非原子的。
+- 原生批量命令是一个命令对应多个 key，Pipeline 则支持多个命令。
+- 原生批量命令是 Redis 服务端支持实现，而 Pipeline 由客户端和服务器共同支持实现。
+
+---
+
+#### 事务与Lua
+
+为了保证多条命令组合的**原子性**， Redis 提供了**简单的事务**功能以及**集成 Lua 脚本**来解决。
+
+##### 1. 简单事务
+
+之所以是简单的事务，是因为**不支持回滚**功能。
+
+**需要将多个命令放到 ==multi== 和 ==exec== 命令直接执行。**这两个命令直接的命令是原子执行的。
+
+执行 multi 命令后，后面的命令并不会立即执行，而是暂时保存起来，直到执行 exec 命令才统一执行。
+
+使用 discard 命令取代 exec 命令可以停止事务功能。
+
+> **事务执行出错怎么办？**
+
+分为两种，一是**命令错误**。即命令写错了，这种时候**不执行**事务。
+
+第二种是**运行时错误**，语法正确但是发生一些异常，这种时候前面之前的命令是不会变化的，也就是 Redis ==**不支持回滚**==。需要开发人员自己解决。
+
+##### 2. 集成Lua脚本
+
+集成 Lua 脚本可以**自己定义指令**。
+
+执行 Lua 脚本用 eval（单次调用脚本，每次都传输到服务端） 或 evalsha（脚本存在服务端，复用） 命令。
+
+Lua 脚本发送到服务端之后会被当做一个普通命令排队执行。
+
+#### Bitmaps
+
+实现对位的操作，节约内存。
+
+Bitmaps 本身不是一种数据结构，也是一种字符串，只不过可以对字符串的位进行操作。可以把它想成一个以位为单位的数组，数组中每个单元只能存储 0 或 1，数组的下标称为偏移量。
+
+##### 1. 命令
+
+- 设置值：设置键的第 offset 个位（从 0 算起）的值。
+
+```mysql
+setbit key offset value
+```
+
+- 获取值：获取 offset 处的值。
+
+```mysql
+getbit key offset
+```
+
+- 获取 Bitmaps 指定范围内值为 1 的个数（不给范围则为全部）。
+
+```mysql
+bitcount key [start end]
+```
+
+- Bitmaps 间的运算：可以做多个 Bitmaps 直接的交集、并集、非、异或等操作并将结果放在 destkey 中。
+
+```mysql
+bitop and|or|not|xor destkey key [key ...]
+```
+
+- 计算 Bitmaps 中第一个值为 targetBit 的偏移量
+
+```mysql
+bitops key targetBit [start] [end]
+```
+
+##### 2. 使用场景
+
+- 可以用于用户登录统计（如活跃用户数统计）。
+- 网址黑名单、白名单。
+
+---
+
+#### HyperLogLog
+
+HyperLogLog 不是一种新的数据结构，实际是字符串类型。它是一种**基数算法**， 通过 HyperLogLog 可以利用**极小的内存**空间完成**独立总数**的统计，数据集可以是 **IP、Email、ID** 等。
+
+提供了三个命令：**pfadd、pfcount、pfmerge**。
+
+HyperLogLog 使用内存量小的惊人，所以存在一定的**误差率**，官方给 0.81% 误差。
+
+使用场景：
+
+- 只为了计算独立总数、不需要获取单条数据。
+- 能够容忍一定的误差率。
+
+---
+
+#### 发布订阅
+
+Redis 也提供了发布消息、订阅频道、取消订阅以及按照模式订阅的基础发布订阅功能。
+
+相比于专业的消息队列系统，Redis 的发布订阅略显**粗糙**，例如**无法实现消息堆积和回溯**。如果能容忍的场景是可以的，因为实现简单。
+
+可以用于变更通知。
+
 ----
 
+#### GEO
+
+Redis 提供了 GEO（地理信息定位）的功能，可以方便的存放地理位置。可以用于实现**附近位置，摇一摇**这种基于位置信息的功能。GEO 底层采用 **zset** 实现。
+
+GEO 可以存储地理位置的精度、维度、成员信息。可以使用 GEO 方便的计算两个位置之间的**距离**以及其他位置信息。
 
 
 
+### 五、其他
 
-
-
-### 四、使用场景
-
-
-
-
-
-### 五、Redis 与 Memcached
+#### Redis与Memcached对比
 
 两者都是**非关系型内存键值数据库**，主要有以下不同：
 
-#### 数据类型
+##### 1. 数据类型 
 
 Memcached **仅支持字符串类型**，而 Redis 支持五种不同的数据类型，可以更灵活地解决问题。
 
-#### 数据持久化
+##### 2. 数据持久化
 
 Redis 支持两种持久化策略：**RDB 快照和 AOF 日志**，而 Memcached **不支持**持久化。
 
-#### 分布式
+##### 3. 分布式
 
 Memcached **不支持分布式**，只能通过在客户端使用**一致性哈希**来实现分布式存储，这种方式在存储和查询时都需要先在客户端计算一次数据所在的节点。
 
 Redis Cluster 实现了**分布式**的支持。
 
-#### 内存管理机制
+##### 4. 内存管理机制
 
 - 在 Redis 中，并不是所有数据都一直存储在内存中，可以将一些**很久没用的 value 交换到磁盘**，而 Memcached 的数据则会**一直**在内存中。
 - Memcached 将内存分割成**特定长度的块**来存储数据，以完全解决内存碎片的问题。但是这种方式会使得内存的利用率不高，例如块的大小为 128 bytes，只存储 100 bytes 的数据，那么剩下的 28 bytes 就浪费掉了。
+
+
+
+#### Redis客户端操作
+
+Redis 使用单线程来处理多个客户端的访问。
+
+##### 1. 客户端通信协议
+
+客户端与服务端的通信协议建立在 TCP 至上。
+
+Redis 定义了 RESP （Redis 序列化协议）用于客户端与服务端交互。有了这个通信协议各个编程语言就可以自己实现相应的 Redis 客户端。
+
+##### 2. Jedis
+
+Jedis 是 Java 中的 Redis 客户端。
+
+基础使用是用**直连**的方式，但是最好使用 **Jedis 连接池** （JedisPool）的方式进行操作，这样可以减少连接时创建 **TCP 连接**的开销。JedisPool 是单例的。
+
+Jedis.close() 在**直连状态**下是**关闭连接**，如果使用了连接池，则使用完成后 close 操作不是关闭连接，而是**归还**到连接池中。
+
+Jedis 还可以实现 **Pipeline** 操作和执行 **Lua 脚本**（也有 eval 和 evalsha 两个方法）。
+
+##### 3. 客户端管理
+
+Redis 提供了客户端相关的 API 对其**状态进行监控和管理**。
