@@ -199,8 +199,6 @@ customer_id_selectivity: 0.0373
 
 #### 使用索引的注意事项？
 
-1. 
-2. 
 3. 避免 where 子句中对宇段施加函数，这会造成无法命中索引。
 4. 在使用InnoDB时使用与业务无关的自增主键作为主键，即使用逻辑主键，而不要使用业务主键。
 5. 
@@ -208,6 +206,10 @@ customer_id_selectivity: 0.0373
 7. 在使用 limit offset 查询缓慢时，可以借助索引来提高性能
 
 
+
+
+
+看看这个帖子：美团的：https://www.cnblogs.com/php-rearch/p/5034118.html
 
 
 
