@@ -1010,6 +1010,33 @@ slowlog reset
 
 使用 discard 命令取代 exec 命令可以停止事务功能。
 
+一个事务包含了**多个命令**，服务器在执行事务期间，不会改去执行其它客户端的命令请求。
+
+事务中的**多个命令被一次性发送**给服务器，而不是一条一条发送，这种方式被称为**流水线**，它可以减少客户端与服务器之间的网络通信次数从而提升性能。
+
+|   命令    |                             含义                             |
+| :-------: | :----------------------------------------------------------: |
+| **MULTI** | 表示**开始收集命令**，后面所有命令都**不是马上执行**，而是加入到一个**队列**中 |
+| **EXEC**  |         **执行** MULTI 后面命令**队列中的所有命令**          |
+|  DISCARD  |                     放弃执行队列中的命令                     |
+|   WATCH   | “观察”、“监控”一个KEY, 在当前队列外的其他命令操作这个KEY时，**放弃执行自己**队列的命令，是一种**乐观锁**的策略 |
+|  UNWATCH  |                       放弃监控一个KEY                        |
+
+Redis 执行错误时**不会整体回滚**。
+
+如果你有使用关系式数据库的经验， 那么 “==**Redis 在事务失败时不进行回滚，而是继续执行余下的命令**==”这种做法可能会让你觉得有点奇怪。以下是这种做法的优点：
+Redis 命令只会因为错误的**语法而失败**（并且这些问题不能在入队时发现），或是命令用在了错误类型的键上面：这也就是说，从实用性的角度来说，**失败的命令是由编程错误**造成的，而这些错误应该在开发的过程中被发现，而不应该出现在生产环境中。
+因为不需要对回滚进行支持，所以 Redis 的内部可以**保持简单且快速**。
+
+因我我们需要**加强对生产环境中的错误异常处理**。
+
+Redis 事务的几个性质：
+
+- 单独的隔离操作：事务中的所有命令会被序列化、按顺序执行，在执行的过程中不会被其他客户端发送来的命令打断。
+- 没有隔离级别的概念：队列中的命令在事务没有被提交之前不会被实际执行。
+- 不保证原子性：Redis 中的一个事务中如果存在命令执行失败，那么其他命令依然会被执行，没有回滚机制。
+- Redis 是以**乐观锁**的策略操作事务的，如上述的 WATCH 指令，没有悲观锁。
+
 > **事务执行出错怎么办？**
 
 分为两种，一是**命令错误**。即命令写错了，这种时候**不执行**事务。
@@ -1023,6 +1050,8 @@ slowlog reset
 执行 Lua 脚本用 eval（单次调用脚本，每次都传输到服务端） 或 evalsha（脚本存在服务端，复用） 命令。
 
 Lua 脚本发送到服务端之后会被当做一个普通命令排队执行。
+
+
 
 #### Bitmaps
 
@@ -1149,6 +1178,95 @@ Jedis.close() 在**直连状态**下是**关闭连接**，如果使用了连接�
 
 Jedis 还可以实现 **Pipeline** 操作和执行 **Lua 脚本**（也有 eval 和 evalsha 两个方法）。
 
+依赖
+
+```xml
+<!-- Redis客户端 -->
+<dependency>
+    <groupId>redis.clients</groupId>
+    <artifactId>jedis</artifactId>
+</dependency>
+
+```
+
+**连接单机版**
+
+第一步：创建一个 Jedis 对象。需要指定服务端的 IP 及端口。
+第二步：使用 Jedis 对象操作数据库，每个 Redis 命令对应一个方法。
+第三步：打印结果。
+第四步：关闭 Jedis。
+
+```java
+@Test
+public void testJedis() throws Exception {
+    // 第一步：创建一个Jedis对象。需要指定服务端的ip及端口。
+    Jedis jedis = new Jedis("192.168.25.153", 6379);
+    // 第二步：使用Jedis对象操作数据库，每个redis命令对应一个方法。
+    String result = jedis.get("hello");
+    // 第三步：打印结果。
+    System.out.println(result);
+    // 第四步：关闭Jedis
+    jedis.close();
+}
+```
+
+**使用连接池连接单机版**
+
+第一步：创建一个 JedisPool 对象。需要指定服务端的 IP 及端口。
+第二步：从 JedisPool 中获得 Jedis 对象。
+第三步：使用 Jedis 操作 Redis 服务器。
+第四步：操作完毕后关闭 Jedis 对象，连接池回收资源。
+第五步：关闭 JedisPool 对象。
+
+```java
+@Test
+public void testJedisPool() throws Exception {
+    // 第一步：创建一个JedisPool对象。需要指定服务端的ip及端口。
+    JedisPool jedisPool = new JedisPool("192.168.25.153", 6379);
+    // 第二步：从JedisPool中获得Jedis对象。
+    Jedis jedis = jedisPool.getResource();
+    // 第三步：使用Jedis操作redis服务器。
+    jedis.set("jedis", "test");
+    String result = jedis.get("jedis");
+    System.out.println(result);
+    // 第四步：操作完毕后关闭jedis对象，连接池回收资源。
+    jedis.close();
+    // 第五步：关闭JedisPool对象。
+    jedisPool.close();
+}
+
+```
+
+**连接集群版**
+
+第一步：使用 JedisCluster 对象。需要一个 Set\<HostAndPort> 参数。Redis节点的列表。
+第二步：直接使用 JedisCluster 对象操作 Redis。在系统中单例存在。
+第三步：打印结果.
+第四步：系统关闭前，关闭 JedisCluster 对象。
+
+```java
+@Test
+public void testJedisCluster() throws Exception {
+    // 第一步：使用JedisCluster对象。需要一个Set<HostAndPort>参数。Redis节点的列表。
+    Set<HostAndPort> nodes = new HashSet<>();
+    nodes.add(new HostAndPort("192.168.25.153", 7001));
+    nodes.add(new HostAndPort("192.168.25.153", 7002));
+    nodes.add(new HostAndPort("192.168.25.153", 7003));
+    nodes.add(new HostAndPort("192.168.25.153", 7004));
+    nodes.add(new HostAndPort("192.168.25.153", 7005));
+    nodes.add(new HostAndPort("192.168.25.153", 7006));
+    JedisCluster jedisCluster = new JedisCluster(nodes);
+    // 第二步：直接使用JedisCluster对象操作redis。在系统中单例存在。
+    jedisCluster.set("hello", "100");
+    String result = jedisCluster.get("hello");
+    // 第三步：打印结果
+    System.out.println(result);
+    // 第四步：系统关闭前，关闭JedisCluster对象。
+    jedisCluster.close();
+}
+
+```
+
 ##### 3. 客户端管理
 
 Redis 提供了客户端相关的 API 对其**状态进行监控和管理**。
@@ -1174,3 +1292,120 @@ info client
 
 
 
+#### 事件
+
+Redis 服务器是一个**事件驱动**程序。
+
+##### 1. 文件事件
+
+服务器通过**套接字**与客户端或者其它服务器进行通信，**文件事件就是对套接字操作的抽象**。
+
+Redis 基于 **Reactor 模式**开发了自己的网络事件处理器，使用 I/O **多路复用**程序来同时监听多个套接字，并将到达的事件传送给文件事件分派器，分派器会根据套接字产生的事件类型调用相应的事件处理器。
+
+<img src="2 Redis基础.assets/1563520372908.png" alt="1563520372908" style="zoom:90%;" />
+
+----
+
+##### 2. 时间事件
+
+服务器有一些操作需要在**给定的时间点**执行，时间事件是对这类定时操作的抽象。
+
+时间事件又分为：
+
+- **定时事件**：是让一段程序在指定的时间之内执行一次；
+- **周期性事件**：是让一段程序每隔指定时间就执行一次。
+
+Redis 将所有时间事件都放在一个==无序链表==中，通过遍历整个链表查找出已到达的时间事件，并调用相应的事件处理器。
+
+---
+
+##### 3. 事件的调度与执行
+
+服务器需要不断监听文件事件的套接字才能得到待处理的文件事件，但是不能一直监听，否则时间事件无法在规定的时间内执行，因此监听时间应该根据距离现在最近的时间事件来决定。
+
+事件调度与执行由 **aeProcessEvents 函数**负责，伪代码如下：
+
+```python
+def aeProcessEvents():
+    # 获取到达时间离当前时间最接近的时间事件
+    time_event = aeSearchNearestTimer()
+    # 计算最接近的时间事件距离到达还有多少毫秒
+    remaind_ms = time_event.when - unix_ts_now()
+    # 如果事件已到达，那么 remaind_ms 的值可能为负数，将它设为 0
+    if remaind_ms < 0:
+        remaind_ms = 0
+    # 根据 remaind_ms 的值，创建 timeval
+    timeval = create_timeval_with_ms(remaind_ms)
+    # 阻塞并等待文件事件产生，最大阻塞时间由传入的 timeval 决定
+    aeApiPoll(timeval)
+    # 处理所有已产生的文件事件
+    procesFileEvents()
+    # 处理所有已到达的时间事件
+    processTimeEvents()
+
+```
+
+将 aeProcessEvents 函数置于一个循环里面，加上初始化和清理函数，就构成了 Redis 服务器的**主函数**，伪代码如下：
+
+```python
+def main():
+    # 初始化服务器
+    init_server()
+    # 一直处理事件，直到服务器关闭为止
+    while server_is_not_shutdown():
+        aeProcessEvents()
+    # 服务器关闭，执行清理操作
+    clean_server()
+
+```
+
+从事件处理的角度来看，服务器运行流程如下：
+
+<img src="2 Redis基础.assets/1563520400666.png" alt="1563520400666" style="zoom:67%;" />
+
+#### 一个简单的论坛系统分析
+
+该论坛系统功能如下：
+
+- 可以发布文章；
+- 可以对文章进行点赞；
+- 在首页可以按文章的发布时间或者文章的点赞数进行排序显示。
+
+##### 1. 文章信息
+
+文章包括标题、作者、赞数等信息，在关系型数据库中很容易构建一张表来存储这些信息，在 Redis 中可以使用 **HASH** 来存储每种信息以及其对应的值的映射。
+
+Redis 没有关系型数据库中的**表**这一概念来将同种类型的数据存放在一起，而是使用**==命名空间==**的方式来实现这一功能。**键名的前面部分存储命名空间**，后面部分的内容存储 ID，通常**使用 : 来进行分隔**。例如下面的 HASH 的键名为 article:92617，其中 article 为命名空间，ID 为 92617。
+
+<img src="Redis.assets/1563520443633.png" alt="1563520443633" style="zoom: 50%;" />
+
+---
+
+##### 2. 点赞功能
+
+当有用户为一篇文章点赞时，除了要对该文章的 votes 字段进行加 1 操作，还必须记录该用户已经对该文章进行了点赞，防止用户点赞次数超过 1。可以建立文章的**已投票用户**集合来进行记录。
+
+为了节约内存，规定一篇文章发布满一周之后，就不能再对它进行投票，而文章的已投票集合也会被删除，可以为文章的已投票集合设置一个一周的**过期时间**就能实现这个规定。
+
+<img src="Redis.assets/1563520458408.png" alt="1563520458408" style="zoom:50%;" />
+
+----
+
+##### 3. 对文章进行排序
+
+为了按发布时间和点赞数进行排序，可以建立一个文章发布时间的**有序集合**和一个文章点赞数的有序集合。（下图中的 score 就是这里所说的点赞数；下面所示的有序集合分值并不直接是时间和点赞数，而是根据时间和点赞数间接计算出来的）
+
+<img src="Redis.assets/1563520475567.png" alt="1563520475567" style="zoom:67%;" />
+
+
+
+#### 参考资料
+
+- Carlson J L. Redis in Action[J]. Media.johnwiley.com.au, 2013.
+- [黄健宏. Redis 设计与实现 [M]. 机械工业出版社, 2014.](http://redisbook.com/index.html)
+- [REDIS IN ACTION](https://redislabs.com/ebook/foreword/)
+- [Skip Lists: Done Right](http://ticki.github.io/blog/skip-lists-done-right/)
+- [论述 Redis 和 Memcached 的差异](http://www.cnblogs.com/loveincode/p/7411911.html)
+- [Redis 3.0 中文版- 分片](http://wiki.jikexueyuan.com/project/redis-guide)
+- [Redis 应用场景](http://www.scienjus.com/redis-use-case/)
+- [Using Redis as an LRU cache](https://redis.io/topics/lru-cache)
