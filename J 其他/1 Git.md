@@ -43,8 +43,8 @@ Git 与常用的版本控制工具 CVS, Subversion 等不同，它采用了分�
 
 #### 参考资料
 
-重点参考
+**重点参考**
 
 - https://www.w3cschool.cn/git/
-- http://svip.iocoder.cn/Git/Interview/（Git相关面试题）
+- http://svip.iocoder.cn/Git/Interview/（Git 相关面试题）
 

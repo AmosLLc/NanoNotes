@@ -49,13 +49,7 @@ I/O 包和 NIO 已经很好地集成了，java.io.\* 已经以 NIO 为基础重�
 
 缓冲区包括以下常见类型，它们都继承于**抽象类 Buffer** 。
 
-- ByteBuffer
-- CharBuffer
-- ShortBuffer
-- IntBuffer
-- LongBuffer
-- FloatBuffer
-- DoubleBuffer
+- ByteBuffer、CharBuffer、ShortBuffer、IntBuffer、LongBuffer、FloatBuffer、DoubleBuffer
 
 
 
@@ -65,17 +59,24 @@ I/O 包和 NIO 已经很好地集成了，java.io.\* 已经以 NIO 为基础重�
 - **position**：当前**已经读写**的字节数；
 - **limit**：**还可以读写**的字节数。
 
+Buffer 的操作一般遵循四个步骤，操作分为**读模式和写模式**：
+
+- 写入数据到 Buffer。
+- 调用 flip() 方法。可以将写模式切换到读模式。
+- 从 Buffer 中读取数据。
+- 调用 clear() 方法。
+
 状态变量的改变过程举例：
 
-① 新建一个大小为 8 个字节的缓冲区，此时 position 为 0，而 limit = capacity = 8。**capacity** 变量**不会改变**，下面的讨论会忽略它。
+① 通过 Buffer 的 **allocate**() 方法进行内存**分配**。新建一个大小为 8 个字节的缓冲区，此时 position 为 0，而 limit = capacity = 8。**capacity** 变量**不会改变**，下面的讨论会忽略它。
 
 ![1563439428762](assets/1563439428762.png)
 
-② 从输入通道中读取 5 个字节数据写入缓冲区中，此时 **position** 为 5，limit 保持**不变**。
+② 写模式中，从输入通道中读取 5 个字节数据**写入**缓冲区中，此时 **position** 为 5，limit 保持**不变**。这时候的 limit 为可以写入的**最大值**。
 
 ![1563439446664](assets/1563439446664.png)
 
-③ 在将**缓冲区**的数据写到**输出通道**之前，需要先调用 **flip()** 方法，这个方法**将 limit 设置为当前 position**，并将 **position 设置为 0**。这可以保证写出的数据**正好**是之前写入缓冲区的数据，因为到了 limit 位置就截止。
+③ 在将**缓冲区**的数据写到**输出通道**之前，需要先调用 **flip()** 方法，这个方法**将 limit 设置为当前 position**，并将 **position 设置为 0**。这可以保证写出的数据**正好**是之前写入缓冲区的数据，因为到了 limit 位置就截止。**flip()** 可以将写模式切换到读模式。读模式下，limit 变成写数据时的 position 值，代表能够**读出的数据量值**。
 
 ![1563439462315](assets/1563439462315.png)
 
@@ -101,9 +102,11 @@ NIO 实现了 ==IO **多路复用**中的 **Reactor** 模型==，**一个线程*
 
 因为创建和切换线程的开销很大，因此使用**一个线程来处理多个事件**而不是一个线程处理一个事件，对于 IO 密集型的应用具有很好地性能。
 
+一个 Selector 可以**同时轮询多个** Channel，因为 JDK 使用了 **epoll**() 代替传统的 select() 实现，**没有**最大连接句柄的限制，所以只需要一个线程负责 Selector 轮询，就可以接入**成千上万**的客户端。
+
 应该注意的是，只有**套接字 Channel** 才能配置为非阻塞，而 FileChannel 不能，为 FileChannel 配置非阻塞也没有意义。
 
-![1582687139737](assets/F-7%20NIO/1582687139737.png)
+<img src="assets/F-7%20NIO/1582687139737.png" alt="1582687139737" style="zoom:52%;" />
 
 ###### ① 创建选择器
 
@@ -126,10 +129,10 @@ ssChannel.register(selector, SelectionKey.OP_ACCEPT);
 
 在将通道**注册**到选择器上时，还需要指定要**注册的具体事件**，主要有以下几类：
 
-- SelectionKey.OP_CONNECT
-- SelectionKey.OP_ACCEPT
-- SelectionKey.OP_READ
-- SelectionKey.OP_WRITE
+- SelectionKey.**OP_CONNECT**：连接就绪
+- SelectionKey.**OP_ACCEPT**：接收就绪
+- SelectionKey.**OP_READ**：读就绪
+- SelectionKey.**OP_WRITE**：写就绪
 
 它们在 SelectionKey 的定义如下：
 
@@ -152,9 +155,11 @@ int interestSet = SelectionKey.OP_READ | SelectionKey.OP_WRITE;
 int num = selector.select();
 ```
 
-使用 select() 来**监听**到达的事件，它会**一直阻塞**直到有至少一个事件到达。
+使用 select() 来**监听**到达的事件，它会**一直阻塞**直到有**至少一个**事件到达，可能有多个事件到达。
 
 ###### ④ 获取到达的事件
+
+Selector 在有通道就绪的时候返回 SelectionKey 的集合，之后可以进行数据处理。这里循环遍历已经选择键集合中的**每一个键**，并检测各个**键所对应的通道就绪事件**。
 
 ```java
 // 遍历SelectionKey事件
@@ -191,10 +196,6 @@ while (true) {
     }
 }
 ```
-
-
-
-
 
 ##### 5. 文件 NIO
 
