@@ -1,22 +1,42 @@
 [TOC]
 
-
-
 ### ArrayList
 
-#### 1 概述
+#### 要点
 
-- ArrayList 是一个采用类型参数的**泛型数组列表类**。保存元素的**类型**放在尖括号中。使用时需要实例化泛型参数。
-- 如果添加元素时数组满了，会自动创建更大的数组并把所有对象从小数组**拷贝**到大数组，自动扩容。
-- ArrayList 实现了 **Serializable, Cloneable, Iterable\<E>, Collection\<E>, List\<E>, RandomAccess** 等接口。
-- ArrayList 对象**不能存储基本类型**，只能存储**引用类型**的数据。类似 \<int> 不能写，想要存储基本类型数据，<> 中的数据类型，需要使用==基本类型包装类==，如\<Integer> 也可能用到基本数据类型，JVM会根据场景进行自动拆箱、自动装箱。
-- 插入与删除元素效率低，因为需要移动其它元素。
-- ArrayLis t中的操作**不是线程安全**的。所以，建议在单线程中才使用 ArrayList，而在多线程中可以选择 Vector或者 **CopyOnWriteArrayList**。
-- ArrayList 实现 java.io.Serializable 的方式。当写入到输出流时，先写入**“容量”**，再依次写入“每一个元素”；当读出输入流时，先读取“容量”，再依次读取“每一个元素”。
-- 可以**随机访问**，按照**索引**进行访问的效率很高，效率为 O(1)。
-- 除非数组已经排序，否则按照内容**查找**元素效率**较低**，效率为 O(N)。
-- 添加元素效率视情况而定，可能会面临数组**扩容**与内容**复制**等开销问题。
-- ArrayList 序列化时不会全部序列化其存储数组（因为不一定全部存完了的），而是自己实现了序列化与反序列化方法。
+- ArrayList 内部使用**动态数组**实现元素存储。并允许所有元素，包括 null，元素可重复。
+
+- 实现了 RandomAccess 接口，可实现快速随机访问。
+
+- 每次**添加元素**时都会检查动态元素数组容量是否足够，如果不够则会**动态扩容**，扩容是扩容 **1.5 倍**，扩容后会复制原来的数组，这个开销很大，所以一定要根据业务场景指定初始化容量。添加元素效率视情况而定，可能会面临数组**扩容**与内容**复制**等开销问题。指定位置的插入与删除元素效率低，因为需要**移动其它**元素。
+
+- 动态数组是通过 **transient** 修饰的，默认不被序列化（因为动态数组可能**没有存满**），ArrayList 自定义了序列化与反序列化的方法保证只对数组中的**有效元素**进行序列化。
+
+- ArrayList 的**迭代器**会返回一个 **内部类 Itr 对象**，**迭代时删除元素**应该使用**迭代器的 remove** 方法而非 ArrayList 本身的 remove 方法，否则会产生 **Fail Fast** 异常。当然普通使用 ArrayList 的 remove 方法是没问题的。
+
+- **modCount** 属性是继承自 **AbstractList** 的，用来记录 **结构发生变化的次数**。结构发生变化是指添加或者删除至少一个元素的所有操作，或者是调整内部数组的大小，仅仅只是设置元素的值不算结构发生变化。如果迭代或者序列化会检查 modCount 版本，如果不一致则会产生 **Fail Fast 异常**。
+
+- ArrayList 是线程**不安全**的，建议在单线程中才使用 ArrayList，多线程可以使用 Vector 类、Collections.synchronizedList、JUC 的 **CopyOnWriteArrayList** 类等方法解决并发安全问题。
+
+- 支持**随机访问**，按照**索引**进行访问的效率很高，效率为 O(1)。
+
+- 按照内容**查找**元素效率**较低**，效率为 O(N)。
+
+
+
+#### ArrayList类API
+
+ArrayList 对象**不能存储基本类型**，只能存储**引用类型**的数据。类似 \<int> 不能写，想要存储基本类型数据，<> 中的数据类型，需要使用==基本类型包装类==，如\<Integer> 也可能用到基本数据类型，JVM会根据场景进行自动拆箱、自动装箱。
+
+```java
+public boolean add(E obj); 				// 将指定元素添加到此集合的尾部
+public boolean add(int index, E obj); 	// 在指定位置插入元素，后面的元素往后移动
+public E remove(int index); 			// 删除指定位置上的元素，返回被删除的元素
+public E get(int index);    			// 返回指定位置上的元素
+public int size();  					// 返回此集合中的元素数目
+public void trimToSize();  	// 将数组列表的存储容量削减到当前尺寸，确保数组不会有新元素添加的时候调用
+public void set(int index, E obj);		// 设置数组列表指定位置的值，覆盖原有内容。
+```
 
 ```java
 ArrayList<Employee> staff = new ArrayList<Employee>();
@@ -34,27 +54,13 @@ for(int i = 0; i < staff.size(); i++){
 
 
 
-#### 2 ArrayList类 API
+#### 源码分析
 
-```java
-public boolean add(E obj); 				// 将指定元素添加到此集合的尾部
-public boolean add(int index, E obj); 	// 在指定位置插入元素，后面的元素往后移动
-public E remove(int index); 			// 删除指定位置上的元素，返回被删除的元素
-public E get(int index);    			// 返回指定位置上的元素
-public int size();  					// 返回此集合中的元素数目
-public void trimToSize();  	// 将数组列表的存储容量削减到当前尺寸，确保数组不会有新元素添加的时候调用
-public void set(int index, E obj);		// 设置数组列表指定位置的值，覆盖原有内容。
-```
-
-
-
-#### 3 源码分析
-
-下面的分析基于 JDK8。最新的 ArrayList 源码是有**改动**的。
+下面的分析基于 **JDK8**。最新的 ArrayList 源码是有**改动**的。
 
 因为 ArrayList 是基于**数组**实现的，所以支持**快速随机访问**。RandomAccess 接口标识着该类**支持快速随机访问**，RandomAccess 是一个**标记接口**，没有任何方法。
 
-##### ① 基本属性
+##### 1. 基本属性
 
 ```java
 public class ArrayList<E> extends AbstractList<E>
@@ -76,265 +82,294 @@ public class ArrayList<E> extends AbstractList<E>
 }
 ```
 
-存放元素数组为 elementData，其默认大小为 DEFAULT_CAPACITY = 10。
+实现了 **RandomAccess** 接口，代表该类支持**快速随机访问**，因为 ArrayList 是基于数组实现的。
+
+存放元素数组为 **elementData**，其默认大小为 **DEFAULT_CAPACITY** = **10**。如果初始化时没有指定数组大小，那么第一次添加元素时会扩容，这时候就会**扩容到默认的 10**，如果指定了容量，那就按容量 1.5 扩容了。
 
 ![1582447809913](assets/E-2-1%20ArrayList/1582447809913.png)
 
-##### ② 添加元素
+##### 2. 初始化
 
-添加元素时使用 **ensureCapacityInternal() 方法**来保证容量足够，如果不够时，需要使用 **grow() 方法**进行扩容，新容量的大小为 `oldCapacity + (oldCapacity >> 1)`，也就是旧容量的 **1.5 倍**。elementData 数组会随着实际元素个数的增多而重新分配。
-
-扩容操作需要调用 `Arrays.copyOf()` 把原数组整个复制到新数组中，这个操作代价很高，因此最好在创建 ArrayList 对象时就**指定**大概的容量大小，**减少扩容操作的次数**。
+主要是初始化一个指定大小的**数组**。
 
 ```java
+/**
+ * 不带参数的构造方法
+ */
+public ArrayList() {
+    // 直接将空数组赋给elementData
+    this.elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
+}
+
+/**
+ * 带有容量initialCapacity的构造方法
+ *
+ * @param 初始容量列表的初始容量
+ * @throws IllegalArgumentException 如果指定容量为负
+ */
+public ArrayList(int initialCapacity) {
+    // 如果初始化时ArrayList大小大于0
+    if (initialCapacity > 0) {
+        // new一个该大小的object数组赋给elementData
+        this.elementData = new Object[initialCapacity];
+    } else if (initialCapacity == 0) { // 如果大小为0
+        // 将空数组赋给elementData
+        this.elementData = EMPTY_ELEMENTDATA;
+    } else { // 小于0
+        // 则抛出IllegalArgumentException异常
+        throw new IllegalArgumentException("Illegal Capacity: " +
+                                           initialCapacity);
+    }
+}
+```
+
+##### 3. 添加元素
+
+添加元素的 add 方法如下。默认是添加到数组**最后的**位置的。这样添加还是很快的。
+
+```java
+/**
+ * 添加一个值，首先会确保容量
+ *
+ * @param e 要添加到此列表中的元素
+ * @return <tt>true</tt> (as specified by {@link Collection#add})
+ */
 public boolean add(E e) {
-    ensureCapacityInternal(size + 1);   // Increments modCount!!
-    elementData[size++] = e;			// size 用于记录实际的元素个数	
+    // 扩容
+    ensureCapacityInternal(size + 1);  // Increments modCount!!
+    // 将e赋值给elementData的size+1的位置
+    elementData[size++] = e;
     return true;
 }
+```
 
-// 确保数组容量足够
+加元素时使用 **ensureCapacityInternal() 方法**来保证容量**足够**。
+
+```java
+/**
+ * 得到最小扩容量
+ *
+ * @param minCapacity
+ */
 private void ensureCapacityInternal(int minCapacity) {
-    if (elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA) {
-        minCapacity = Math.max(DEFAULT_CAPACITY, minCapacity);
-    }
-    ensureExplicitCapacity(minCapacity);
+    // 调用另一个方法
+    ensureExplicitCapacity(calculateCapacity(elementData, minCapacity));
 }
 
+// 首先计算capacity
+private static int calculateCapacity(Object[] elementData, int minCapacity) {
+    if (elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA) {
+        // 如果之前为空则扩容到DEFAULT_CAPACITY为10
+        return Math.max(DEFAULT_CAPACITY, minCapacity);
+    }
+    return minCapacity;
+}
+
+/**
+ * 判断是否需要扩容
+ *
+ * @param minCapacity
+ */
 private void ensureExplicitCapacity(int minCapacity) {
-    // 表示内部修改次数
+    // 增加结构修改计数器
     modCount++;
-    // overflow-conscious code
+    // 如果最小需要空间比elementData的内存空间要大，则需要扩容
     if (minCapacity - elementData.length > 0)
         grow(minCapacity);
 }
+```
 
-// 增加数组容量
+如果不够时，需要使用 **grow() 方法**进行**扩容**，新容量的大小为 `oldCapacity + (oldCapacity >> 1)`，也就是旧容量的 **1.5 倍**。elementData 数组会随着实际元素个数的增多而重新分配。
+
+```java
+/**
+ * 扩容，以确保它可以至少持有由参数指定的元素的数目
+ *
+ * @param minCapacity 当前所需的最小容量
+ */
 private void grow(int minCapacity) {
-    // overflow-conscious code
+    // 原始数据数组长度
     int oldCapacity = elementData.length;
-    // 右移一位相当于除2，因此扩容为原来的1.5倍
+    // 扩容至原来的1.5倍
     int newCapacity = oldCapacity + (oldCapacity >> 1);
+    // 再判断一下新数组的容量够不够，够了就直接使用这个长度创建新数组，
+    // 不够就将数组长度设置为需要的长度
     if (newCapacity - minCapacity < 0)
         newCapacity = minCapacity;
+    // 若预设值大于默认的最大值检查是否溢出
     if (newCapacity - MAX_ARRAY_SIZE > 0)
         newCapacity = hugeCapacity(minCapacity);
-    // minCapacity is usually close to size, so this is a win:
+    // 调用Arrays.copyOf方法将elementData数组指向新的内存空间时newCapacity的连续空间
+    // 并将elementData的数据复制到新的内存空间
     elementData = Arrays.copyOf(elementData, newCapacity);
 }
 ```
 
-##### ③ 删除元素
+扩容操作需要调用 `Arrays.copyOf()` 把原数组整个复制到新数组中，这个操作**代价很高**，因此最好在创建 ArrayList 对象时就**指定**大概的容量大小，**减少扩容操作的次数**。
 
-需要调用 **System.arraycopy()** 将 index + 1 后面的元素都复制到 index 位置上，该操作的时间复杂度为 O(N)，可以看出 ArrayList 删除元素的代价是**非常高**的。
+也可以在**指定索引**处添加元素。这里需要的操作是将 index 位置及以后的元素搬运到 index + 1之后，这个操作**开销挺大**。
 
 ```java
-public E remove(int index) {
+/**
+ * 在ArrayList的index位置，添加元素element，会检查添加的位置和容量
+ *
+ * @param index   指定元素将被插入的索引
+ * @param element 要插入的元素
+ * @throws IndexOutOfBoundsException {@inheritDoc}
+ */
+public void add(int index, E element) {
+    // 判断index是否越界
+    rangeCheckForAdd(index);
+    // 扩容
+    ensureCapacityInternal(size + 1);  // Increments modCount!!
+    // public static void arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
+    // src:源数组； srcPos:源数组要复制的起始位置； dest:目的数组； destPos:目的数组放置的起始位置； length:复制的长度
+    // 将elementData从index位置开始，复制到elementData的index+1开始的连续空间
+    System.arraycopy(elementData, index, elementData, index + 1,
+                     size - index);
+    // 在elementData的index位置赋值element
+    elementData[index] = element;
+    // ArrayList的大小加一
+    size++;
+}
+```
+
+##### 4. 获取元素
+
+获取元素用 **get** 方法。即直接通过索引获取对应位置的元素，速度极快。
+
+```java
+public E get(int index) {
+    // 检查输入的索引有没有越界
     rangeCheck(index);
-    modCount++;
+	// 返回数据数组指定索引的元素
+    return elementData(index);
+}
+
+E elementData(int index) {
+    return (E) elementData[index];
+}
+```
+
+indexOf 用于返回一个值在数组**首次出现的位置**，会根据是否为 null 使用不同方式判断。不存在就返回 -1。时间复杂度为O(N)。
+
+```java
+public int indexOf(Object o) {
+    if (o == null) {
+        for (int i = 0; i < size; i++)
+            if (elementData[i] == null)
+                return i;
+    } else {
+        for (int i = 0; i < size; i++)
+            if (o.equals(elementData[i]))
+                return i;
+    }
+    return -1;
+}
+```
+
+lastIndexOf 方法效果类似，只是是反过来从后面找索引位置。
+
+##### 5. 更新元素
+
+更新元素依然是通过索引来的。更新之后会返回原始索引处的旧元素。
+
+```java
+public E set(int index, E element) {
+    rangeCheck(index);	// 索引有效性检查
+	// 获取旧元素
     E oldValue = elementData(index);
-    int numMoved = size - index - 1;
-    if (numMoved > 0)
-        System.arraycopy(elementData, index+1, elementData, index, numMoved);
-    elementData[--size] = null; // 释放引用以便原对象被垃圾回收
+    // 设置新元素
+    elementData[index] = element;
+    // 返回旧元素
     return oldValue;
 }
 ```
 
-##### ④ **迭代与删除**
+##### 6. 基本方法
 
-迭代器的常见误用就是在迭代的**中间**调用容器的删除方法。
+下面是一些很基础的方法。
 
 ```java
-List<String> list = new ArrayList<>();
-list.add("str1");
-list.add("str2");
-list.add("str3");
-for (String s : list) {
-    if ("str1".equals(s)) {
-        // 这里使用了List提供的remove方法
-        list.remove(s);
-    }
+public int size() {
+    return size;
+}
+public boolean isEmpty() {
+    return size == 0;
+}
+public boolean contains(Object o) {
+    return indexOf(o) >= 0;
 }
 ```
 
-这段代码看起来好像没有什么问题，但是如果我们运行，就会抛出 **ConcurrentModificationException** 异常。
-
-其实这不是特例，每当我们使用迭代器遍历元素时，如果**修改了元素内容**（添加、删除元素），就会抛出异常，由于 **foreach** 同样使用的是**迭代器**，所以也有同样的情况。
-
-remove 方法的源码
-
-```java
-public class ArrayList<E> {
-
-    void remove() {
-        modCount++;  // 继承自AbstractList的属性，保存对其中元素的修改次数，每次增加或删除时加1
-        // 具体删除操作代码
-        //...
-    }
-  
-    public Iterator<E> iterator() {
-        return new Itr();
-    }
-
-    private class Itr implements Iterator<E> {
-        int cursor;       // index of next element to return
-        // 在创建迭代器时将当前ArrayList的修改次数赋值给 expectedModCount 保存
-        int expectedModCount = modCount;
-        public boolean hasNext() {
-            return cursor != size;
-        }
-        
-        @SuppressWarnings("unchecked")
-        public E next() {
-            // 检查当前所在的 ArrayList 的 modCount 是否与创建 Itr 时的值一致，
-            // 也就是判断获取了Itr迭代器后 ArrayList 中的元素是否被 Itr 外部的方法改变过。
-            checkForComodification();
-            // 具体的获取下一个元素的代码
-            // ...
-        }
-        
-        public void remove() {
-            if (lastRet < 0)
-                throw new IllegalStateException();
-            // 同 next 中的 checkForComodification 方法
-            checkForComodification();
-            try {
-                ArrayList.this.remove(lastRet);
-                cursor = lastRet;
-                lastRet = -1;
-                // Itr 内部的删除元素操作，会更新 expectedModCount 值，而外部的则不会
-                expectedModCount = modCount;
-            } catch (IndexOutOfBoundsException ex) {
-                throw new ConcurrentModificationException();
-            }
-        }
-
-        final void checkForComodification() {
-            if (modCount != expectedModCount)
-                throw new ConcurrentModificationException();
-        }
-    }
-}
-```
-
-可以明显的看到共有两个`remove()`方法，一个属于 ArrayList 本身，还有一个属于其内部类 Itr。ArrayList 类中有一个 **modCount** 属性，这个属性是继承自 AbstractList，其保存了我们对 ArrayList 进行的的**操作次数**，当我们添加或者删除元素时，modeCount 都会进行对应次数的**增加**。相当于记录了**结构性变化**，即**添加、插入、删除**元素，只是修改元素的内容不算结构性变化。
-
-在我们使用 ArrayList 的 `iterator()` 方法获取到迭代器**进行遍历**时，会把 ArrayList 当前状态下的 **modCount** 赋值给 Itr 类的 **expectedModCount** 属性。如果我们在迭代过程中，使用了 ArrayList 的 `remove()`或`add()`方法，这时 modCount 就会加 1 ，但是迭代器中的 expectedModeCount 并没有变化，当我们再使用迭代器的`next()`方法时，它会调用`checkForComodification()`方法，即
-
-```java
-final void checkForComodification() {
-    if (modCount != expectedModCount)
-    throw new ConcurrentModificationException();
-}
-```
-
-发现现在的 modCount 已经与 expectedModCount **不一致**了，则会抛出`ConcurrentModificationException`异常。
-
-上述使用了 List 提供的 remove 方法，但是如果我们使用**迭代器提供的`remove()`方法**，由于其有一个操作：`expectedModCount = modCount;`会**修改** expectedModCount 的值，所以就不会存在上述问题。记得调用 remove 方法之前需要先调用 next 方法。
-
-综上：**在单线程的遍历过程中，如果要进行 remove 操作，可以调用迭代器的 remove 方法而不是集合类的 remove 方法。**
-
-
-
-#### 4 Fail-Fast 机制
-
-Fail-fast 机制，即快速失败机制，是 Java **集合**(Collection)中的一种错误检测机制。当在迭代集合的过程中该集合在==**结构**上发生**改变**==的时候，就有可能会发生 fail-fast，即抛出 ConcurrentModificationException 异常。Fail-fast机制并不保证在不同步的修改下一定会抛出异常，它只是尽最大努力去抛出，所以这种机制一般仅用于检测 bug。
-
-在我们常见的 Java 集合中就可能出现 fail-fast 机制,比如 ArrayList，HashMap。在**多线程和单线程**环境下都有可能出现快速失败。
-
-ArrayList  中 **modCount** 用来记录 **结构发生变化的次数**。结构发生变化是指添加或者删除至少一个元素的所有操作，或者是调整内部数组的大小，仅仅只是设置元素的值不算结构发生变化。
-
-在进行**序列化或者迭代**等操作时，需要**比较**操作前后 modCount 是否改变，如果改变了需要抛出 ConcurrentModificationException。
-
-```java
-private void writeObject(java.io.ObjectOutputStream s)
-    throws java.io.IOException{
-    // Write out element count, and any hidden stuff
-    int expectedModCount = modCount;
-    s.defaultWriteObject();
-
-    // Write out size as capacity for behavioural compatibility with clone()
-    s.writeInt(size);
-
-    // Write out all elements in the proper order.
-    for (int i=0; i<size; i++) {
-        s.writeObject(elementData[i]);
-    }
-	// 序列化时也会检查
-    if (modCount != expectedModCount) {
-        throw new ConcurrentModificationException();
-    }
-}
-```
-
-**避免fail-fast**
-
-**方法1**
-
-在单线程的遍历过程中，如果要进行 remove 操作，可以调用**迭代器的 remove** 方法而不是集合类的 remove 方法。
-
-**方法2**
-
- 使用并发包(java.util.concurrent)中的类来代替 ArrayList 和 HashMap。如 **CopyOnWriterArrayList** 代替 ArrayList。使用 **ConcurrentHashMap** 替代 HashMap。
-
-
-
-
-
-#### 5 序列化
+##### 7. 序列化
 
 ArrayList 基于**数组**实现，并且具有**动态扩容**特性，因此保存元素的数组不一定都会被使用，那么**就没必要全部**进行序列化。
 
-保存元素的数组 elementData 使用 **transient** 修饰，该关键字声明数组默认**不会被序列化**。
+保存元素的数组 **elementData** 使用 **transient** 修饰，该关键字声明数组默认**不会被序列化**。
 
 ```java
 transient Object[] elementData; // non-private to simplify nested class access
 ```
 
-ArrayList 实现了 writeObject() 和 readObject() 来控制==**只序列化数组中有元素填充那部分**==内容。数组没有存元素的部分不序列化。
+ArrayList 实现了 writeObject() 和 readObject() 来控制==**只序列化数组中有元素填充那部分**==内容。数组没有存元素的部分不序列化。当写入到输出流时，先写入**“容量”**，再依次写入“每一个元素”；当读出输入流时，先读取“容量”，再依次读取“每一个元素”。
+
+注意：序列化时也会**检查 modCount**，如果序列化时并发**修改**列表，可能造成 fail fast 而抛异常。
 
 ```java
-private void readObject(java.io.ObjectInputStream s)
-    throws java.io.IOException, ClassNotFoundException {
-    elementData = EMPTY_ELEMENTDATA;
-
-    // Read in size, and any hidden stuff
-    s.defaultReadObject();
-
-    // Read in capacity
-    s.readInt(); // ignored
-
-    if (size > 0) {
-        // be like clone(), allocate array based upon size not capacity
-        ensureCapacityInternal(size);
-
-        Object[] a = elementData;
-        // Read in all elements in the proper order.
-        for (int i=0; i<size; i++) {
-            a[i] = s.readObject();
-        }
-    }
-}
-```
-
-```java
+/**
+ * 保存数组实例的状态到一个流（即序列化）。写入过程数组被更改会抛出异常
+ *
+ * @serialData The length of the array backing the <tt>ArrayList</tt>
+ * instance is emitted (int), followed by all of its elements
+ * (each an <tt>Object</tt>) in the proper order.
+ */
 private void writeObject(java.io.ObjectOutputStream s)
-    throws java.io.IOException{
+    throws java.io.IOException {
     // Write out element count, and any hidden stuff
     int expectedModCount = modCount;
+    // 执行默认的反序列化/序列化过程。将当前类的非静态和非瞬态字段写入此流
     s.defaultWriteObject();
 
-    // Write out size as capacity for behavioural compatibility with clone()
+    // 写入大小
     s.writeInt(size);
 
-    // Write out all elements in the proper order.
-    for (int i=0; i<size; i++) {
+    // 按顺序写入所有元素
+    for (int i = 0; i < size; i++) {
         s.writeObject(elementData[i]);
     }
 
     if (modCount != expectedModCount) {
         throw new ConcurrentModificationException();
+    }
+}
+```
+
+```java
+/**
+ * 从流中重构ArrayList实例（即反序列化）。
+ */
+private void readObject(java.io.ObjectInputStream s)
+    throws java.io.IOException, ClassNotFoundException {
+    elementData = EMPTY_ELEMENTDATA;
+
+    // 执行默认的序列化/反序列化过程
+    s.defaultReadObject();
+
+    // 读入数组长度
+    s.readInt(); // ignored
+
+    if (size > 0) {
+        // 像clone()方法 ，但根据大小而不是容量分配数组
+        int capacity = calculateCapacity(elementData, size);
+        SharedSecrets.getJavaOISAccess().checkArray(s, Object[].class, capacity);
+        ensureCapacityInternal(size);
+
+        Object[] a = elementData;
+        //读入所有元素
+        for (int i = 0; i < size; i++) {
+            a[i] = s.readObject();
+        }
     }
 }
 ```
@@ -347,9 +382,179 @@ ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file));
 oos.writeObject(list);
 ```
 
+##### 8. 删除元素
+
+需要调用 **System.arraycopy()** 将 index + 1 后面的元素都**复制**到 index 位置上，该操作的时间复杂度为 **O(N)**，可以看出 ArrayList 删除元素的代价是**非常高**的。
+
+注意：**remove 操作会修改 modCount 值。**
+
+```java
+public E remove(int index) {
+    // 判断是否越界
+    rangeCheck(index);
+    
+    // remove操作会修改modCount值
+    modCount++;
+    // 读取旧值
+    E oldValue = elementData(index);
+    // 获取index位置开始到最后一个位置的个数
+    int numMoved = size - index - 1;
+    if (numMoved > 0)
+        // 将elementData数组index+1位置开始拷贝到elementData从index开始的空间
+        System.arraycopy(elementData, index + 1, elementData, index,
+                         numMoved);
+    // 使size-1 ，设置elementData的size位置为空，让GC来清理内存空间
+    elementData[--size] = null; // 便于垃圾回收器回收
+
+    return oldValue;
+}
+```
+
+##### 9. **迭代与删除**
+
+迭代器的常见误用就是在迭代的**中间**调用容器的删除方法。
+
+```java
+List<String> list = new ArrayList<>();
+list.add("str1");
+list.add("str2");
+list.add("str3");
+for (String s : list) {
+    if ("str1".equals(s)) {
+        // 这里使用了List接口提供的remove方法
+        list.remove(s);
+    }
+}
+```
+
+这段代码看起来好像没有什么问题，但是如果我们运行，就会抛出 **ConcurrentModificationException** 异常。
+
+其实这不是特例，每当我们使用**迭代器遍历元素**时，如果**修改了元素内容**（添加、删除元素），就会**抛出异常**，由于 **foreach** 同样使用的是**迭代器**，所以也有同样的情况。
+
+返回**迭代器**源码。
+
+```java
+public Iterator<E> iterator() {
+    return new Itr();
+}
+```
+
+返回的是一个**内部类 Itr** 的对象。
+
+这个内部类如下：
+
+```java
+/**
+ * 通用的迭代器实现
+ */
+private class Itr implements Iterator<E> {
+    int cursor;       // 游标，下一个元素的索引，默认初始化为0
+    int lastRet = -1; // 上次访问的元素的位置
+    
+    // 记录获取迭代器时的modCount，迭代过程不运行修改数组，否则就抛出异常
+    int expectedModCount = modCount;
+
+    // 是否还有下一个
+    public boolean hasNext() {
+        return cursor != size;
+    }
+
+    // 下一个元素
+    @SuppressWarnings("unchecked")
+    public E next() {
+        // 检查数组是否被修改
+        checkForComodification();
+        int i = cursor;
+        if (i >= size)
+            throw new NoSuchElementException();
+        Object[] elementData = ArrayList.this.elementData;
+        if (i >= elementData.length)
+            throw new ConcurrentModificationException();
+        cursor = i + 1;// 向后移动游标
+        return (E) elementData[lastRet = i];// 设置访问的位置并返回这个值
+    }
+
+    // 删除元素
+    public void remove() {
+        if (lastRet < 0)
+            throw new IllegalStateException();
+        checkForComodification(); // 检查数组是否被修改
+		// 用迭代器的删除方法会自己更新modCount值
+        try {
+            // 这里调用ArrayList自身的remove方法，这个方法会修改modCount值
+            ArrayList.this.remove(lastRet);
+            cursor = lastRet;
+            lastRet = -1;
+            // 修改迭代器内部的expectedModCount为删除后当前最新的modCount值，这样就不会抛异常
+            expectedModCount = modCount;
+        } catch (IndexOutOfBoundsException ex) {
+            throw new ConcurrentModificationException();
+        }
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void forEachRemaining(Consumer<? super E> consumer) {
+        // 忽略....
+    }
+
+    // 检查数组是否被修改：就是判断当前列表的modCount与生成迭代器时的modCount是否一致
+    final void checkForComodification() {
+        if (modCount != expectedModCount)
+            throw new ConcurrentModificationException();
+    }
+}
+```
+
+可以明显的看到共有两个`remove()`方法，一个属于 ArrayList 本身，还有一个属于其**内部类 Itr**。
+
+ArrayList 类中有一个 **modCount** 属性，这个属性是继承自 AbstractList，其保存了我们对 ArrayList 进行的的**操作次数**，当我们添加或者删除元素时，modeCount 都会进行对应次数的**增加**。相当于记录了**结构性变化**，即**添加、插入、删除**元素，只是修改元素的内容不算结构性变化。
+
+在我们使用 ArrayList 的 `iterator()` 方法获取到迭代器**进行遍历**时，会把 ArrayList 当前状态下的 **modCount** 赋值给 Itr 类的 **expectedModCount** 属性，相当于创建迭代器时候对 modCount 的一个版本快照。如果我们在迭代过程中，使用了 ArrayList 的 `remove()`或`add()`方法，这时 modCount 就会**加 1** ，但是迭代器中的 expectedModeCount **并没有**变化，当我们再使用迭代器的`next()`方法时，它会调用`checkForComodification()`方法，通过对比发现现在的 modCount 已经与 expectedModCount **不一致**了，则会抛出`ConcurrentModificationException`异常。
+
+但是如果使用内部类 Itr ==**迭代器提供的`remove()`方法**==，它会调用 ArrayList 提供的 remove方法，同时还有一个操作：`expectedModCount = modCount;`，这会**修改**当前迭代器内部记录的 expectedModCount 的值，所以就不会存在版本不一致问题。
+
+综上：**在单线程的遍历过程中，如果要进行 remove 操作，应该调用迭代器的 remove 方法而不是集合类的 remove 方法。**
+
+PS：这里讨论的是**迭代删除时使用 ArrayList 的 remove 方法**，普通使用 ArrayList 的 remove 方法是没问题的。
 
 
-#### 6 Arrays.asList()
+
+#### Fail-Fast 机制
+
+##### 1. 概述
+
+通过上面的例子可以引出 Fail-fast 机制，即**快速失败机制**，是 Java **集合**(Collection)中的一种**错误检测机制**。当在**序列化或者迭代**集合的过程中该集合在==**结构**上发生**改变**==的时候，就有可能会发生 fail-fast，即抛出 **ConcurrentModificationException** 异常。
+
+Fail-fast 机制并不保证在不同步的修改下一定会抛出异常，它只是尽最大努力去抛出，所以这种机制一般仅用于检测 bug。
+
+在我们常见的 Java 集合中就可能出现 fail-fast 机制，比如 ArrayList，HashMap。
+
+在**多线程和单线程**环境下都有可能出现 Fail-fast。
+
+**modCount** 属性是继承自 **AbstractList** 的，用来记录 **结构发生变化的次数**。结构发生变化是指添加或者删除至少一个元素的所有操作，或者是调整内部数组的大小，仅仅只是设置元素的值不算结构发生变化。可以用于**检查并发修改**的情况。
+
+```java
+protected transient int modCount = 0;
+```
+
+**modCount** 此字段由 **iterator** 和 **listiterator** 方法返回的**迭代器和列表迭代器**实现使用。**子类**是否使用此字段是**可选**的。
+
+如果子类希望提供快速失败迭代器（和列表迭代器），则它只需在其 add(E e) 和 remove(int) 方法（以及它所重写的、导致列表结构上修改的任何其他方法）中增加此字段。
+
+##### 2. **避免fail-fast**
+
+**方法1**
+
+在**单线程**的遍历过程中，如果要进行 remove 操作，应该调用**迭代器的 remove** 方法而不是集合类的 remove 方法。
+
+**方法2**
+
+使用并发包 (java.util.concurrent) 中的类来代替 ArrayList 和 HashMap。如 **CopyOnWriterArrayList** 代替 ArrayList。使用 **ConcurrentHashMap** 替代 HashMap。
+
+
+
+#### Arrays.asList()
 
 Arrays 类的静态方法 asList() 将数组转为**集合**。
 
@@ -406,7 +611,29 @@ ArrayList al = new ArrayList(Arrays.asList(str)); // 将数组元素添加到集
 
 
 
+#### 线程安全
 
+ArrayList 底层是以数组方式实现的，实现了**可变大小**的数组，它允许所有元素，包括 null。如果开启多个线程同时操作 List 集合，向 ArrayList 中增加元素，同时去除元素可能会出现一些问题，如数组下标越界异常。
+
+**在多线程情况下操作ArrayList 并不是线性安全的。**
+
+如何解决？
+
+① 使用 **Vertor** 集合。
+
+② 使用 **Collections.synchronizedList**。它会自动将我们的 list 方法进行改变，最后返回给我们一个加锁了的 List。
+
+```java
+protected static List<Object> arrayListSafe2 = Collections.synchronizedList(new ArrayList<Object>());  
+```
+
+③ 使用 JUC 中的 **CopyOnWriteArrayList** 类进行替换。
+
+
+
+#### 参考资料
+
+- [ArrayList线程安全问题](https://www.cnblogs.com/zhouyuxin/p/11154771.html)
 
 
 
