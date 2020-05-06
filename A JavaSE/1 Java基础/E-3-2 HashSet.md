@@ -2,7 +2,7 @@
 
 ### HashSet
 
-#### 1 概述
+#### 概述
 
 - HashSet 的底层通过 **HashMap** 实现的。而 HashMap 在1.7之前使用的是**数组 + 链表**实现，在1.8 + 使用的**数组 + 链表 + 红黑树**实现。其实也可以这样理解，HashSet 的底层实现和 HashMap 使用的是相同的方式，因为 Map 是无序的，因此 HashSet 也**无法保证顺序**。
 - Set **没有重复元素**。相同的元素添加进去也只会保留一份。
@@ -12,15 +12,17 @@
 
 
 
-#### 2 源码解析
+#### 源码解析
+
+HashSet 内部使用 **HashMap** 存储数据，所以很多操作都是围绕 HashMap 开展的。
 
 ```java
 public class HashSet<E> extends AbstractSet<E>
     implements Set<E>, Cloneable, java.io.Serializable {
 
     static final long serialVersionUID = -5024744406713321676L; // 序列化版本号
-    
-	// HashMap变量，用于存放HashSet的值 
+
+    // HashMap变量，用于存放HashSet的值 
     private transient HashMap<E,Object> map;  
 
     private static final Object PRESENT = new Object(); // map中的值
@@ -40,6 +42,7 @@ public class HashSet<E> extends AbstractSet<E>
     public HashSet(int initialCapacity, float loadFactor) {
         map = new HashMap<>(initialCapacity, loadFactor);
     }
+
     // 指定初始化大小
     public HashSet(int initialCapacity) {
         map = new HashMap<>(initialCapacity);
@@ -73,12 +76,12 @@ public class HashSet<E> extends AbstractSet<E>
 
     // 添加元素，添加的元素作为了Map中的key,value使用了一个常量表示
     public boolean add(E e) {
-        return map.put(e, PRESENT)==null;
+        return map.put(e, PRESENT) == null;
     }
 
     // 删除元素
     public boolean remove(Object o) {
-        return map.remove(o)==PRESENT;
+        return map.remove(o) == PRESENT;
     }
 
     // 清空集合
@@ -125,8 +128,8 @@ public class HashSet<E> extends AbstractSet<E>
         int capacity = s.readInt();
         float loadFactor = s.readFloat();
         map = (((HashSet)this) instanceof LinkedHashSet ?
-               new LinkedHashMap<E,Object>(capacity, loadFactor) :
-               new HashMap<E,Object>(capacity, loadFactor));
+               new LinkedHashMap<E, Object>(capacity, loadFactor) :
+               new HashMap<E, Object>(capacity, loadFactor));
 
         // Read in size
         int size = s.readInt();
@@ -140,7 +143,7 @@ public class HashSet<E> extends AbstractSet<E>
 }
 ```
 
-
+HashSet 使用成员对象来计算 hashCode 值，对于两个对象来说 hashCode **可能相同**，所以 equals() 方法用来**判断对象**的**相等性**，如果两个对象不同的话，那么返回 false。
 
 
 
