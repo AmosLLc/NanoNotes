@@ -44,11 +44,58 @@ AQS 定义两种资源共享方式：**Exclusive**（**独占**，只有一个�
 
 再以 CountDownLatch 以例，任务分为 N 个子线程去执行，state 也初始化为 N（注意 N 要与线程个数一致）。这 N 个子线程是并行执行的，每个子线程执行完后 countDown() 一次，state 会 CAS 减 1。等到所有子线程都执行完后(即 state=0)，会 unpark() 主调用线程，然后主调用线程就会从 await() 函数返回，继续后余动作。
 
-一般来说，自定义同步器要么是独占方法，要么是共享方式，他们也只需实现 tryAcquire-tryRelease、tryAcquireShared-tryReleaseShared 中的**一种**即可。但 AQS 也支持自定义同步器同时实现独占和共享两种方式，如 ReentrantReadWriteLock。
+AQS 支持**两种同步**方式：
+
+　　**1.独占式**
+
+　　**2.共享式**
+
+这样方便使用者实现不同类型的**同步组件**，**独占式**如 ReentrantLock，**共享式**如 Semaphore，CountDownLatch，**组合式**的如 ReentrantReadWriteLock。总之，AQS 为使用提供了底层支撑，如何组装实现，使用者可以自由发挥。
+
+一般来说，自定义同步器要么是**独占方式**，要么是**共享方式**，他们也只需实现 **tryAcquire-tryRelease、tryAcquireShared-tryReleaseShared** 中的**一种**即可（当然也有独占和共享都有的）。但 AQS 也支持自定义同步器同时实现独占和共享两种方式，如 ReentrantReadWriteLock。
 
 #### 源码详解
 
-本节开始讲解 AQS 的源码实现。依照 acquire-release、acquireShared-releaseShared 的次序来。
+AQS 维护一个**共享资源 state**，通过内置的 **FIFO** 来完成获取资源线程的排队工作。（这个内置的同步队列称为 "CLH" 队列）。该队列由一个一个的 **Node 结点**组成，每个 Node 结点维护一个 prev 引用和 next 引用，分别指向自己的**前驱和后继结点**。AQS 维护两个指针，分别指向队列**头部 head 和尾部 tail**。
+
+<img src="G-2 AQS.assets/image-20200510112337397.png" alt="image-20200510112337397" style="zoom:37%;" />
+
+其实就是个**双端双向链表**。当线程获取资源失败（比如 tryAcquire 时试图设置 state 状态失败），会被构造成一个结点加入 **CLH 队列**中，同时当前线程会被**阻塞**在队列中（通过 **LockSupport.park** 实现，其实是**等待态**）。当持有同步状态的线程释放同步状态时，会唤醒后继结点，然后此结点线程继续加入到对同步状态的争夺中。
+
+##### Node结点
+
+Node 结点是 AbstractQueuedSynchronizer 中的一个**静态内部类**，我们捡 Node 的几个重要属性来说一下。
+
+```java
+static final class Node {
+    /** waitStatus值，表示线程已被取消（等待超时或者被中断）*/
+    static final int CANCELLED =  1;
+    /** waitStatus值，表示后继线程需要被唤醒（unpaking）*/
+    static final int SIGNAL    = -1;
+    /**waitStatus值，表示结点线程等待在condition上，当被signal后，会从等待队列转移到同步到队列中 */
+    /** waitStatus value to indicate thread is waiting on condition */
+    static final int CONDITION = -2;
+    /** waitStatus值，表示下一次共享式同步状态会被无条件地传播下去 */
+    static final int PROPAGATE = -3;
+    /** 等待状态，初始为0 */
+    volatile int waitStatus;
+    /**当前结点的前驱结点 */
+    volatile Node prev;
+    /** 当前结点的后继结点 */
+    volatile Node next;
+    /** 与当前结点关联的排队中的线程 */
+    volatile Thread thread;
+    /** ...... */
+}
+```
+
+
+
+
+
+
+
+本节开始讲解 AQS 的源码实现。依照 **acquire-release**、**acquireShared-releaseShared** 的次序来。
 
 ##### 1. 结点状态waitStatus
 
@@ -120,7 +167,7 @@ static final class Node {
 }
 ```
 
-##### 2. acquire(int)
+##### 2. 独占式获取同步状态acquire(int)
 
 此方法是**独占模式**下线程获取**共享资源**的顶层入口。如果**获取到资源**，线程**直接返回**，否则进入**等待队列**，直到获取到资源为止，且整个过程忽略中断的影响。这也正是 **lock() 的语义**，当然不仅仅只限于 lock()。获取到资源后，线程就可以去执行其临界区代码了。下面是 acquire() 的源码：
 
@@ -305,7 +352,7 @@ public final void acquire(int arg) {
 
 至此，acquire() 的流程终于算是告一段落了。这也就是 ReentrantLock.lock() 的**流程**，不信你去看其 lock() 源码吧，整个函数就是一条 **acquire**(1)！！！
 
-##### 3. release()
+##### 3. 独占式释放同步状态release()
 
 上一小节已经把 acquire() 说完了，这一小节就来讲讲它的**反操作 release()**吧。此方法是**独占模式**下线程**释放共享资源**的顶层入口。它会释放指定量的资源，如果彻底释放了（即 state = 0）,它会**唤醒等待队列里的其他线程来获取资源**。这也正是 **unlock() 的语义**，当然不**仅仅只限于 unlock()**。下面是 release() 的源码：
 
@@ -364,7 +411,9 @@ private void unparkSuccessor(Node node) {
 
 release() 是**独占模式下线程释放共享资源**的顶层入口。它会释放指定量的资源，如果彻底释放了（即 state = 0）,它会唤醒等待队列里的其他线程来获取资源。
 
-##### 4. acquireShared(int)
+##### 4. 共享式获取同步状态acquireShared(int)
+
+共享式：共享式地获取同步状态。对于独占式同步组件来讲，同一时刻只有一个线程能获取到同步状态，其他线程都得去排队等待，其待重写的尝试获取同步状态的方法 tryAcquire 返回值为 **boolean**，这很容易理解；对于**共享式**同步组件来讲，同一时刻可以有**多个线程同时获取到**同步状态，这也是“共享”的意义所在。其待重写的尝试获取同步状态的方法 tryAcquireShared 返回值为 **int**。
 
 此方法是**共享模式**下线程获取**共享资源**的顶层入口。它会获取**指定量**的资源，获取成功则直接返回，获取失败则进入等待队列，直到获取到资源为止，整个过程忽略中断。下面是 acquireShared() 的源码：
 
@@ -375,7 +424,15 @@ public final void acquireShared(int arg) {
 }
 ```
 
-这里 tryAcquireShared() 依然需要**自定义同步器**去实现。但是 AQS 已经把其**返回值的语义**定义好了：**负值**代表获取失败；**0 代表获取成功**，但没有剩余资源；**正数表示获取成功**，还有剩余资源，其他线程还可以去获取。所以这里 acquireShared() 的流程就是：
+这里 tryAcquireShared() 依然需要**自定义同步器**去实现。但是 AQS 已经把其**返回值的语义**定义好了：
+
+- 1.当返回值**大于 0** 时，表示获取**同步状态成功**，同时**还有剩余同步状态**可供其他线程获取；
+
+- 2.当返回值**等于 0** 时，表示获取**同步状态成功**，但**没有可用同步状态**了；
+
+- 3.当返回值**小于 0** 时，表示获取**同步状态失败**。
+
+所以这里 acquireShared() 的流程就是：
 
 - **tryAcquireShared**() 尝试获取资源，成功则直接返回；
 - 失败则通过 doAcquireShared() 进入**等待队列**，**直到**获取到资源为止才返回。
@@ -417,7 +474,7 @@ private void doAcquireShared(int arg) {
 }
 ```
 
-有木有觉得跟 acquireQueued() 很相似？对，其实流程并没有太大区别。只不过这里将补中断的 selfInterrupt() 放到 doAcquireShared() 里了，而独占模式是放到 acquireQueued() 之外。
+有木有觉得跟 acquireQueued() 很**相似**？对，其实流程并没有太大区别。只不过这里将补中断的 selfInterrupt() 放到 doAcquireShared() 里了，而独占模式是放到 acquireQueued() 之外。
 
 跟独占模式比，还有一点需要注意的是，这里只有线程是 **head.next** 时（“老二”），才会去尝试获取资源，有剩余的话还会唤醒之后的队友。那么问题就来了，假如老大用完后释放了 5 个资源，而老二需要 6 个，老三需要 1 个，老四需要 2 个。老大先唤醒老二，老二一看资源不够，他是把资源让给老三呢，还是不让？答案是否定的！老二会继续 **park**() 等待其他线程释放资源，也更不会去唤醒老三和老四了。独占模式，同一时刻只有一个线程去执行，这样做未尝不可；但**共享模式下，多个线程是可以同时执行**的，现在因为老二的资源需求量大，而把后面量小的老三和老四也都卡住了。当然，这并不是问题，只是 AQS 保证严格按照**入队顺序唤醒**罢了（保证公平，但降低了并发）。
 
@@ -447,7 +504,7 @@ OK，至此，acquireShared() 也要告一段落了。让我们再梳理一下�
 
 其实跟 **acquire**() 的流程大同小异，只不过多了个**自己拿到资源后，还会去唤醒后继队友的操作（这才是共享嘛）**。
 
-##### 5. releaseShared()
+##### 5. 共享式释放同步状态releaseShared()
 
 上一小节已经把 acquireShared() 说完了，这一小节就来讲讲它的**反操作 releaseShared()** 吧。此方法是**共享模式下线程释放共享资源**的顶层入口。它会释放指定量的资源，如果成功释放且允许唤醒等待线程，它会唤醒等待队列里的其他线程来获取资源。下面是 releaseShared() 的源码：
 
@@ -494,9 +551,9 @@ private void doReleaseShared() {
 
 #### 应用实例
 
-##### 1. Mutex(互斥锁)
+##### 1. 自定义同步器Mutex(互斥锁)
 
-下面就以 AQS 源码里的 Mutex 为例，讲一下 AQS 的简单应用。
+下面就以 AQS 源码里的 Mutex 为例，讲一下 AQS 的简单应用。直接采用 JDK 官方文档中的小例子来说明问题。
 
 Mutex 是一个**不可重入的互斥锁**实现。锁资源（AQS 里的 state）只有**两种状态**：**0 表示未锁定，1 表示锁定**。下边是 Mutex 的核心源码：
 
@@ -559,6 +616,88 @@ class Mutex implements Lock, java.io.Serializable {
 
 除了 Mutex，ReentrantLock/CountDownLatch/Semphore 这些同步类的实现方式都差不多，不同的地方就在**获取-释放资源的方式 tryAcquire-tryRelelase**。掌握了这点，AQS 的核心便被攻破了！
 
+测试下这个自定义的同步器，我们使用之前文章中做过的并发环境下 a++ 的例子来说明问题（a++ 的原子性其实最好使用原子类 AtomicInteger 来解决，此处用 Mutex 有点大炮打蚊子的意味，好在能说明问题就好）。
+
+```java
+import java.util.concurrent.CyclicBarrier;
+
+public class TestMutex {
+    private static CyclicBarrier barrier = new CyclicBarrier(31);
+    private static int a = 0;
+    private static  Mutex mutex = new Mutex();
+
+    public static void main(String []args) throws Exception {
+        // 说明:我们启用30个线程，每个线程对i自加10000次，同步正常的话，最终结果应为300000；
+        // 未加锁前
+        for(int i = 0; i < 30;i++){
+            Thread t = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    for(int i = 0; i < 10000; i++){
+                        increment1();// 没有同步措施的a++；
+                    }
+                    try {
+                        barrier.await();// 等30个线程累加完毕
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            t.start();
+        }
+        barrier.await();
+        System.out.println("加锁前，a=" + a);
+        // 加锁后
+        barrier.reset();// 重置CyclicBarrier
+        a = 0;
+        for(int i = 0; i < 30; i++){
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    for(int i = 0; i < 10000; i++){
+                        // a++采用Mutex进行同步处理
+                        increment2();
+                    }
+                    try {
+                        barrier.await();// 等30个线程累加完毕
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+        }
+        barrier.await();
+        System.out.println("加锁后，a="+a);
+    }
+    /**
+     * 没有同步措施的a++
+     * @return
+     */
+    public static void increment1(){
+        a++;
+    }
+    /**
+     * 使用自定义的Mutex进行同步处理的a++
+     */
+    public static void increment2(){
+        mutex.lock();
+        a++;
+        mutex.unlock();
+    }
+}
+```
+
+测试结果。
+
+```java
+加锁前，a=279204
+加锁后，a=300000
+```
+
+
+
+
+
 
 
 ### AQS原理总结
@@ -615,7 +754,7 @@ ReentrantReadWriteLock 可以看成是组合式，因为 ReentrantReadWriteLock 
 
 AQS 底层使用了**模板方法模式**。同步器的设计是基于模板方法模式的，如果需要自定义同步器一般的方式是这样（模板方法模式很经典的一个应用）：
 
-1. 使用者继承 AbstractQueuedSynchronizer 并重写指定的方法。（这些重写方法很简单，无非是对于共享资源 state 的获取和释放）
+1. 使用者**继承 AbstractQueuedSynchronizer** 并重写指定的方法。（这些重写方法很简单，无非是对于共享资源 state 的获取和释放）
 2. 将 AQS 组合在自定义同步组件的实现中，并调用其模板方法，而这些模板方法会调用使用者重写的方法。
 
 这和我们以往通过实现接口的方式有很大区别，这是模板方法模式很经典的一个运用。
@@ -623,12 +762,21 @@ AQS 底层使用了**模板方法模式**。同步器的设计是基于模板方
 **AQS 使用了模板方法模式，自定义同步器时需要重写下面几个 AQS 提供的模板方法：**
 
 ```java
-isHeldExclusively() // 该线程是否正在独占资源。只有用到condition才需要去实现它
-tryAcquire(int)     // 独占方式。尝试获取资源，成功则返回true，失败则返回false
-tryRelease(int)     // 独占方式。尝试释放资源，成功则返回true，失败则返回false
-tryAcquireShared(int)// 共享方式。尝试获取资源。负数表示失败；0表示成功，但没有剩余可用资源；正数表示成功，且有剩余资源
-tryReleaseShared(int)// 共享方式。尝试释放资源，成功则返回true，失败则返回false
+// 独占式获取同步状态，试着获取，成功返回true，反之为false
+protected boolean tryAcquire(int arg);
+// 独占式释放同步状态，等待中的其他线程此时将有机会获取到同步状态
+protected boolean tryRelease(int arg);
+// 共享式获取同步状态，返回值大于等于0，代表获取成功；反之获取失败
+protected int tryAcquireShared(int arg);
+// 共享式释放同步状态，成功为true，失败为false
+protected boolean tryReleaseShared(int arg);
+// 是否在独占模式下被线程占用
+protected boolean isHeldExclusively();
 ```
+
+> **使用方式**
+
+首先，我们需要去继承 AbstractQueuedSynchronizer 这个类，然后我们根据我们的需求去**重写**相应的方法，比如要实现一个**独占锁**，那就去重写 tryAcquire，tryRelease 方法，要实现**共享锁**，就去重写 tryAcquireShared，tryReleaseShared；最后，在我们的组件中**调用 AQS 中的模板方法**就可以了，而这些模板方法是**会调用到我们之前重写的那些方法**的。也就是说，我们只需要很小的工作量就可以实现自己的**同步组件**，重写的那些方法，仅仅是一些简单的对于共享资源 **state 的获取和释放操作**，至于像是获取资源失败，线程需要阻塞之类的操作，自然是 AQS 帮我们完成了。
 
 默认情况下，每个方法都抛出 `UnsupportedOperationException`。 这些方法的实现必须是内部线程安全的，并且通常应该简短而不是阻塞。AQS 类中的其他方法都是 final ，所以无法被其他类使用，只有这几个方法可以被其他类使用。
 

@@ -2,21 +2,21 @@
 
 ### 原子变量与CAS
 
-之前的 Java 内存模型中提到，一些看起来是原子的操作其实不是滴。比如
+之前的 Java 内存模型中提到，一些**看起来是原子**的操作其实不是滴。比如
 
 ```java
-cnt++;
+count++;
 ```
 
-这一步自增操作在内存中会存在好几个步骤。
+这一步自增操作在内存中会存在好几个步骤。针对 cnt++ 这类**复合**操作，可以使用并发包中的原子操作类。原子操作类是通过循环 **CAS** 的方式来保证其原子性的。
 
 
 
+#### 原子变量的基本概念
 
+##### 1. **悲观的解决方案（阻塞同步）**
 
-#### 1 原子变量的基本概念
-
-原子变量保证了该**变量的**所有操作都是**原子**的，不会因为多线程的同时访问而导致脏数据的读取问题。我们先看一段 synchronized 关键字保证变量原子性的代码：
+在并发环境下，如果不做任何同步处理，就会有线程安全问题。最直接的处理方式就是**加锁**。我们先看一段 **synchronized** 关键字保证变量原子性的代码：
 
 ```java
 public class Counter {
@@ -30,26 +30,46 @@ public class Counter {
 
 简单的 count++ 操作，线程对象首先需要获取到 Counter 类实例的**对象锁**，然后完成自增操作，最后释放对象锁。整个过程中，无论是获取锁还是释放锁都是相当**消耗成本**的，一旦不能获取到锁，还需要**阻塞**当前线程等等。
 
+使用独占锁机制来解决，是一种**悲观的**并发策略，抱着一副“总有刁民想害朕”的态势，每次操作数据的时候都认为别的线程会参与竞争修改，所以直接加锁。同一刻只能有一个线程持有锁，那其他线程就会阻塞。线程的挂起恢复会带来很大的性能开销，尽管 JVM 对于非竞争性的锁的获取和释放做了很多优化，但是一旦有多个线程竞争锁，频繁的阻塞唤醒，还是会有很大的性能开销的。所以，使用 synchronized 或其他重量级锁来处理显然不够合理。
+
+##### 2. **乐观的解决方案（非阻塞同步）**
+
 对于这种情况，我们可以将 count 变量声明成**原子变量**，那么对于 count 的自增操作都可以以**原子的**方式进行，就不存在脏数据的读取了。
 
-原子变量最主要的一个特点就是所有的操作都是**原子**的，synchronized 关键字也可以做到对变量的原子操作。只是 synchronized 的成本相对较高，需要获取锁对象，释放锁对象，如果不能获取到锁，还需要阻塞在阻塞队列上进行等待。而如果单单只是为了解决对**变量的原子操作**，建议使用原子变量。
+乐观的解决方案，顾名思义，就是很大度乐观，每次操作数据的时候，**都认为别的线程不会参与竞争修改**，也不加锁。如果操作成功了那最好；如果失败了，比如中途确有别的线程进入并修改了数据（依赖于冲突检测），也不会阻塞，可以采取一些补偿机制，一般的**策略就是反复重试**。很显然，这种思想相比简单粗暴利用锁来保证同步要合理的多。
+
+**原子变量**最主要的一个特点就是所有的操作都是**原子**的，synchronized 关键字也可以做到对变量的原子操作。只是 synchronized 的成本相对较高，需要获取锁对象，释放锁对象，如果不能获取到锁，还需要阻塞在阻塞队列上进行等待。而如果单单只是为了解决对**变量的原子操作**，建议使用原子变量。
 
 Java 给我们提供了以下几种**原子类型**：
 
-- **AtomicInteger** 和 **AtomicIntegerArray**：基于 Integer 类型
+- **AtomicInteger** 和 **AtomicIntegerArray**：基于 **Integer** 类型
 - **AtomicBoolean**：基于 Boolean 类型
 - **AtomicLong** 和 **AtomicLongArray**：基于 Long 类型
 - **AtomicReference** 和 **AtomicReferenceArray**：基于**引用**类型
 
-以下将主要介绍 AtomicInteger 和 AtomicReference 两种类型，AtomicBoolean  和AtomicLong 的使用和内部实现原理几乎和 AtomicInteger 一样。
+以下将主要介绍 AtomicInteger 和 AtomicReference 两种类型，AtomicBoolean  和 AtomicLong 的使用和内部实现原理几乎和 AtomicInteger 一样。
+
+原子变量保证了该**变量的**所有操作都是**原子**的，不会因为多线程的同时访问而导致脏数据的读取问题。
+
+##### 3. 原子变量与 synchronized 比较
+
+从思维模式上看，原子变量代表一种==**乐观的非阻塞式**==思维，它假定更新冲突比较少，假定没有别人会和我同时操作某个变量，于是在实际修改变量的值的之前不会锁定该变量，但是修改变量的时候是使用 CAS 进行的，一旦发现冲突，**继续尝试**直到成功修改该变量。
+
+而 synchronized 关键字则是一种**悲观的阻塞式**思维，它假定先更新很可能冲突，认为所有人都会和自己同时来操作某个变量，于是在将要操作该变量之前会**加锁**来锁定该变量，得不到锁的时候进入**等待队列**，因此会有**线程切换**等开销，进而继续操作该变量。
 
 
 
+#### CAS
+
+随着硬件指令集的发展，我们可以使用基于**冲突检测的乐观并发策略**：先进行操作，如果没有其它线程争用共享数据，那操作就成功了，否则采取补偿措施（不断地重试，直到成功为止）。这种乐观的并发策略的许多实现都不需要将线程阻塞，因此这种同步操作称为非阻塞同步。
+
+乐观锁需要操作和冲突检测这两个步骤具备原子性，这里就不能再使用互斥同步来保证了，只能靠硬件来完成。硬件支持的原子性操作最典型的是：**比较并交换（Compare-and-Swap，CAS）**。CAS 指令需要有 3 个操作数，分别是内存地址 V、旧的预期值 A 和新值 B。当执行操作时，只有当 V 的值等于 A，才将 V 的值更新为 B。
 
 
-#### 2 AtomicInteger
 
-##### ① AtomicInteger 的基本使用
+#### AtomicInteger
+
+##### 1. AtomicInteger 的基本使用
 
 ​     首先看它的两个构造函数：
 
@@ -130,30 +150,17 @@ public static void main(String[] args) throws InterruptedException {
 value: 100
 ```
 
+##### 2. AtomicInteger源码解析
 
+###### ① Java8之前
 
-##### ② AtomicInteger ==源码解析==
-
-AtomicInteger的实现原理有点像我们的**包装类**，内部主要操作的是 value 字段，这个字段**保存**就是原子变量的数值。value 字段定义如下：
+AtomicInteger 的实现原理有点像我们的**包装类**，内部主要操作的是 **value 字段**，这个字段**保存**就是原子变量的数值。value 字段定义如下：
 
 ```java
 private volatile int value;
 ```
 
 首先 value 字段被 volatile 修饰，即**不存在内存可见性问题**。由于其内部实现原子操作的代码几乎类似，我们主要学习下 **incrementAndGet** 方法的实现。
-
-在揭露该方法的实现原理之前，我们先看另一个方法：
-
-```java
-// ※ CAS方法
-public final boolean compareAndSet(int expect, int update{
-     return unsafe.compareAndSwapInt(this, valueOffset, expect, update);
-}
-```
-
-==**compareAndSet** 方法==又被称为 ==CAS==（**比较并设置**），该方法调用 **unsafe** 的一个 **compareAndSwapInt** 方法，这个方法是 **native**，我们看不到源码，但是我们需要知道该方法完成的一个目标：比较当前原子变量的值**是否等于 expect**，如果是则将其修改为 **update** 并返回 **true**，否则直接返回 false。即**如果与期望值相等才更新，否则不更新**。当然，这个操作本身就是原子的，较为底层的实现。
-
-在 Jdk1.7 之前，我们的 incrementAndGet 方法是这样实现的 (后来变了......)：
 
 ```java
 public final int incrementAndGet() {
@@ -175,12 +182,34 @@ public final int incrementAndGet() {
 
 incrementAndGet 方法的一个很核心的思想是，在加一之前先去看看 value 的值是多少，**真正加**的时候再去看一下，如果发现变了，不操作数据，否则为 value 加一。
 
-但是在 jdk1.8 以后，做了一些**优化**，但是最后还是调用的 **compareAndSwapInt** 方法。但基本思想还是没变。
+调用了 compareAndSet 方法。
+
+```java
+// ※ CAS方法
+public final boolean compareAndSet(int expect, int update) {
+     return unsafe.compareAndSwapInt(this, valueOffset, expect, update);
+}
+```
+
+==**compareAndSet** 方法==又被称为 **==CAS==**（**比较并设置**），该方法调用 **unsafe** 的一个 **compareAndSwapInt** 方法，这个方法是 **native**，我们看不到源码，但是我们需要知道该方法完成的一个目标：比较当前原子变量的值**是否等于 expect**，如果是则将其修改为 **update** 并返回 **true**，否则直接返回 false。即**如果与期望值相等才更新，否则不更新**。当然，这个操作本身就是原子的，较为底层的实现。
+
+###### ② Java8
+
+但是在 JDK8 以后，做了一些**优化**，但是最后还是调用的 **compareAndSwapInt** 方法。但基本思想还是没变。
+
+内部依然 有 value 变量保存数值，构造方法传入数值。
+
+```java
+private volatile int value;
+
+public AtomicInteger(int initialValue) {
+    value = initialValue;
+}
+```
 
 Java8 中 **incrementAndGet**() 方法。
 
 ```java
-
 private static final jdk.internal.misc.Unsafe U = jdk.internal.misc.Unsafe.getUnsafe();
 
 public final int incrementAndGet() {
@@ -188,6 +217,8 @@ public final int incrementAndGet() {
     return U.getAndAddInt(this, VALUE, 1) + 1;
 }
 ```
+
+Java8 之后很多操作都放到 Unsafe 类中了。如下：
 
 ```java
 // UnSafe中的getAndAddInt
@@ -207,11 +238,7 @@ public final native boolean compareAndSetInt(Object o, long offset, int expected
 
 
 
-
-
-
-
-#### 3 AtomicReference
+#### AtomicReference
 
 对于一些**自定义类或者字符串**等这些==**引用类型**==，Java 并发包也提供了原子变量的接口支持。AtomicReference 内部使用**泛型**来实现的。
 
@@ -239,7 +266,7 @@ AtomicReference 中**少了**一些自增自减的操作，但是对于 value �
 
 
 
-#### 4 使用 FieldUpdater 操作非原子变量的字段属性
+#### 使用FieldUpdater操作非原子变量的字段属性
 
 **FieldUpdater** 允许我们**不必**将字段设置为**原子变量**，利用**反射**直接以**原子方式操作字段**。例如：
 
@@ -266,9 +293,9 @@ public class Counter {
 
 
 
+####  ABA问题
 
-
-####  5 ABA问题
+普通的原子变量可能也会存在问题。
 
 我们的原子变量都依赖一个核心的方法，那就是 **CAS**。这个方法最核心的思想就是，更改变量值之前先获取该变量当前最新的值，然后在实际更改的时候再次获取该变量的值，如果没有被修改，那么进行更改，否则**循环**上述操作直至更改操作完成。
 
@@ -287,15 +314,9 @@ public static void main(String[] args){
 }
 ```
 
-AtomicStampedReference 的 CA S方法要求传入**四个参数**，该方法的内部会同时比较 count 和 stamp，只有这两个值都没有发生改变的前提下，CAS 才会修改 count 的值。
+**AtomicStampedReference** 的 CAS 方法要求传入**四个参数**，该方法的内部会同时比较 count 和 stamp，只有这两个值都没有发生改变的前提下，CAS 才会修改 count 的值。
 
 
-
-#### 6 原子变量与 synchronized 比较
-
-从思维模式上看，原子变量代表一种==**乐观的非阻塞式**==思维，它假定更新冲突比较少，假定没有别人会和我同时操作某个变量，于是在实际修改变量的值的之前不会锁定该变量，但是修改变量的时候是使用 CAS 进行的，一旦发现冲突，**继续尝试**直到成功修改该变量。
-
-而 synchronized 关键字则是一种**悲观的阻塞式**思维，它假定先更新很可能冲突，认为所有人都会和自己同时来操作某个变量，于是在将要操作该变量之前会**加锁**来锁定该变量，得不到锁的时候进入**等待队列**，因此会有**线程切换**等开销，进而继续操作该变量。
 
 
 
