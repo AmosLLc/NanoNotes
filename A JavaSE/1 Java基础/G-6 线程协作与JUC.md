@@ -1304,13 +1304,11 @@ public class TestThread extends Thread {
 
 
 
-
-
 ### 三、JUC其他组件
 
 #### FutureTask
 
-在介绍 Callable 时我们知道它可以有**返回值**，**返回值**通过 **Future** 进行封装。FutureTask 实现了 **RunnableFuture** 接口，该接口继承自 **Runnable** 和 **Future** 接口，这使得 **FutureTask 既可以当做一个任务执行，也可以有返回值。**
+在介绍 Callable 时我们知道它可以有**返回值**，**返回值**通过 **Future** 进行封装。**FutureTask** 实现了 **RunnableFuture** 接口，该接口继承自 **Runnable** 和 **Future** 接口，这使得 **FutureTask 既可以当做一个任务执行，也可以有返回值。**
 
 ```java
 public interface RunnableFuture<V> extends Runnable, Future<V>
