@@ -21,6 +21,22 @@ Scope 用来声明容器中的对象所应该处的限定场景或者说该对�
 - **session**: 为每一个独立的 **session** 创建一个全新的 bean 对象，session 结束之后，该 bean 对象的生命周期即告结束。
 - **global session**: global session只有应用在基于 portlet的Web应用程序中才有意义，它映射到portlet的global范围的 session。用得少。
 
+注意：singleton 的对象在 IOC 容器创建的时候就会创建。在不指定 @Scope 的情况下，所有的 bean 都是**单实例**的 bean, 而且是**饿汉加载**（容器启动实例就创建好了）。
+
+指定 @Scope 为 **prototype** 表示为**多实例**的，而且还是**懒汉模式**加载（IOC 容器启动的时候，并不会创建对象，而是在第一次使用的时候才会创建。
+
+如果对 singleton 的 bean 指定为 **@Lazy 懒加载**，那么会在第一次使用时创建。Bean 的懒加载 @Lazy (主要针对**单实例**的bean 容器启动的时候，不创建对象，在第一次使用的时候才会创建该对象)  。
+
+````java
+@Bean
+@Lazy
+public Person person() {
+    return new Person();
+}
+````
+
+
+
 
 
 
@@ -43,13 +59,13 @@ Spring 容器将对其所管理的对象全部给予**统一的生命周期**管
 
 
 
-#### BeanFactory 与 FactoryBean
+#### BeanFactory 与FactoryBean
 
  两个特别像，但是功能却千差万别。有关于 **BeanFactory**，我们都知道，这是 Spring **容器的基础实现类**，它负责生产和管理 Bean 的一个**工厂**。当然 BeanFactory 只是一个**接口**，它的常用实现有 XmlBeanFactory、DefaultListableBeanFactory、**ApplicationContext **等。
 
 ![1573545313232](assets/1573545313232.png)
 
-FactoryBean 是一个接口，具体方法如下： 
+FactoryBean 是一个**接口**，具体方法如下： 
 
 ```java
 public interface FactoryBean<T> {
@@ -62,7 +78,7 @@ public interface FactoryBean<T> {
 }
 ```
 
-**我们常规的 Bean 都是使用 Class 的反射获取具体实例，如果 Bean 的获取过程比较复杂，那么常规的 xml 配置需要配置大量属性值，这个时候我们就可以使用 FactoryBean，实现这个接口，在其 getObject() 方法中初始化这个 bean。** 
+**我们常规的 Bean 都是使用 Class 的反射获取具体实例，如果 Bean 的获取过程比较==复杂==，那么常规的 xml 配置需要配置大量属性值，这个时候我们就可以使用 FactoryBean，实现这个接口，在其 getObject() 方法中初始化这个 bean。** 
 
 FactoryBean 使用实例：
 
@@ -121,21 +137,19 @@ Student(id=10, name=test:jj, age=22)
 
 小结：
 
-  **BeanFactory：工厂类接口，Spring容器的核心接口，实例化bean、配置bean之间的依赖关系**
+- **BeanFactory：工厂类接口，Spring 容器的核心接口，实例化 bean、配置 bean 之间的依赖关系**
 
-  **FactoryBean：实例化bean过程比较复杂时可以考虑使用**
+- **FactoryBean：实例化 bean 过程比较复杂时可以考虑使用**
 
 
 
 #### Bean配置方式
 
- 对于 Spring 来讲，为实现 Bean 的信息定义，提供了基于 XML、基于注解、基于JAVA类、基于Groovy这4种选项，同事还允许各种配置方式复合共存。 
+ 对于 Spring 来讲，为实现 Bean 的信息定义，提供了基于 XML、基于注解、基于 JAVA 类、基于 Groovy 这 4 种选项，同事还允许各种配置方式复合共存。 
 
 几种配置方式对比：
 
 ![1573547101474](assets/1573547101474.png)
-
-
 
 
 
@@ -208,12 +222,6 @@ public void refresh() throws BeansException, IllegalStateException {
         }
 }
 ```
-
-
-
-
-
-
 
 
 
@@ -407,9 +415,9 @@ public class User {
 
 ##### 注解@Autowired
 
-getBean() 方法支持根据类型和名称来获取对应的bean。@Autowired注解首先根据类型去寻找对应的bean，找不到再根据属性名称和bean名称来寻找bean。默认必须找到对应Bean，否则报错。
+getBean() 方法支持根据类型和名称来获取对应的 bean。@Autowired 注解首先根据类型去**寻找对应的 bean**，找不到再根据**属性名称和 bean 名称**来寻找 bean。默认必须找到对应 Bean，否则报错（可以使用 required = false 关闭必须装配）。
 
-可以标注在属性上，也可以标注在方法上，还可以标注在入参上。
+可以标注在**属性**上，也可以标注在方法上，还可以标注在入参上。
 
 ```java
 @Autowired	
@@ -430,9 +438,9 @@ public BussinessPerson(@Autowired Animal animal) {
 }
 ```
 
-##### 使用@Primary 与 @Qualifier 消除歧义问题
+##### 使用@Primary与@Qualifier消除歧义问题
 
-两个接口:动物与人接口。
+两个接口：动物与人接口。
 
 ```java
 public interface Person {
@@ -484,9 +492,9 @@ public class BussinessPerson implements Person{
 }
 ```
 
-上述BussinessPerson 中自动注入实现了动物接口的类，此时容器中只有Dog类，因此注入Dog的实例。
+上述 BussinessPerson 中自动注入实现了动物接口的类，此时容器中实现了 Animal 接口的**只有 Dog 类**，因此注入 Dog 的实例。
 
-再实现一个动物类。
+如果再实现一个动物类。
 
 **猫类**
 
@@ -501,13 +509,13 @@ public class Cat implements Animal {
 }
 ```
 
-此时有Dog类和Cat类实现了Animal接口。
+此时同时有 Dog 类和 Cat 类实现了 Animal 接口。
 
-此时 BussinessPerson 的自动注入会报错，因为不知道注入哪一个实例。产生注入失败是因为按类型查找，动物Animal类有多个类型，这就是存在歧义。
+此时 BussinessPerson 的自动注入会报错，因为**不知道注入哪一个**实例。产生注入失败是因为**按类型查找**，动物 Animal 接口有多个类型，这就是存在歧义。
 
 ###### @Primary 与 @Qualifier 注解
 
-注解 @Primary 可以修改优先权。比如在 Cat 类上使用此注解。
+注解 @Primary 可以修改**优先权**。比如在 Cat 类上使用此注解。
 
 ```java
 @Component
@@ -515,11 +523,11 @@ public class Cat implements Animal {
 public class Cat implements Animal {...}
 ```
 
-此时容器会优先注入Cat 实例到 Animal 中。
+此时容器会优先注入 Cat 实例到 Animal 中。
 
-@Primary 也可以用在多个类上，此时也会有歧义，可以使用 @Qualifier 注解。
+@Primary 也可以用在多个类上，此时也会有歧义，可以使用 **@Qualifier 注解**。
 
-@Qualifier 注解的配置项value 需要一个字符串去定义，它可以与 @Autowired 一起去通过类型域名称一起寻找 Bean。如下。
+@Qualifier 注解的配置项 **value** 需要一个字符串去定义，它可以与 @Autowired 一起去通过**类型域名称一起寻找 Bean**。如下。此时注入的就是 Dog 类的实例。
 
 ```java
 @Autowired
@@ -533,7 +541,7 @@ Animal animal = null;
 
 - Bean定义、Bean初始化、Bean生存期、Bean销毁。
 
-##### Spring 初始化 Bean流程
+##### Spring初始化Bean流程
 
 - 资源定位(例如@ComponentScan所定义的扫描包)
 - Bean定义(将Bean的定义保存到BeanDefinition的实例中)
@@ -547,9 +555,18 @@ Animal animal = null;
 
 ![1564994754829](assets/1564994754829.png)
 
-- 可以使用@Bean来配置自定义初始化和销毁方法
+- 可以使用 @Bean 来配置自定义初始化和销毁方法
 
 > @Bean(initMethod = "init", destroyMethod = "destroy")
+
+---
+
+针对单实例 bean，容器启动的时候，bean 的对象就创建了，而且容器销毁的时候，也会调用 Bean 的销毁方法。
+针对多实例 bean 的话,容器启动的时候，bean 是不会被创建的而是在获取 bean 的时候被创建，而且 bean 的销毁不受 IOC 容器的管理。销毁之后由 GC 处理。
+
+
+
+
 
 
 
@@ -609,11 +626,11 @@ public class IoCTest{
 
 #### 条件装配Bean
 
-满足一定条件才装配Bean，否则不装配，比如数据库配置信息不全就不装配。
+满足一定条件才装配 Bean，否则不装配，比如数据库配置信息不全就不装配。
 
 ##### @Conditional 注解
 
-用于条件装配Bean，需要配合Condition接口使用。
+用于条件装配 Bean，需要配合 Condition 接口使用。
 
 ```java
 @Configuration
@@ -643,15 +660,13 @@ public class AppConfig {
 		return dataSource;
 	}
 }	
-	
-	
 ```
 
 上述的
 
 > @Conditional(DatabaseConditional.class)
 
-传入了DatabaseConditional 类，传入 @Conditional 注解的类需要实现Condition接口。
+传入了DatabaseConditional 类，传入 @Conditional 注解的类需要实现 Condition 接口。
 
 ```java
 import org.springframework.context.annotation.Condition;
@@ -676,7 +691,7 @@ public class DatabaseConditional implements Condition {
 }
 ```
 
-只有满足了上述的条件，才会装配 DataSource 。
+只有满足了**上述的条件**，才会**装配** DataSource 。
 
 
 
@@ -808,6 +823,144 @@ public class Customer {
 - \#{...}  代表启用Spring表达式，它将具有运算的功能。
 
 
+
+#### 添加组件的注解
+
+往 IOC 容器**添加组件**的注解。
+
+① 通过 @CompentScan +@Controller @Service @Respository @compent
+
+适用场景: 针对我们**自己写的组件**可以通过该方式来进行加载到容器中。
+
+② 通过 @Bean 的方式来导入组件(适用于导入**第三方组件**的类)。
+
+③ 通过 @Import 来**导入组件** （导入组件的 id 为全类名路径）。也可以导入**第三方**组件。
+
+```java
+@Configuration
+@Import(value = {Person.class, Car.class})
+public class MainConfig {
+}
+```
+
+通过 @Import 的 ImportSeletor 类实现组件的导入 (导入组件的 id 为全类名路径)  。**自动装配**原理经常使用。
+
+```java
+public class TulingImportSelector implements ImportSelector {
+    // 可以获取导入类的注解信息
+    @Override
+    public String[] selectImports(AnnotationMetadata importingClassMetadata) {
+        return new String[]{"com.tuling.testimport.compent.Dog"};
+    }
+}   
+```
+
+使用这个 TulingImportSelector。
+
+```java
+@Configuration
+@Import(value = {Person.class, Car.class, TulingImportSelector.class})
+public class MainConfig {
+}
+```
+
+通过 @Import 的 **ImportBeanDefinitionRegister** 导入组件 (可以指定 bean 的名称）。Bean **定义注册器**。
+
+```java
+public class TulingBeanDefinitionRegister implements ImportBeanDefinitionRegistrar {
+    @Override
+    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+        // 创建一个bean定义对象
+        RootBeanDefinition rootBeanDefinition = new RootBeanDefinition(Cat.class);
+        // 把bean定义对象导入到容器中
+        registry.registerBeanDefinition("cat", rootBeanDefinition);
+    }
+}
+```
+
+```java
+@Configuration
+//@Import(value = {Person.class, Car.class})
+//@Import(value = {Person.class, Car.class, TulingImportSelector.class})
+@Import(value = {Person.class, Car.class, TulingImportSelector.class, TulingBeanDefinitionRegister.class})
+public class MainConfig {
+}
+```
+
+④ 通过实现 **FacotryBean 接口**来实现添加组件。整合第三方的复杂初始化对象。典型的是 SqlSessionFactoryBean 组件。
+
+```java
+public class CarFactoryBean implements FactoryBean<Car> {
+    // 返回bean的对象
+    @Override
+    public Car getObject() throws Exception {
+        return new Car();
+    } 
+    // 返回bean的类型
+    @Override
+    public Class<?> getObjectType() {
+        return Car.class;
+    } 
+    // 是否为单例
+    @Override
+    public boolean isSingleton() {
+        return true;
+    }
+}
+```
+
+注入这个组件。
+
+```java
+@Configuration
+@ImportResource(locations = {"classpath:beans.xml"})
+public class MainConfig {
+
+    @Bean
+    public CarFactoryBean carFactoryBean() {
+        return new CarFactoryBean();
+    }
+}
+```
+
+
+
+#### 属性值的设置
+
+通过 @Value +@PropertySource 来给组件赋值。
+
+先来个 properties 文件。
+
+```java
+person.lastName=Jack
+```
+
+```java
+public class Person {
+    // 通过普通的方式
+    @Value("Tom")
+    private String firstName;
+    // spel方式来赋值
+    @Value("#{28-8}")
+    private Integer age;
+    // 通过读取外部配置文件的值
+    @Value("${person.lastName}")
+    private String lastName;
+}
+```
+
+这里需要把配置文件加载到容器中。
+
+```java
+@Configuration
+@PropertySource(value = {"classpath:person.properties"}) // 指定外部配置文件的位置
+public class MainConfig {
+    @Bean
+    public Person person() {
+        return new Person();
+    }
+}
+```
 
 
 

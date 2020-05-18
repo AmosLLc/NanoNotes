@@ -1308,7 +1308,9 @@ public class TestThread extends Thread {
 
 #### FutureTask
 
-在介绍 Callable 时我们知道它可以有**返回值**，**返回值**通过 **Future** 进行封装。**FutureTask** 实现了 **RunnableFuture** 接口，该接口继承自 **Runnable** 和 **Future** 接口，这使得 **FutureTask 既可以当做一个任务执行，也可以有返回值。**
+在介绍 Callable 时我们知道它可以有**返回值**，**返回值**通过 **Future** 进行封装。
+
+**FutureTask** 实现了 **RunnableFuture** 接口，该接口继承自 **Runnable** 和 **Future** 接口，这使得 **FutureTask 既可以当做一个==任务==执行，也可以有返回值。**
 
 ```java
 public interface RunnableFuture<V> extends Runnable, Future<V>
@@ -1366,8 +1368,6 @@ FutureTask计算完成时间:1582793226518
 
 
 
-
-
 #### ForkJoin
 
 主要用于**并行计算**中，和 **MapReduce** 原理类似，都是把大的计算任务**拆分**成多个**小任务**并行计算。
@@ -1395,6 +1395,7 @@ public class ForkJoinExample extends RecursiveTask<Integer> {
         } else {
             // 拆分成小任务
             int middle = first + (last - first) / 2;
+            // 继续拆分任务
             ForkJoinExample leftTask = new ForkJoinExample(first, middle);
             ForkJoinExample rightTask = new ForkJoinExample(middle + 1, last);
             leftTask.fork();
@@ -1413,7 +1414,7 @@ public static void main(String[] args) throws ExecutionException, InterruptedExc
 }
 ```
 
-ForkJoin 使用 **ForkJoinPool** 来启动，它是一个特殊的线程池，线程数量取决于 **CPU 核数**。
+ForkJoin 使用 **ForkJoinPool** 来启动，它是一个特殊的**线程池**，线程数量取决于 **CPU 核数**。
 
 ```java
 public class ForkJoinPool extends AbstractExecutorService
@@ -1421,27 +1422,23 @@ public class ForkJoinPool extends AbstractExecutorService
 
 ForkJoinPool 实现了**工作窃取算法**来提高 CPU 的利用率。每个线程都维护了一个**双端队列**，用来存储需要执行的任务。工作窃取算法允许空闲的线程从其它线程的双端队列中**窃取一个任务**来执行。窃取的任务必须是**最晚的**任务，**避免和队列所属线程发生竞争**。例如下图中，Thread2 从 Thread1 的队列中拿出 futureTask的 Task1 任务，Thread1 会拿出 Task2 来执行，这样就避免发生竞争。但是如果队列中**只有一个任务**时还是会发生竞争。
 
-![1582793895071](file://C:/Users/nano/Desktop/project/JavaNotes/A%20JavaSE/1%20Java%E5%9F%BA%E7%A1%80/assets/G-5%20%E5%8D%8F%E4%BD%9C%E4%B8%8E%E5%90%8C%E6%AD%A5%E5%B7%A5%E5%85%B7%E7%B1%BB/1582793895071.png?lastModify=1589250095)
-
-
+<img src="assets/image-20200516222251270.png" alt="image-20200516222251270" style="zoom:70%;" />
 
 
 
 #### ConcurrentLinkedQueue
 
-##### ① 定义
+##### 1. 定义
 
-**ConcurrentLinkedQueue** : 是一个适用于高并发场景下的队列，通过**无锁**的方式，实现了高并发状态下的高性能，通常 ConcurrentLinkedQueue 性能好于 BlockingQueue。 
+**ConcurrentLinkedQueue** : 是一个适用于**高并发场景下的队列**，通过==**无锁**==的方式，实现了高并发状态下的高性能，通常 ConcurrentLinkedQueue 性能好于 BlockingQueue。 
 它是一个基于**链接节点**的**无界线程安全队列**，该队列的元素遵循**先进先出**的原则。 **头是最先加入的，尾是最近加入的，该队列不允许 null 元素。**
 
-ConcurrentLinkedQueue重要方法:
+ConcurrentLinkedQueue 重要方法（这些都是 Queue 接口中的方法）:
 
-> **add 和offer()** ：都是加入元素的方法(在 ConcurrentLinkedQueue 中这俩个方法没有任何区别) 
-> **poll() 和peek()** ：都是取头元素节点，区别在于前者会删除元素，后者不会。
+> **add() 和 offer()** ：都是加入元素的方法(在 ConcurrentLinkedQueue 中这俩个方法没有任何区别) 。
+> **poll() 和 peek()** ：都是取头元素节点，区别在于前者会删除元素，后者不会。
 
-
-
-##### ② 代码示例
+##### 2. 代码示例
 
 ```java
 ConcurrentLinkedQueue q = new ConcurrentLinkedQueue();
@@ -1460,25 +1457,29 @@ System.out.println(q.size());
 
 
 
-
-
 #### BlockingQueue
 
-BlockingQueue 是一个接口，继承了 Queue 接口。
+BlockingQueue 是一个**接口**，继承了 Queue 接口。
 
 ```java
 public interface BlockingQueue<E> extends Queue<E> 
 ```
 
-##### ① 基本定义 
+##### 1. 基本定义
 
-阻塞队列（BlockingQueue）是一个支持两个附加操作的队列。这两个附加的操作是： 
+阻塞队列（BlockingQueue）是一个支持**两个附加操作**的队列。这两个附加的操作是： 
+
 1、在队列为**空**时，获取元素的**线程会等待队列**变为非空。 
 2、当队列**满**时，存储元素的**线程会等待队列**可用。 
+
+提供了**阻塞的 take() 和 put() 方法**：如果队列为空 take() 将**阻塞**，**直到**队列中有内容；如果队列为满 put() 将**阻塞**，直到队列有空闲位置。
+
 阻塞队列是**线程安全**的。 
 
-![1582800480656](G-6 线程协作与JUC.assets/1582800480656.png)**用途：** 
-阻塞队列常用于生产者和消费者的场景，生产者是往队列里添加元素的线程，消费者是从队列里拿元素的线程。阻塞队列就是生产者存放元素的容器，而消费者也只从容器里拿元素。
+<img src="G-6 线程协作与JUC.assets/1582800480656.png" alt="1582800480656" style="zoom:47%;" />
+
+**用途：** 
+阻塞队列常用于**生产者和消费者**的场景，生产者是往队列里添加元素的线程，消费者是从队列里拿元素的线程。阻塞队列就是生产者存放元素的**容器**，而消费者也只从容器里拿元素。
 
 | operation | Throws Exception | Special Value | Blocks |          Times Out          |
 | :-------: | :--------------: | :-----------: | :----: | :-------------------------: |
@@ -1499,16 +1500,14 @@ public interface BlockingQueue<E> extends Queue<E>
 
 java.util.concurrent.**BlockingQueue** 接口有以下**阻塞队列**的实现：
 
-- **FIFO 队列** ：LinkedBlockingQueue、ArrayBlockingQueue（固定长度）
-- **优先级队列** ：PriorityBlockingQueue
-
-提供了阻塞的 take() 和 put() 方法：如果队列为空 take() 将**阻塞**，**直到**队列中有内容；如果队列为满 put() 将**阻塞**，直到队列有空闲位置。
-
-BlockingQueue 接口有众多**实现类**，如下所属。
+- **FIFO 队列** ：**LinkedBlockingQueue**、**ArrayBlockingQueue**（固定长度）
+- **优先级队列** ：**PriorityBlockingQueue**
 
 
 
-##### ② ArrayBlockingQueue
+BlockingQueue 接口有众多**实现类**，如下所示。
+
+##### 2. ArrayBlockingQueue
 
 **重要方法**
 
@@ -1523,8 +1522,8 @@ offer(E e, long timeout, TimeUnit unit)
 
 **定义**
 
-ArrayBlockingQueue 是一个**有边界**的阻塞队列，它的内部实现是一个**数组**。 有边界的意思是它的容量是有限的，我们必须在其初始化的时候指定它的容量大小，容量大小一旦指定就**不可改变**。 
-ArrayBlockingQueue是以**先进先出**的方式存储数据，最新插入的对象是尾部，最新移出的对象是头部。
+ArrayBlockingQueue 是一个**有边界**的阻塞队列，它的内部实现是一个**数组**。 有边界的意思是它的**容量是有限**的，我们必须在其初始化的时候指定它的容量大小，容量大小一旦指定就**不可改变**。 
+ArrayBlockingQueue 是以**先进先出**的方式存储数据，最新插入的对象是**尾部**，最新移出的对象是**头部**。
 
 下面是一个初始化和使用 ArrayBlockingQueue 的例子：
 
@@ -1540,13 +1539,11 @@ System.out.println(a);
 // 运行结果：false
 ```
 
-
-
-##### ③ LinkedBlockingQueue
+##### 3. LinkedBlockingQueue
 
 **定义**
 
-LinkedBlockingQueue 阻塞队列大小的配置是可选的， 如果我们初始化时指定一个大小，它就是有边界的，如果不指定，它就是无边界的。 说是无边界，其实是采用了默认大小为 Integer.MAX_VALUE 的容量 。它的内部实现是一个**链表**。 和 ArrayBlockingQueue 一样，LinkedBlockingQueue 也是以**先进先出**的方式存储数据，最新插入的对象是尾部，最新移出的对象是头部。
+LinkedBlockingQueue 阻塞队列**大小的配置是可选**的， 如果我们初始化时指定一个大小，它就是有边界的，如果不指定，它就是**无边界**的。 说是无边界，其实是采用了默认大小为 Integer.MAX_VALUE 的容量 。它的内部实现是一个**链表**。 和 ArrayBlockingQueue 一样，LinkedBlockingQueue 也是以**先进先出**的方式存储数据，最新插入的对象是**尾部**，最新移出的对象是**头部**。
 
 下面是一个初始化和使用 LinkedBlockingQueue 的例子：
 
@@ -1560,33 +1557,31 @@ System.out.println(lbq.size());
 // 运行结果：3
 ```
 
-
-
-##### ④ PriorityBlockingQueue
+##### 3. PriorityBlockingQueue
 
 **定义**
 
-PriorityBlockingQueue 是一个**没有边界**的队列，它的排序规则和 java.util.PriorityQueue 一样。需要注意，PriorityBlockingQueue 中**允许插入null**对象。 
+PriorityBlockingQueue 是一个**没有边界**的队列，它的排序规则和 java.util.**PriorityQueue** 一样。需要注意，PriorityBlockingQueue 中**允许插入 null **对象。 
+
 所有插入 PriorityBlockingQueue 的对象必须实现  java.lang.**Comparable** 接口，队列**优先级**的排序规则就是按照我们对这个接口的实现来定义的。 
+
 另外，我们可以从 PriorityBlockingQueue 获得一个**迭代器 Iterator**，但这个迭代器并不保证按照优先级顺序进行迭代。
 
 PriorityBlockingQueue 实现了 BlockingQueue 接口，在队列**为空**时，take 方法会**阻塞等待**。
 
-
-
-##### ⑤ SynchronousQueue
+##### 4. SynchronousQueue
 
 **定义：**
 
-SynchronousQueue 队列内部**仅允许容纳一个元素**。当一个线程插入一个元素后会被阻塞，除非这个元素被另一个线程消费。
+SynchronousQueue 队列内部**仅允许容纳一个元素**。当一个线程插入一个元素后会被阻塞，除非这个元素被另一个线程**消费**。
+
+这个在有的地方应用可以啊。
 
 
 
+##### 5.  基于BlockingQueue的生产者与消费者
 
-
-#### 基于 BlockingQueue 的生产者与消费者
-
-##### ① 生产者
+###### ① 生产者
 
 ```java
 public class ProducerThread implements Runnable {
@@ -1629,7 +1624,7 @@ public class ProducerThread implements Runnable {
 }
 ```
 
-##### ② 消费者
+###### ② 消费者
 
 ```java
 class ConsumerThread implements Runnable {
