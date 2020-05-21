@@ -1,8 +1,8 @@
 [TOC]
 
-### 流 Stream
+### 流Stream
 
-#### 1 概述
+#### 概述
 
 什么是流？
 Stream **不是集合**元素，它不是数据结构并不保存数据，它是有关算法和计算的，它更像一个高级版本的 **Iterator**。原始版本的 Iterator，用户只能显式地一个一个遍历元素并对其执行某些操作；高级版本的 Stream，用户只要给出需要对其包含的元素执行什么操作，比如 “过滤掉长度大于 10 的字符串”、“获取每个字符串的首字母”等，Stream 会**隐式地在内部进行遍历**，做出相应的数据转换。
@@ -13,12 +13,64 @@ Stream 就如同一个迭代器（Iterator），单向，不可往复，数据�
 
 而和迭代器又不同的是，Stream 可以**并行化**操作，迭代器只能命令式地、串行化操作。顾名思义，当使用串行方式去遍历时，每个 item 读完后再读下一个 item。而使用并行去遍历时，数据会被分成多个段，其中每一个都在不同的线程中处理，然后将结果一起输出。Stream 的并行操作依赖于 Java7 中引入的 Fork/Join 框架（JSR166y）来拆分任务和加速处理过程。
 
-Stream 的另外一大特点是，数据源本身可以是无限的。
+Stream 的另外一大特点是，数据源本身可以是**无限**的。 
+
+我们要在一个菜单中选择出低于 300 卡路里的菜的菜单名称，并按照卡路里进行排序。
+
+在 Java7 中，我们要这么进行：
+
+```java
+List<Dish> lowCaloricDishes=new ArrayList<>();
+for(Dish dish:menu){
+	if(dish.getCalories()<300){
+	 	lowCaloricDishes.add(dish);
+	}
+}
+Collections.sort(lowCaloricDishes,new Comparator<Dish>(){
+	public int compare(Dish d1,Dish d2){
+		return Integer.compare(d1.getCalories(), d2.getCalories());
+	}
+});
+List<String> lowCaloricDishesName=new ArrayList<>();
+for(Dish dish:lowCaloricDishes){
+	lowCaloricDishesName.add(dish.getName());
+}
+```
+
+很长哈，并且这里面出现了一个所谓的“垃圾变量”，即其作用仅仅是为了保存中间结果。
+那么我们看看 Java8 中通过流进行的实现：
+
+```java
+List<String> lowCaloricDishesName = menu.stream()
+    .filter(e -> e.getCalories() < 300)
+    .sorted(comparing(Dish::getCalories))
+    .map(Dish::getName)
+    .collect(toList());
+```
+
+流是从支持数据处理操作的源生成的元素序列。
+
+从这个定义入手，我们看看流有什么特点：
+
+- 元素序列——流提供了一系列接口，可以访问特定元素类型的一组有序值，这一点和集合是一样的。
+- 源——流会使用一个提供数据的源，例如集合、数组或是I/O资源，需要注意的是，从有序的集合作为源来为流使用时，流会保留原有的顺序。
+- 数据处理操作——这一点是流非常重要的一个特点，流提供数据处理操作，并且其功能类似于数据库的DDL语句，并且这些操作是可以并行执行的。
+- 流水线——很多流操作本身会返回一个流，这就允许多个流操作链接起来，形成一个数据操作的大流水线，从而可以了解整个数据操作的上下文，在内部对整个流水线进行优化。
+- 内部迭代——与我们之前使用迭代器进行外部迭代集合的方式不同，流的迭代操作是背后执行的。
+
+> 集合与流的差别？
+
+集合与流之间的显著差异在于**什么时候开始计算**。集合是急切创建的，必须得先把所有数据加载到内存中，我们才能对集合中的元素进行计算；而流是延迟创建的，流只有在我们需要其中的数据的时候，才会进行计算，并且仅仅给我们提供我们所需要的数据。
+
+- 遍历次数：集合可以多次遍历，因为数据就在内存中；流只能遍历一次，因为流仅仅在我们需要它的时候才会创建，当遍历完之后，这个流就被消费掉了。如果我们还要再遍历一遍，则需要重新创建一个流。
+
+- 遍历方式：**集合是通过外部迭代**的方式进行的，也就是我们经常使用的通过迭代器对集合进行遍历；流是通过内部迭代进行的，它让我们更关注于要如何计算数据，而无需对每一次的计算方法进行实现。与外部迭代相比，内部迭代的好处是项目可以透明的并行化，可以选择一种适合你硬件的数据表示和并行实现的方式进行迭代，并且可以为我们自动优化迭代顺序。
 
 
-#### 2 产生流
 
-获取一个数据源（source）→ 数据转换→执行操作获取想要的结果。每次转换原有 Stream 对象不改变，返回一个新的 Stream 对象（可以有多次转换），这就允许对其操作可以像链条一样排列，变成一个管道。
+#### 产生流
+
+获取一个数据源（source）→ 数据转换→ 执行操作获取想要的结果。每次转换原有 Stream 对象不改变，返回一个新的 Stream 对象（可以有多次转换），这就允许对其操作可以像链条一样排列，变成一个管道。
 
 有多种方式生成 Stream Source：
 
@@ -60,7 +112,7 @@ JarFile.stream()
 
 
 
-#### 3 使用示例
+#### 基础操作
 
 ```java
 List<Dish> menu = ...
@@ -79,11 +131,215 @@ List<String> lowCaloricDishesName = menu.stream()
 
 中间可以做**类型转换、筛选、规约、统计**等操作。
 
+我们可以把这行代码分为**三个部分**：
+
+- **menu.stream()**：构建一个流，并赋予这个流数据源。
+- **.filter(…).sorted(…).map(…)**：这些操作是可以连接起来的，因为它们返回值是一个流，诸如这样可以连接起来从而形成一条流水线的操作，叫做**中间操作**。
+- **.collect(toList())**：这个操作返回值是一个列表，我们的流也就此结束。因此，这一类的操作叫做终端操作，它们用于返回一个确定的值，来终结这个流，除非流水线上触发一个终端操作，否则任何一个中间操作都不会执行。这是因为中间操作一般都可以合并优化起来，在终端操作中一次性执行。
+
+举个例子看看流是如何优化的：
+
+```java
+List<String> names=menu.stream().filter(d->{
+	System.out.println("filtering"+d.getName());
+	return d.getCalories()>300;
+}).map(d->{
+	System.out.println("mapping"+d.getName());
+	return d.getName();
+})
+.limit(3)
+.collect(toList());
+System.out.println(names);
+```
+
+这段代码打印出的结果为：
+
+```java
+filtering pork
+mapping pork
+filtering beef
+mapping beef
+filtering chicken
+mapping chicken
+[pork,beef,chicken]
+```
+
+我们可以看到，stream 为我们做了两个优化：
+
+1. 仅仅遍历了前三个。
+2. filter和map这两个操作被合并到了一次迭代中，该技术被称为**循环合并**。
 
 
-#### 4 性能分析
 
-对于简单操作，比如最简单的遍历，Stream串行API性能明显差于显示迭代，但并行的Stream API能够发挥多核特性。
+#### 使用流
+
+##### 1. 筛选和切片
+
+Stream api 提供了四个方式让我们能够对数据流进行筛选和切片：
+
+| 方法名称 |                             含义                             |
+| :------: | :----------------------------------------------------------: |
+|  filter  | 该方法接受一个谓词函数（返回boolean的函数），并返回含有**满足该谓词**的流，用于**过滤** |
+| distinct |                   该方法对数据进行**去重**                   |
+|  limit   |           该方法根据传入的数字对数据流进行**截断**           |
+|   skip   | 该方法与limit方法互斥，根据传入的数字确定要**跳过**几个元素  |
+
+##### 2. 映射
+
+映射用于类型的转换，可以从对象中提取信息，比如将 List\<User> 集合提取姓名信息转化为 List\<String> 类型。
+
+| 方法名称 |                             含义                             |
+| :------: | :----------------------------------------------------------: |
+|   map    | 该方法接受一个函数，该函数会被应用到每个元素上从而映射成一个新的元素 |
+| flatMap  | 该方法可以将流扁平化，把一个流中的每个值都换成另一个流，然后把所有流链接成一个流 |
+
+##### 3. 查找和匹配
+
+看数据集中的某些元素是否匹配一个给定的属性。
+
+| 方法名称  |                             含义                             |
+| :-------: | :----------------------------------------------------------: |
+| anyMatch  | 该方法接受一个谓词函数（返回boolean的函数），并返回一个boolean，确定流中是否有元素能够满足该谓词判断，为终端操作 |
+| allMatch  |    该方法与anyMatch类似，确定流中所有元素是否满足谓词判断    |
+| noneMatch |  该方法与allMatch相对，确定流中没有任何元素能够满足谓词判断  |
+|  findAny  | 该方法返回当前流中任意一个能够满足谓词判断的元素，该方法返回一个Optional\<T> |
+| findFirst | 该方法返回当前流中第一个能够满足谓词判断的元素，该方法返回一个Optional<T> |
+
+需要注意有两点：
+
+1.Stream 会遵循**短路**原则，与 && 和 || 类似，比如 limit、findAny 等，满足条件即返回，不会处理流中的所有元素。
+
+2.findFirst 和 findAny 的区别在于，findAny 因为没有找到第一个的限制，因此在**并行化**中能够有更好的性能。
+
+##### 4. 数值流
+
+与 Java8 提供的常用函数式接口相似，为了**减少拆装箱**的耗费，Stream api 也提供了原始类型特化的流，即**数值流**：IntStream、LongStream和DoubleStream。数值流提供了以下几个特有的方法，来进行数值运算：
+
+|  方法名称   |                             含义                             |
+| :---------: | :----------------------------------------------------------: |
+|     sum     |                      对流中所有元素求和                      |
+|     max     |                    对流中所有元素求最大值                    |
+|     min     |                    对流中所有元素求最小值                    |
+|   average   |                    对流中所有元素求平均值                    |
+|    range    | 有两个参数，用于获取数值范围，第一个参数为起始值，第二个参数为结束值，前闭后开 |
+| rangeClosed | 有两个参数，用于获取数值范围，第一个参数为起始值，第二个参数为结束值，前闭后闭 |
+
+
+
+#### 高级操作
+
+##### 1. 规约
+
+###### ① 常用的归约方法
+
+|                           方法名                           |              含义              |
+| :--------------------------------------------------------: | :----------------------------: |
+|                   Collecotrs.counting()                    |        用于统计元素个数        |
+|                     Collecotrs.maxBy()                     |       用于统计最大值元素       |
+|                     Collecotrs.minBy()                     |       用于统计最小值元素       |
+|   Collecotrs.summingInt()/summingDouble()/summingLong())   |  根据不同基本类型获取元素总和  |
+| Collecotrs.averagingInt()/averaingDouble()/averagingLong() | 根据不同基本类型获取元素平均值 |
+|                    Collecotrs.Joining()                    |         用于合并字符串         |
+
+###### ② 归约方法原理
+
+其实上一节中介绍的所有的方法，都来自于下面这个方法：
+
+```java
+Collector<T, ?, U> reducing(U identity,Function<? super T, ? extends U> mapper, BinaryOperator<U> op)
+```
+
+- 第一个参数是归约的起始值。
+- 第二个参数是一个 Function 函数接口，用于对元素进行 mapping 操作，获取相关元素值。
+- 第三个参数是一个二元操作函数接口，用于将 mapping 的值进行归约。
+- T 的含义是**输入值的类型**，U 的含义是**输出值的类型**，中间的类型参数代表中间变量的类型。
+
+举一个例子，比如我们要对一个菜单中所有菜品的热量进行统计，则可以这么写：
+
+```java
+int TotalCalories = menu.stream()
+    .collect(reducing(0, Dish::getCalories, (i,j) -> i + j));
+```
+
+##### 2. 分组
+
+分组是收集器提供的一种类似于 SQL 语句中 group By 功能的方法，就是**根据某个条件将一组元素划分成多个组**，分组主要依赖 Collectors.groupingBy() 方法，使用示例如下：
+
+```java
+// 根据菜品类型分组
+Map<Dish.Type,List<Dish>> dishesByType = menu.stream().collect(groupingBy(Dish::getType));
+// 输出结果
+(FISH=[prawns, salmon], OTHER=[french fries, rice, season fruit, pizza], MEAT=[pork, beef, chicken])
+```
+
+###### ① 多级分组
+
+我们可以使用 groupingBy 方法的双参数版本实现多级分组，示例如下：
+
+```java
+// 根据菜品的类别和热量进行分组
+Map<Dish.Type,Map<CaloricLevel,List<Dish>>> dishesByTypeCaloricLevel = menu.stream().collect(groupingBy(Dish::getType,groupingBy(dish -> {
+	if (dish.getCalories() <=400) return CaloricLevel.DIET;
+		else if (dis.getCalories()<=700) return CaloricLevel.NORMAL;
+			else return CaloricLevel.FAT;})));
+// 返回结果
+{MEAT={DIET=[chicken],NORMAL=[beef],FAT=[pork]},{FISH={DIET=[prawns],NORMAL=[salmon]},OTHER={DIET=[rice,seasonal fruit],NORMAL=[french fries,pizza]}}}
+```
+
+可以看出，我们通过将 groupingBy 作为上层 groupingBy 的参数传递，就能实现层层嵌套的多级分组。
+
+###### ② 按子组收集数据
+
+我们除了可以在 groupingBy 的第二个参数中传入另一个 groupingBy 从而实现多级分组，我们还可以通过对第二个参数传入任何其他的函数，实现对子组数据的变更，示例如下：
+
+```java
+// 获取每一类型中卡路里最高的菜品
+Map<Dish.Type, Dish> mostCaloricByType = menu.stream().collect(groupingBy(Dish::getType, collectingAndThen(maxBy(comparingInt(Dish::getCalories)))))
+// 返回数据
+{FISH=salmon,MEAT=pork,OTHER=pizza}
+```
+
+
+
+#### 并行流
+
+并行流使用方式很简单，我们只需要在想要并行的地方添加 parallel() 方法即可将顺序流转变为**并行流**；相反的，我们可以使用 sequential 方法将并行流再转变为顺序流，或者直接使用 ParallelStream API，我们以一个对自然数求和的例子来说明：
+
+```java
+public static long parallelSum(long n){
+	return Stream.iterate(1L,i -> i+1)
+	.limit(n)
+	.parallel()
+	.reduce(0,Long::sum);
+}
+```
+
+图解这个流程：
+
+<img src="assets/image-20200519130705559.png" alt="image-20200519130705559" style="zoom:62%;" />
+
+请注意，在现实中，对顺序流调用 parallel 方法并不意味着流本身有任何实际的变化。
+
+对于较小的数据量，选择并行流几乎从来都不是一个好的决定。并行处理少数几个元素 的好处还抵不上并行化造成的额外开销。
+
+要考虑流背后的数据结构是否易于分解。例如，ArrayList 的拆分效率比 LinkedList 高得多，因为前者用不着遍历就可以平均拆分，而后者则必须遍历。另外，用 range 工厂方法创建的原始类型流也可以快速分解。
+
+Java 常用的容器是否适合使用并行流：
+
+|      容器       | 可分解性 |
+| :-------------: | :------: |
+|    ArrayList    |   极佳   |
+|   LinkedList    |    差    |
+| IntStream.range |   极佳   |
+| Stream.itreate  |    差    |
+|     HashSet     |    好    |
+|     TreeSet     |    好    |
+
+
+
+#### 性能分析
+
+对于简单操作，比如最简单的遍历，Stream 串行 API 性能明显差于显示迭代，但**并行**的 Stream API 能够发挥多核特性。
 
 如果出于**性能考虑**，1. 对于简单操作推荐使用外部迭代手动实现，2. 对于复杂操作，推荐使用 Stream API， 3. 在多核情况下，推荐使用并行 Stream API 来发挥多核优势，4.单核情况下不建议使用并行 Stream API。
 

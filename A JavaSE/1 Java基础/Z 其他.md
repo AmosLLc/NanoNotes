@@ -4,7 +4,7 @@
 
 #### 1 Java编译、链接与运行
 
-- 从源代码到运行有编译与链接两个步骤。编译将代码编译为字节码 .class 文件，一般有 javac 命令完成。
+- 从源代码到运行有编译与链接两个步骤。编译将代码编译为字节码 .class 文件，一般有 **javac 命令**完成。
 - 链接就是根据引用到的类加载相应的字节码并执行。
 - import 是编译时概念，用于确定完全限定名，运行时只根据完全限定名寻找并加载类。
 
@@ -12,6 +12,8 @@
 javac Test.java     // Compile a class to get a .class file
 java Test           // 运行上述产生的.class文件 此时不需要扩展名
 ```
+
+利用 **javap** 命令对 **class 文件进行反编译**。
 
 ------
 
@@ -62,6 +64,118 @@ public class Test {
 }
 ```
 
+牛客上输入输出总结：
+
+```java
+// 输入描述:
+// 输入包括2行：
+// 第一行为整数n(1 <= n <= 50)，即抹除一个数之后剩下的数字个数
+// 第二行为n个整数num[i] (1 <= num[i] <= 1000000000)
+import java.util.*;
+public class Next {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        int N = sc.nextInt();
+        int[] num = new int[N];
+        for (int i = 0; i < N; i++) {
+            // N个数存入数组中
+            num[i] = sc.nextInt();
+        }
+    }
+}
+```
+
+```java
+import java.util.*;
+public class Main{
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        String str = sc.nextLine();
+        char[] arr = str.toCharArray();
+    }
+}
+```
+
+```java
+输入描述:
+输入包括n+1行：
+第一行为单词个数n(1 ≤ n ≤ 50)
+接下来的n行，每行一个单词word[i]，长度length(1 ≤ length ≤ 50)。由小写字母构成
+输出描述:
+输出循环单词的种数
+输入例子:
+5
+picture
+turepic
+icturep
+word
+ordw
+
+Scanner sc = new Scanner(System.in);
+demo.N = sc.nextInt();
+demo.arr = new String[demo.N];
+for (int i = 0; i < demo.N; i++) {
+    String str = sc.next();
+    demo.solve(str);
+}
+```
+
+```java
+// 读三行
+// 6 3
+// 1 3 5 2 5 4
+// 1 1 0 1 0 0
+Scanner scan = new Scanner(System.in);
+// 先读第一行的两个数
+int n = scan.nextInt();
+int k = scan.nextInt();
+// 构造两个数组
+int[] val = new int[n];
+int[] state = new int[n];
+// 保存瞌睡时的累计评分
+int sleep = 0;
+int[] sleepval = new int[n];
+// 读第二行N个值
+for(int i=0;i<n;i++){
+    val[i] = scan.nextInt();
+}
+// 读第三行的N个值
+for(int i=0;i<n;i++){
+    state[i] = scan.nextInt();
+    if(state[i]==0){
+        sleep += val[i];
+    }
+    sleepval[i] = sleep;
+}
+```
+
+```java
+// 第一行是告诉矩阵的行和列数
+// 后面N行是矩阵
+// 最后一行是需要查找的数
+// 3 3
+// 2 3 5
+// 3 4 7
+// 3 5 8
+// 4
+Scanner in = new Scanner(System.in);
+int[][] matrix=null;
+int a=0,b=0;
+// 先读入第一行的两个数    
+a = in.nextInt();
+b = in.nextInt();
+// 构造矩阵
+matrix=new int[a][b];
+// 读取后面的a行b列
+for(int i=0;i<a;i++){
+    for(int j=0;j<b;j++){
+        matrix[i][j]=in.nextInt();
+    }
+}
+// 读取最后一个数
+int target=in.nextInt();
+```
+
 ---
 
 #### 5 Java 各版本的新特性
@@ -94,16 +208,16 @@ public class Test {
 
 ---
 
-#### 6 Java 与 C++ 的区别
+#### 6 Java与C++的区别
 
 - Java 是纯粹的面向对象语言，所有的对象都继承自 java.lang.Object，C++ 为了兼容 C 即支持面向对象也支持面向过程。
-- Java 通过虚拟机从而实现跨平台特性，但是 C++ 依赖于特定的平台。
-- Java 没有指针，它的引用可以理解为**安全指针**，而 C++ 具有和 C 一样的指针。
+- Java 通过虚拟机从而实现**跨平台**特性，但是 C++ 依赖于特定的平台。
+- Java **没有指针**，它的引用可以理解为**安全指针**，而 C++ 具有和 C 一样的指针。
 - Java 支持**自动垃圾回收**，而 C++ 需要手动回收。
-- Java 不支持多重继承，只能通过实现**多个接口**来达到相同目的，而 C++ 支持多重继承。
+- Java **不支持多重继承**，只能通过实现**多个接口**来达到相同目的，而 C++ 支持多重继承。
 - Java **不支持操作符重载**，虽然可以对两个 String 对象执行加法运算，但是这是语言内置支持的操作，不属于操作符重载，而 C++ 可以。
 - Java 的 goto 是保留字，但是不可用，C++ 可以使用 goto。
-- Java 不支持条件编译，C++ 通过 #ifdef #ifndef 等预处理命令从而实现条件编译。
+- Java **不支持条件编译**，C++ 通过 #ifdef #ifndef 等预处理命令从而实现条件编译。
 
 ---
 
@@ -130,28 +244,7 @@ assert 条件：表达式;
 
 
 
-#### 8 字符的编码
 
-字符集(character set)是一个系统支持的所有抽象字符的集合。
-
-字符(character)就是各种文字和符号，包括国家文字、标点符号、图形符号、数字等。
-
-字符编码(character encoding)，是编码字符集的字符和实际的存储值之间的转换关系。
-
-常见的编码字符集有：
-
-- Unicode：也叫统一字符集，它包含了几乎世界上所有的已经发现且需要使用的字符（如中文、日文、英文、德文等）。
-
-- ASCII：早期的计算机系统只能处理英文，所以ASCII也就成为了计算机的缺省字符集，包含了英文所需要的所有字符。
-
-- GB2312：中文字符集，包含ASCII字符集。ASCII部分用单字节表示，剩余部分用双字节表示。
-
-- GBK：GB2312的扩展，完整包含了GB2312的所有内容。固定两个字节表示。
-
-- GB18030：GBK字符集的超集，常叫大汉字字符集，也叫CJK（Chinese，Japanese，Korea）字符集，包含了中、日、韩三国语言中的所有字符
-- UTF-8：UTF-8使用可变长度字节来储存 Unicode字符，例如ASCII字母继续使用1字节储存，重音文字、希腊字母或西里尔字母等使用2字节来储存，而常用的汉字就要使用3字节。辅助平面字符则使用 4 字节。
-
-切换查看编码的方式并没有改变数据的二进制本身，只是切换了**解析数据**的方式。
 
 
 

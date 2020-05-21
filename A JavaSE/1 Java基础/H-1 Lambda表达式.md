@@ -2,17 +2,23 @@
 
 ### Lambda表达式
 
-#### 0 概述
+#### 函数式编程
 
-- 核心思想：用行为参数化把代码传递给方法。
+与以 Java、C++ 等为代表的传统的面向对象的命令式编程语言相比，函数式编程有着完全不同的思维模式和使用方法，从而带来以下优势：
+
+- 无状态变量、不可变对象和无副作用函数的存在，为共享变量提供最大安全保护，从而为函数式编程赋予了并行计算的能力，能够充分利用现代多核CPU的性能优势
+- 对行为的封装，提高了代码的简洁性和可读性（相对而言，尤其是多线程代码的实现），降低代码维护成本
+- 关注于结果的行为抽象，让我们更能把控全局，而不是陷入“细节陷阱”
 
 
 
-#### 1 基础
+#### 基础
 
-- Lambda 表达式是一个**可传递的代码块**，可以在以后执行一次或多次。将一个代码块传递到某个对象 （一个定时器，或者一个sort 方法。) 这个代码块会在将来某个时间调用。
+核心思想：用**行为参数化把代码传递给方法**。
 
-Lambda表达式**使用场景**:
+Lambda 表达式是一个**可传递的代码块**，可以在以后执行一次或多次。将**一个代码块传递到某个对象** （一个定时器，或者一个 sort 方法) 这个代码块会在将来某个时间调用。
+
+Lambda 表达式**使用场景**:
 
 - 在一个单独的线程中运行代码；
 - 多次运行代码；
@@ -22,21 +28,17 @@ Lambda表达式**使用场景**:
 
 
 
-
-
-#### 2 语法
+#### 语法
 
 - lambda 表达式形式：**参数， 箭头（->) 以及一个表达式**。
-- Lambda 表达式可以具有零个，一个或多个参数。
+- Lambda 表达式可以具有**零个，一个或多个参数**。
 - 可以**显式声明参数**的类型，也可以由编译器**自动从上下文推断参数**的类型。
 - 多个参数用**小括号**括起来，用逗号分隔。例如 `(a, b)` 或 `(int a, int b)` 或 `(String a, int b, float c)`。
 - 空括号用于表示一组**空的参数**。例如 `() -> 42`。
 - 当有且仅有**一个参数**时，如果不显式指明类型，则**不必使用小括号**。例如 `a -> return a * a`。
 - Lambda 表达式的正文可以包含零条，一条或多条语句。
 - 如果 Lambda 表达式的**正文只有一条**语句，则**大括号可不用写**，且表达式的**返回值类型**要与匿名函数的返回类型**相同**。
-- 如果 Lambda 表达式的正文有一条以上的语句必须包含在大括号（代码块）中，且表达式的返回值类型要与匿名函数的返回类型相同。**必须每个分支都有返回类型**。
-- 如果一个 lambda 表达式只在某些分支返回一个值， 而在另外一些分支不返回值，
-    这是不合法的。 例如，（int x) -> { if (x >= 0) return 1; } 就**不合法**。
+- 如果 Lambda 表达式的**正文有一条以上的语句**必须包含在**大括号 {}（代码块）**中，且表达式的返回值类型要与匿名函数的返回类型相同。**必须每个分支都有返回类型**。如果一个 lambda 表达式只在某些分支返回一个值， 而在另外一些分支不返回值，这是不合法的。 例如，（int x) -> { if (x >= 0) return 1; } 就**不合法**。
 
 ```java
 // 实现一个长度比较器类
@@ -51,7 +53,7 @@ String[] names = {"Bob", "Jack", "Alice"};
 Arrays.sor(names, new LengthComparator());
 ```
 
-义务代码仅一句
+业务代码仅一句
 
 ```java
 first.lenth - second.length();
@@ -60,9 +62,9 @@ first.lenth - second.length();
 上述改为 Lambda 表达式
 
 ```java
-// 仅一句代码
+// 仅一句代码 此处无需指定返回类型，返回类型总是由上下文推断而出
 (String first, String second) 
-    -> first.lenth - second.length()        // 此处无需指定返回类型，返回类型总是由上下文推断而出
+    -> first.lenth - second.length()        
     
 // 代码块
 (String first, String second) -> {
@@ -73,7 +75,7 @@ first.lenth - second.length();
 } 
 ```
 
-其他Lambda表达式
+其他 Lambda 表达式
 
 ```java
 // lambda 表达式没有参数， 仍然要提供空括号，就像无参数方法一样
@@ -82,38 +84,36 @@ first.lenth - second.length();
 
 
 
+#### 函数式接口
 
-
-#### 3 函数式接口
-
-- 对于==只有一个抽象方法==的接口， 需要这种接口的对象时， 就可以提供一个 lambda 表达式。这种接口称为函数式接口(functional interface)。Lambda 表达式可以赋值给函数式接口。
-- Arrays.sort 方法。它的第二个参数需要一个 Comparator 实例，Comparator 就是只有一个方法的接口， 所以可以提供一个lambda表达式如下。在底层， Arrays.sort方法会接收实现了Comparator\<String> 的某个类的对象。在这个对象上调用 compare 方法会执行这个 lambda 表达式的体。可以看出 lambda 表达式可以**转换**为接口。但对 lambda 表达式所能做的也只是能转换为**函数式接口**。
+函数式接口是 Lamda 表达式能够应用的地方。所谓函数式接口，即**只定义一个抽象方法的接口**，比如：
 
 ```java
-Arrays.sort (words, (first , second) -> first.length() - second.length()) ;
+public interface Comparator<T>{
+	int compare(T o1,T o2);
+}
 ```
 
-- 如果设计的接口只有一个抽象方法，可以用 @**FunctionalInterface** 注解来标记这个接口。javadoc 页里会指出这是一个函数式接口。
-- 同一个 Lambda 表达式可能可以用在**不同**的函数式接口上，只要它们的**抽象==方法签名==能够兼容**。
+```java
+public interface Runnable<T>{
+	void run();
+}
+```
 
+为了更好地标记函数式接口，Java 提供了一个注解 **@FunctionalInterface**，该注解可以帮助我们在编译时期检查我们的函数式接口是否正确。Lambda 表达式可以赋值给函数式接口，**我们传入的 Lamda 表达式即函数是接口中抽象方法的实现**。
 
+**同一个 Lambda 表达式**可能可以用在**不同**的函数式接口上，只要它们的**抽象==方法签名==能够兼容**。
 
-##### ① Supplier\<T>
+##### 1. Supplier\<T>
 
 ```java
 @FunctionalInterface
 public interface Supplier<T> {
-
-    /**
-     * Gets a result.
-     *
-     * @return a result
-     */
     T get();
 }
 ```
 
-**Supplier\<T>**无参数，返回一个结果。
+**Supplier\<T>** 无参数，返回一个结果。
 
 Supplier函数式接口为“**提供给定类型对象**”的行为提供了一种抽象。根据 Supplier 接口提供的 get 方法，我们可以实现自定义的**“提供者”**的服务。例如：
 
@@ -124,23 +124,12 @@ public void test(){
 }
 ```
 
-##### ② Consumer\<T>
+##### 2. Consumer\<T>
 
 ```dart
 @FunctionalInterface
-public interface Consumer<T> {
-
-    /**
-     * Performs this operation on the given argument.
-     *
-     * @param t the input argument
-     */
+public interface Consumer<T> {  
     void accept(T t);
-
-    default Consumer<T> andThen(Consumer<? super T> after) {
-        Objects.requireNonNull(after);
-        return (T t) -> { accept(t); after.accept(t); };
-    }
 }
 ```
 
@@ -155,36 +144,12 @@ public void test(){
 
 Consumer 函数式接口还提供了一个 andThen 默认方法，该默认方法提供了自身 consumer 消费行为和 after 参数提供消费行为的组合。
 
-
-
-##### ③ Function<T,R>
+##### 3. Function<T,R>
 
 ```dart
 @FunctionalInterface
 public interface Function<T, R> {
-
-    /**
-     * Applies this function to the given argument.
-     *
-     * @param t the function argument
-     * @return the function result
-     */
     R apply(T t);
-
-    default <V> Function<V, R> compose(Function<? super V, ? extends T> before) {
-        Objects.requireNonNull(before);
-        return (V v) -> apply(before.apply(v));
-    }
-
-
-    default <V> Function<T, V> andThen(Function<? super R, ? extends V> after) {
-        Objects.requireNonNull(after);
-        return (T t) -> after.apply(apply(t));
-    }
-
-    static <T> Function<T, T> identity() {
-        return t -> t;
-    }
 }
 ```
 
@@ -209,39 +174,16 @@ public void test() {
 }
 ```
 
-
-
-##### ④ Predicate\<T>
+##### 4. Predicate\<T>
 
 ```dart
-                           @FunctionalInterface
+@FunctionalInterface
 public interface Predicate<T> {
-
     boolean test(T t);
-
-    default Predicate<T> and(Predicate<? super T> other) {
-        Objects.requireNonNull(other);
-        return (t) -> test(t) && other.test(t);
-    }
-
-    default Predicate<T> negate() {
-        return (t) -> !test(t);
-    }
-
-    default Predicate<T> or(Predicate<? super T> other) {
-        Objects.requireNonNull(other);
-        return (t) -> test(t) || other.test(t);
-    }
-
-    static <T> Predicate<T> isEqual(Object targetRef) {
-        return (null == targetRef)
-                ? Objects::isNull
-                : object -> targetRef.equals(object);
-    }
 }
 ```
 
-Predicate 函数式接口接受一个输入参数，返回 **boolean** 类型的结果，可以用于**删选**。比如筛选列表中符合条件的情况。
+Predicate 函数式接口接受**一个输入参数**，返回 **boolean** 类型的结果，可以用于**删选**。比如筛选列表中符合条件的情况。
 
 ```java
 /**
@@ -264,7 +206,7 @@ public static <T> List<T> filter(List<T> originList, Predicate<T> myFilter) {
 List<User> matchUser = filter(userList, user -> user.getAge > 30);
 ```
 
-该函数式接口像特殊的Function<T, Boolean> 函数式接口。例如：
+该函数式接口像特殊的 Function<T, Boolean> 函数式接口。例如：
 
 ```csharp
 public void test(){
@@ -275,9 +217,9 @@ public void test(){
 
 
 
+#### 方法引用
 
-
-#### 4 方法引用
+方法引用是 Java8 为我们提供的一个新的**语法糖**，来帮助我们简化我们的 Lamda 代码。
 
 例子
 
@@ -290,16 +232,10 @@ Timer t = new Timer(1000, System.out::println);     // 方法引用 两者等价
 
 要用 :: 操作符分隔方法名与对象或类名。主要有 3 种情况：
 
-- **object::instanceMethod**
-- **Class::staticMethod**
-- **Class::instanceMethod**
+- 任意类型的实例方法：**Class::instanceMethod**
 
-前 2 种情况中， 方法引用等价于提供方法参数的 lambda 表达式。对于第 3 种情况， 第 1 个参数会成为方法的目标。例如，String::compareToIgnoreCase 等同于 (x, y)-> x.compareToIgnoreCase(y)。
-
-可以在方法引用中使用 this 参数。 例如， this::equals 等同于 x -> this.equals(x)。 使用
-super 也是合法的。下面的方法表达式 super::instanceMethod使用 this作为目标，会调用给定方法的超类版本。
-
-**从 Lambda 表达式到双冒号操作符**
+- 现有对象实例方法：**object::instanceMethod**
+- 静态方法：**Class::staticMethod**
 
 要创建一个比较器，以下语法就足够了
 
@@ -346,15 +282,24 @@ Integer age = getAge.apply(p);
 
 
 
-#### 5 构造器引用
+#### 构造器引用
 
-- 构造器引用与方法引用很类似，只不过**方法名为 new**。例如， **Person::new** 是 Person **构造**
-    **器**的一个引用。调用哪个构造器取决于上下文。
-- Java 有一个限制，无法构造泛型类型 T 的数组。数组构造器引用对于克服这个限制很有用。
+构造器引用与方法引用很类似，只不过**方法名为 new**。例如， **Person::new** 是 Person **构造**
+**器**的一个引用。调用哪个构造器取决于上下文。
+
+Java 有一个限制，无法构造泛型类型 T 的数组。数组构造器引用对于克服这个限制很有用。
+
+```java
+Supplier<Apple> s = () -> new Apple();
+```
+
+```java
+Supplier<Apple> s = Apple::new;
+```
 
 
 
-#### 6 变量作用域
+#### 变量作用域
 
 - lambda 表达式可以==捕获==外围作用域中变量的值。
 - 在 lambda 表达式中， 只能引用==值不会改变==的变量。lambda表达式中捕获的变量必须实际上是**最终变量** ( ==**final 类型**==)。实际上的最终变量是指， 这个变量初始化之后就不会再为它赋新值。
@@ -362,9 +307,9 @@ Integer age = getAge.apply(p);
 
 
 
-#### 7 Lambda 表达式例子
+#### Lambda 表达式例子
 
-##### ① 线程初始化
+##### 1. 线程初始化
 
 线程可以初始化如下：
 
@@ -383,7 +328,7 @@ new Thread(
 ).start();
 ```
 
-##### ② 事件处理
+##### 2. 事件处理
 
 事件处理可以用 Java 8 使用 Lambda 表达式来完成。以下代码显示了将 `ActionListener` 添加到 UI 组件的新旧方式：
 
@@ -402,7 +347,7 @@ button.addActionListener( (e) -> {
 });
 ```
 
-##### ③ 遍例输出（方法引用）
+##### 3. 遍例输出（方法引用）
 
 输出给定数组的所有元素的简单代码。请注意，还有一种使用 Lambda 表达式的方式。
 
@@ -420,9 +365,7 @@ list.forEach(n -> System.out.println(n));
 list.forEach(System.out::println);
 ```
 
-
-
-##### ④ Stream API
+##### 4. Stream API
 
 `java.util.stream.Stream`接口 和 Lambda 表达式一样，都是 Java 8 新引入的。所有 `Stream` 的操作必须以 Lambda 表达式为参数。`Stream` 接口中带有大量有用的方法，比如 `map()` 的作用就是将 input Stream 的每个元素，映射成output Stream 的另外一个元素。
 
@@ -461,7 +404,7 @@ System.out.println(sum);
 
 
 
-#### 8 其他
+#### 其他
 
 ##### Lambda 表达式和匿名类之间的区别
 
