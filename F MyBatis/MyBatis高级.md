@@ -106,7 +106,6 @@ public void sameSqlSessionNoCache() {
     SqlSession sqlSession = null;
     try {
         sqlSession = sqlSessionFactory.openSession();
-
         StudentMapper studentMapper = sqlSession.getMapper(StudentMapper.class);
         // 执行第一次查询
         Student student = studentMapper.selectByPrimaryKey(1);

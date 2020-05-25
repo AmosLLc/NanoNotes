@@ -1,12 +1,12 @@
 [TOC]
 
-## Leetcode-Database 题解
+### Leetcode-Database题解
 
-### 595. Big Countries
+#### 595. Big Countries
 
 https://leetcode.com/problems/big-countries/description/
 
-#### Description
+##### Description
 
 ```html
 +-----------------+------------+------------+--------------+---------------+
@@ -31,7 +31,7 @@ https://leetcode.com/problems/big-countries/description/
 +--------------+-------------+--------------+
 ```
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -47,7 +47,7 @@ VALUES
     ( 'Angola', 'Africa', '1246700', '20609294', '1009900000' );
 ```
 
-#### Solution
+##### Solution
 
 ```sql
 SELECT name,
@@ -60,15 +60,13 @@ WHERE
     OR population > 25000000;
 ```
 
----
 
 
-
-### 627. Swap Salary
+#### 627. Swap Salary
 
 https://leetcode.com/problems/swap-salary/description/
 
-#### Description
+##### Description
 
 ```html
 | id | name | sex | salary |
@@ -90,7 +88,7 @@ https://leetcode.com/problems/swap-salary/description/
 | 4  | D    | m   | 500    |
 ```
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -105,22 +103,20 @@ VALUES
     ( '4', 'D', 'f', '500' );
 ```
 
-#### Solution
+##### Solution
 
 ```sql
 UPDATE salary
 SET sex = CHAR ( ASCII(sex) ^ ASCII( 'm' ) ^ ASCII( 'f' ) );
 ```
 
----
 
 
-
-### 620. Not Boring Movies
+#### 620. Not Boring Movies
 
 https://leetcode.com/problems/not-boring-movies/description/
 
-#### Description
+##### Description
 
 
 ```html
@@ -146,7 +142,7 @@ https://leetcode.com/problems/not-boring-movies/description/
 +---------+-----------+--------------+-----------+
 ```
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -162,7 +158,7 @@ VALUES
     ( 5, 'House card', 'Interesting', 9.1 );
 ```
 
-#### Solution
+##### Solution
 
 ```sql
 SELECT
@@ -176,15 +172,13 @@ ORDER BY
     rating DESC;
 ```
 
----
 
 
-
-### 596. Classes More Than 5 Students
+#### 596. Classes More Than 5 Students
 
 https://leetcode.com/problems/classes-more-than-5-students/description/
 
-#### Description
+##### Description
 
 ```html
 +---------+------------+
@@ -212,7 +206,7 @@ https://leetcode.com/problems/classes-more-than-5-students/description/
 +---------+
 ```
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -232,7 +226,7 @@ VALUES
     ( 'I', 'Math' );
 ```
 
-#### Solution
+##### Solution
 
 ```sql
 SELECT
@@ -245,15 +239,13 @@ HAVING
     count( DISTINCT student ) >= 5;
 ```
 
-----
 
 
-
-### 182. Duplicate Emails
+#### 182. Duplicate Emails
 
 https://leetcode.com/problems/duplicate-emails/description/
 
-#### Description
+##### Description
 
 邮件地址表：
 
@@ -277,7 +269,7 @@ https://leetcode.com/problems/duplicate-emails/description/
 +---------+
 ```
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -291,7 +283,7 @@ VALUES
     ( 3, 'a@b.com' );
 ```
 
-#### Solution
+##### Solution
 
 ```sql
 SELECT
@@ -304,15 +296,13 @@ HAVING
     COUNT( * ) >= 2;
 ```
 
-----
 
 
-
-### 196. Delete Duplicate Emails
+#### 196. Delete Duplicate Emails
 
 https://leetcode.com/problems/delete-duplicate-emails/description/
 
-#### Description
+##### Description
 
 邮件地址表：
 
@@ -337,11 +327,11 @@ https://leetcode.com/problems/delete-duplicate-emails/description/
 +----+------------------+
 ```
 
-#### SQL Schema
+##### SQL Schema
 
 与 182 相同。
 
-#### Solution
+##### Solution
 
 连接：
 
@@ -377,15 +367,13 @@ WHERE
 
 参考：[pMySQL Error 1093 - Can't specify target table for update in FROM clause](https://stackoverflow.com/questions/45494/mysql-error-1093-cant-specify-target-table-for-update-in-from-clause)
 
----
 
 
-
-### 175. Combine Two Tables
+#### 175. Combine Two Tables
 
 https://leetcode.com/problems/combine-two-tables/description/
 
-#### Description
+##### Description
 
 Person 表：
 
@@ -416,7 +404,7 @@ AddressId is the primary key column for this table.
 
 查找 FirstName, LastName, City, State 数据，而不管一个用户有没有填地址信息。
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -435,7 +423,7 @@ VALUES
     ( 1, 2, 'New York City', 'New York' );
 ```
 
-#### Solution
+##### Solution
 
 使用左外连接。
 
@@ -451,15 +439,13 @@ FROM
     ON P.PersonId = A.PersonId;
 ```
 
-----
 
 
-
-### 181. Employees Earning More Than Their Managers
+#### 181. Employees Earning More Than Their Managers
 
 https://leetcode.com/problems/employees-earning-more-than-their-managers/description/
 
-#### Description
+##### Description
 
 Employee 表：
 
@@ -476,7 +462,7 @@ Employee 表：
 
 查找薪资大于其经理薪资的员工信息。
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -491,7 +477,7 @@ VALUES
     ( 4, 'Max', 90000, NULL );
 ```
 
-#### Solution
+##### Solution
 
 ```sql
 SELECT
@@ -503,15 +489,13 @@ FROM
     AND E1.Salary > E2.Salary;
 ```
 
-----
 
 
-
-### 183. Customers Who Never Order
+#### 183. Customers Who Never Order
 
 https://leetcode.com/problems/customers-who-never-order/description/
 
-#### Description
+##### Description
 
 Customers 表：
 
@@ -548,7 +532,7 @@ Orders 表：
 +-----------+
 ```
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -571,7 +555,7 @@ VALUES
     ( 2, 1 );
 ```
 
-#### Solution
+##### Solution
 
 左外链接
 
@@ -597,15 +581,13 @@ WHERE
     Id NOT IN ( SELECT CustomerId FROM Orders );
 ```
 
-----
 
 
-
-### 184. Department Highest Salary
+#### 184. Department Highest Salary
 
 https://leetcode.com/problems/department-highest-salary/description/
 
-#### Description
+##### Description
 
 Employee 表：
 
@@ -642,7 +624,7 @@ Department 表：
 +------------+----------+--------+
 ```
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE IF EXISTS Employee;
@@ -661,7 +643,7 @@ VALUES
     ( 2, 'Sales' );
 ```
 
-#### Solution
+##### Solution
 
 创建一个临时表，包含了部门员工的最大薪资。可以对部门进行分组，然后使用 MAX() 汇总函数取得最大薪资。
 
@@ -682,15 +664,13 @@ WHERE
     AND E.Salary = M.Salary;
 ```
 
-----
 
 
-
-### 176. Second Highest Salary
+#### 176. Second Highest Salary
 
 https://leetcode.com/problems/second-highest-salary/description/
 
-#### Description
+##### Description
 
 ```html
 +----+--------+
@@ -714,7 +694,7 @@ https://leetcode.com/problems/second-highest-salary/description/
 
 没有找到返回 null 而不是不返回数据。
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -728,7 +708,7 @@ VALUES
     ( 3, 300 );
 ```
 
-#### Solution
+##### Solution
 
 为了在没有查找到数据时返回 null，需要在查询结果外面再套一层 SELECT。
 
@@ -737,21 +717,19 @@ SELECT
     ( SELECT DISTINCT Salary FROM Employee ORDER BY Salary DESC LIMIT 1, 1 ) SecondHighestSalary;
 ```
 
-----
 
 
+#### 177. Nth Highest Salary
 
-### 177. Nth Highest Salary
-
-#### Description
+##### Description
 
 查找工资第 N 高的员工。
 
-#### SQL Schema
+##### SQL Schema
 
 同 176。
 
-#### Solution
+##### Solution
 
 ```sql
 CREATE FUNCTION getNthHighestSalary ( N INT ) RETURNS INT BEGIN
@@ -762,15 +740,13 @@ RETURN ( SELECT ( SELECT DISTINCT Salary FROM Employee ORDER BY Salary DESC LIMI
 END
 ```
 
-----
 
 
-
-### 178. Rank Scores
+#### 178. Rank Scores
 
 https://leetcode.com/problems/rank-scores/description/
 
-#### Description
+##### Description
 
 得分表：
 
@@ -802,7 +778,7 @@ https://leetcode.com/problems/rank-scores/description/
 +-------+------+
 ```
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -819,7 +795,7 @@ VALUES
     ( 6, 3.65 );
 ```
 
-#### Solution
+##### Solution
 
 ```sql
 SELECT
@@ -835,15 +811,13 @@ ORDER BY
     S1.score DESC;
 ```
 
-----
 
 
-
-### 180. Consecutive Numbers
+#### 180. Consecutive Numbers
 
 https://leetcode.com/problems/consecutive-numbers/description/
 
-#### Description
+##### Description
 
 数字表：
 
@@ -871,7 +845,7 @@ https://leetcode.com/problems/consecutive-numbers/description/
 +-----------------+
 ```
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -889,7 +863,7 @@ VALUES
     ( 7, 2 );
 ```
 
-#### Solution
+##### Solution
 
 ```sql
 SELECT
@@ -904,15 +878,13 @@ WHERE L1.id = l2.id - 1
     AND l2.num = l3.num;
 ```
 
-----
 
 
-
-### 626. Exchange Seats
+#### 626. Exchange Seats
 
 https://leetcode.com/problems/exchange-seats/description/
 
-#### Description
+##### Description
 
 seat 表存储着座位对应的学生。
 
@@ -942,7 +914,7 @@ seat 表存储着座位对应的学生。
 +---------+---------+
 ```
 
-#### SQL Schema
+##### SQL Schema
 
 ```sql
 DROP TABLE
@@ -958,7 +930,7 @@ VALUES
     ( '5', 'Jeames' );
 ```
 
-#### Solution
+##### Solution
 
 使用多个 union。
 

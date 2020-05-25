@@ -19,6 +19,14 @@ ConcurrentHashMap 则没有上述的问题。同样实现了 Map 接口，也是
 - 与**同步容器**相比，**迭代不需要加锁**
 - 弱一致性
 
+**JDK1.7 的 ConcurrentHashMap：**
+
+<img src="https://my-blog-to-use.oss-cn-beijing.aliyuncs.com/2019-6/ConcurrentHashMap分段锁.jpg" alt="JDK1.7的ConcurrentHashMap" style="zoom:40%;" />
+
+**JDK1.8 的 ConcurrentHashMap（TreeBin: 红黑二叉树节点 Node: 链表节点）：**
+
+![JDK1.8的ConcurrentHashMap](https://my-blog-to-use.oss-cn-beijing.aliyuncs.com/2019-6/JDK1.8-ConcurrentHashMap-Structure.jpg)
+
 
 
 #### 源码分析JDK7
@@ -960,6 +968,14 @@ int threadLocalRandomProbe;
 - CounterCell 数组大小为 0.
 - CounterCell 数组线程对应的下标值为 null。
 - CAS 更新线程特定的 CounterCell 失败。
+
+
+
+#### 总结
+
+ConcurrentHashMap 取消了 Segment 分段锁，采用 CAS 和 synchronized 来保证并发安全。数据结构跟 HashMap1.8 的结构类似，**数组+链表/红黑二叉树**。Java 8 在链表长度超过一定阈值（8）时将链表（寻址时间复杂度为O(N)）转换为红黑树（寻址时间复杂度为O(log(N))）。
+
+synchronized 只锁定**当前链表或红黑二叉树的首节点**，这样只要 hash 不冲突，就不会产生并发，效率又提升 N 倍。
 
 
 

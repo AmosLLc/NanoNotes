@@ -147,5 +147,23 @@ HashSet 使用成员对象来计算 hashCode 值，对于两个对象来说 hash
 
 
 
+> HashSet 如何**检查重复**？
+
+当你把对象加入 HashSet 时，HashSet 会先计算对象的 **hashcode 值**来判断对象加入的位置，同时也会与该位置其他已经加入的对象的 hashcode 值作比较，如果没有相符的 hashcode，HashSet 会假设对象没有重复出现。但是如果发现有相同 hashcode 值的对象，这时会调用 **`equals()`方法**来检查 hashcode 相等的对象是否真的相同。如果两者相同，HashSet 就不会让其加入操作成功。如果不同的话，就会重新散列到其他位置。（摘自我的 Java 启蒙书《Head first java》第二版）。这样我们就大大减少了 equals 的次数，相应就大大提高了执行速度。
+
+总计：先 **hashCode**，再 **equals**。
 
 
+
+#### 比较
+
+##### 1. HashMap与HashSet比较
+
+HashSet 底层就是基于 HashMap 实现的。（HashSet 的源码非常非常少，因为除了 `clone() `、`writeObject()`、`readObject()`是 HashSet 自己不得不实现之外，其他方法都是直接调用 HashMap 中的方法。
+
+|              HashMap              |                           HashSet                            |
+| :-------------------------------: | :----------------------------------------------------------: |
+|          实现了 Map 接口          |                        实现 Set 接口                         |
+|            存储键值对             |                          仅存储对象                          |
+|   调用 `put()`向 map 中添加元素   |              调用 `add()`方法向 Set 中添加元素               |
+| HashMap 使用键（Key）计算Hashcode | HashSet 使用成员对象来计算 hashcode 值，对于两个对象来说 hashcode 可能相同，所以 equals() 方法用来判断对象的相等性 |

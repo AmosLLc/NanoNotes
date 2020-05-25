@@ -109,6 +109,8 @@ MyBatis 是一款优秀的**持久层框架**，它支持定制化 SQL、存储�
 </insert>
 ```
 
+
+
 #### 参数映射
 
 参数映射是最强大功能之一，基可以通过以下方式进行引用。
@@ -621,7 +623,7 @@ private void flushCacheIfRequired(MappedStatement ms)
               >org.apache.ibatis.cache.impl.PerpetualCache#getObject() 
 ```
 
-保存二级缓存 关键源码！
+保存二级缓存关键源码！
 
 ```java
 >org.apache.ibatis.executor.CachingExecutor#close() 

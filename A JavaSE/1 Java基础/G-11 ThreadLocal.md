@@ -30,25 +30,66 @@ ThreadLocal 用一种**存储变量与线程绑定**的方式，在每个线程�
 ThreadLocal 是实现线程安全的一种方案，如对于 **DateFormat/SimpleDateFormat 是非线程安全**的，实现安全的一种方式是**使用锁**，另一种方式是每次都**创建一个新的对象**，更好的方式是使用 ThreadLocal，**每个线程使用自己的 DateFormat**，就不存在线程安全问题了。
 
 ```java
-public class ThreadLocalDateFormat {
-    // 定义ThreadLocal变量
-    static ThreadLocal<DateFormat> sdf = new ThreadLocal<DateFormat>() {
-        // 返回一个新的DateFromat对象
-        protected DateFormat initValue() {
-            return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+import java.text.SimpleDateFormat;
+import java.util.Random;
+
+public class ThreadLocalExample implements Runnable {
+
+    // SimpleDateFormat 不是线程安全的，所以每个线程都要有自己独立的副本
+    private static final ThreadLocal<SimpleDateFormat> formatter = ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyyMMdd HHmm"));
+
+    public static void main(String[] args) throws InterruptedException {
+        ThreadLocalExample obj = new ThreadLocalExample();
+        // 创建多个线程执行
+        for (int i = 0; i < 10; i++) {
+            Thread t = new Thread(obj, "" + i);
+            Thread.sleep(new Random().nextInt(1000));
+            t.start();
         }
-    };
-    
-    public static String dateToString(Date date) {
-        return sdf.get().format(date);
     }
 
-    public static Date dateToString2(String str) throws ParseException {
-        return sdf.get().parse(str);
+    @Override
+    public void run() {
+        System.out.println("Thread Name= " + Thread.currentThread().getName() + " default Formatter = " + formatter.get().toPattern());
+        try {
+            Thread.sleep(new Random().nextInt(1000));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        // formatter pattern is changed here by thread, but it won't reflect to other threads
+        formatter.set(new SimpleDateFormat());
+        System.out.println("Thread Name= " + Thread.currentThread().getName() + " formatter = " + formatter.get().toPattern());
     }
-    
+
 }
 ```
+
+输出
+
+```java
+Thread Name= 0 default Formatter = yyyyMMdd HHmm
+Thread Name= 0 formatter = yy-M-d ah:mm
+Thread Name= 1 default Formatter = yyyyMMdd HHmm
+Thread Name= 2 default Formatter = yyyyMMdd HHmm
+Thread Name= 1 formatter = yy-M-d ah:mm
+Thread Name= 3 default Formatter = yyyyMMdd HHmm
+Thread Name= 2 formatter = yy-M-d ah:mm
+Thread Name= 4 default Formatter = yyyyMMdd HHmm
+Thread Name= 3 formatter = yy-M-d ah:mm
+Thread Name= 4 formatter = yy-M-d ah:mm
+Thread Name= 5 default Formatter = yyyyMMdd HHmm
+Thread Name= 5 formatter = yy-M-d ah:mm
+Thread Name= 6 default Formatter = yyyyMMdd HHmm
+Thread Name= 6 formatter = yy-M-d ah:mm
+Thread Name= 7 default Formatter = yyyyMMdd HHmm
+Thread Name= 7 formatter = yy-M-d ah:mm
+Thread Name= 8 default Formatter = yyyyMMdd HHmm
+Thread Name= 9 default Formatter = yyyyMMdd HHmm
+Thread Name= 8 formatter = yy-M-d ah:mm
+Thread Name= 9 formatter = yy-M-d ah:mm
+```
+
+从输出中可以看出，Thread-0 已经改变了 formatter 的值，但仍然是 thread-2 默认格式化程序与初始化值相同，其他线程也一样。
 
 ##### 2. 随机数
 
@@ -61,7 +102,7 @@ public static void main(String[] args) {
 }
 ```
 
-3. 上下文信息
+##### 3. 上下文信息
 
 被广泛用在 **Spring** 等框架中。可以**存储上下文信息**，避免在不同代码之间来回传递，简化代码。
 
@@ -136,6 +177,10 @@ ThreadLocalMap 是 ThreadLocal 内部的一个 **Map** 实现，然而它并没�
 ThreadLocalMap 类结构及其成员 Entry 定义如下：
 
 即每个 Entry 对象都有一个 ThreadLocal 的弱引用作为 key，这是为了==**防止内存泄露**==。一旦线程结束，key变为一个**不可达**的对象，这个 Entry 就可以被 GC 了。
+
+`ThreadLocalMap` 是 `ThreadLocal`的**静态内部类**。
+
+<img src="https://my-blog-to-use.oss-cn-beijing.aliyuncs.com/2019-6/ThreadLocal内部类.png" alt="ThreadLocal内部类" style="zoom:87%;" />
 
 我们重点看下`ThreadLocalMap`的源码。
 
@@ -705,6 +750,12 @@ public class ThreadLocalMain {
 ```
 
 这种情况下，TL_1 这个 ThreadLocal 在主动 GC 之后，线程绑定的 ThreadLocal.ThreadLocalMap 实例中的 Entry 哈希表中原来的 TL_1 所在的哈希槽 Entry 的引用持有值 referent (继承自 WeakReference )会变成 null，但是 Entry 中的 value 是**强引用**，还存放着 TL_1 这个 ThreadLocal 未回收之前的值。**这些被"孤立"的哈希槽 Entry 就是前面说到的要惰性删除的哈希槽。**
+
+> **弱引用？**
+
+如果一个对象只具有弱引用，那就类似于**可有可无的生活用品**。弱引用与软引用的区别在于：只具有弱引用的对象拥有更短暂的生命周期。在垃圾回收器线程扫描它 所管辖的内存区域的过程中，一旦发现了只具有弱引用的对象，不管当前内存空间足够与否，都会回收它的内存。不过，由于垃圾回收器是一个优先级很低的线程， 因此不一定会很快发现那些只具有弱引用的对象。
+
+弱引用可以和一个引用队列（ReferenceQueue）联合使用，如果弱引用所引用的对象被垃圾回收，Java虚拟机就会把这个弱引用加入到与之关联的引用队列中。
 
 
 
