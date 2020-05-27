@@ -314,3 +314,23 @@ Swap:       2519036           0     2519036
 
 CPU 主要信息保存在 **/proc/cpuinfo** 这个文件中。查看就行。
 
+
+
+#### 开机启动
+
+假如我们装了一个 zookeeper，我们每次开机到要求其自动启动该怎么办？
+
+1. 新建一个脚本 zookeeper
+2. 为新建的脚本 zookeeper 添加可执行权限，命令是: `chmod +x zookeeper`
+3. 把 zookeeper 这个脚本添加到开机启动项里面，命令是：` chkconfig --add  zookeeper`
+4. 如果想看看是否添加成功，命令是：`chkconfig --list`
+
+
+
+#### 网络
+
+**网络通信命令：**
+
+- 查看当前系统的**网卡**信息：**ifconfig**
+- 查看与某台机器的连接情况：ping 
+- 查看当前系统的**端口**使用：**netstat -an**

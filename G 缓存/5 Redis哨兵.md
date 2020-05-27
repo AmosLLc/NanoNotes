@@ -21,7 +21,7 @@ Redis Sentinel 是一个**分布式架构**，其中包含若干个 Sentinel 节
 
 Redis Sentinel 与 Redis 主从复制模式**只是多了若干 Sentinel 节点**，所以 Redis Sentinel **并没有**针对 Redis 节点做了特殊处理。
 
-<img src="9 Redis哨兵.assets/image-20200429213813871.png" alt="image-20200429213813871" style="zoom:48%;" />
+<img src="assets/image-20200527211003270.png" alt="image-20200527211003270" style="zoom:67%;" />
 
 **Sentinel 节点本身就是独立的 Redis 节点，只不过它们有一些特殊，它们不存储数据，只支持部分命令。** 
 
@@ -138,6 +138,151 @@ failover-timeout 通常被解释成**故障转移超时时间**，但实际上�
 
 - Sentinel 节点不应该部署在一台物理“机器”上。
 - 部署**至少三个且奇数个**的 Sentinel 节点。3 个以上是通过增加 Sentinel 节点的个数提高对于故障判定的**准确性**，因为领导者选举需要至少一半加 1 个节点，奇数个节点可以在满足该条件的基础上节省一个节点。
+
+
+
+#### demo
+
+##### 1. 第一步：创建主从节点配置文件并启动
+
+正确安装好 Redis 之后，我们去到 Redis 的安装目录 *(mac 默认在 `/usr/local/`)*，找到 `redis.conf` 文件复制三份分别命名为 `redis-master.conf`/`redis-slave1.conf`/`redis-slave2.conf`，分别作为 `1` 个主节点和 `2` 个从节点的配置文件 *(下图演示了我本机的 `redis.conf` 文件的位置)*
+
+<img src="https://upload-images.jianshu.io/upload_images/7896890-34de77bfca56d32e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" style="zoom:57%;" />
+
+打开可以看到这个 `.conf` 后缀的文件里面有很多说明的内容，全部删除然后分别改成下面的样子：
+
+```bash
+#redis-master.conf
+port 6379
+daemonize yes
+logfile "6379.log"
+dbfilename "dump-6379.rdb"
+ 
+#redis-slave1.conf
+port 6380
+daemonize yes
+logfile "6380.log"
+dbfilename "dump-6380.rdb"
+slaveof 127.0.0.1 6379
+ 
+#redis-slave2.conf
+port 6381
+daemonize yes
+logfile "6381.log"
+dbfilename "dump-6381.rdb"
+slaveof 127.0.0.1 6379
+```
+
+然后我们可以执行 `redis-server <config file path>` 来根据配置文件启动不同的 Redis 实例，依次启动主从节点：
+
+```bash
+redis-server /usr/local/redis-5.0.3/redis-master.conf
+redis-server /usr/local/redis-5.0.3/redis-slave1.conf
+redis-server /usr/local/redis-5.0.3/redis-slave2.conf
+```
+
+节点启动后，我们执行 `redis-cli` 默认连接到我们端口为 `6379` 的主节点执行 `info Replication` 检查一下主从状态是否正常：*(可以看到下方正确地显示了两个从节点)*
+
+<img src="https://upload-images.jianshu.io/upload_images/7896890-a1c935f094240cac.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" style="zoom:50%;" />
+
+##### 2. 第二步：创建哨兵节点配置文件并启动
+
+按照上面同样的方法，我们给哨兵节点也创建三个配置文件。*(哨兵节点本质上是特殊的 Redis 节点，所以配置几乎没什么差别，只是在端口上做区分就好)*
+
+```bash
+# redis-sentinel-1.conf
+port 26379
+daemonize yes
+logfile "26379.log"
+sentinel monitor mymaster 127.0.0.1 6379 2
+
+# redis-sentinel-2.conf
+port 26380
+daemonize yes
+logfile "26380.log"
+sentinel monitor mymaster 127.0.0.1 6379 2
+
+# redis-sentinel-3.conf
+port 26381
+daemonize yes
+logfile "26381.log"
+sentinel monitor mymaster 127.0.0.1 6379 2
+```
+
+其中，`sentinel monitor mymaster 127.0.0.1 6379 2` 配置的含义是：该哨兵节点监控 `127.0.0.1:6379` 这个主节点，该主节点的名称是 `mymaster`，最后的 `2` 的含义与主节点的故障判定有关：至少需要 `2` 个哨兵节点同意，才能判定主节点故障并进行故障转移。
+
+执行下方命令将哨兵节点启动起来：
+
+```bash
+redis-server /usr/local/redis-5.0.3/redis-sentinel-1.conf --sentinel
+redis-server /usr/local/redis-5.0.3/redis-sentinel-2.conf --sentinel
+redis-server /usr/local/redis-5.0.3/redis-sentinel-3.conf --sentinel
+```
+
+使用 `redis-cil` 工具连接哨兵节点，并执行 `info Sentinel` 命令来查看是否已经在监视主节点了：
+
+```bash
+# 连接端口为 26379 的 Redis 节点
+➜  ~ redis-cli -p 26379
+127.0.0.1:26379> info Sentinel
+# Sentinel
+sentinel_masters:1
+sentinel_tilt:0
+sentinel_running_scripts:0
+sentinel_scripts_queue_length:0
+sentinel_simulate_failure_flags:0
+master0:name=mymaster,status=ok,address=127.0.0.1:6379,slaves=2,sentinels=3
+```
+
+此时你打开刚才写好的哨兵配置文件，你还会发现出现了一些变化：
+
+##### 3. 第三步：演示故障转移
+
+首先，我们使用 `kill -9` 命令来杀掉主节点，**同时** 在哨兵节点中执行 `info Sentinel` 命令来观察故障节点的过程：
+
+```bash
+➜  ~ ps aux | grep 6379
+longtao          74529   0.3  0.0  4346936   2132   ??  Ss   10:30上午   0:03.09 redis-server *:26379 [sentinel]
+longtao          73541   0.2  0.0  4348072   2292   ??  Ss   10:18上午   0:04.79 redis-server *:6379
+longtao          75521   0.0  0.0  4286728    728 s008  S+   10:39上午   0:00.00 grep --color=auto --exclude-dir=.bzr --exclude-dir=CVS --exclude-dir=.git --exclude-dir=.hg --exclude-dir=.svn 6379
+longtao          74836   0.0  0.0  4289844    944 s006  S+   10:32上午   0:00.01 redis-cli -p 26379
+➜  ~ kill -9 73541
+```
+
+如果 **刚杀掉瞬间** 在哨兵节点中执行 `info` 命令来查看，会发现主节点还没有切换过来，因为哨兵发现主节点故障并转移需要一段时间：
+
+```bash
+# 第一时间查看哨兵节点发现并未转移，还在 6379 端口
+127.0.0.1:26379> info Sentinel
+# Sentinel
+sentinel_masters:1
+sentinel_tilt:0
+sentinel_running_scripts:0
+sentinel_scripts_queue_length:0
+sentinel_simulate_failure_flags:0
+master0:name=mymaster,status=ok,address=127.0.0.1:6379,slaves=2,sentinels=3
+```
+
+一段时间之后你再执行 `info` 命令，查看，你就会发现主节点已经切换成了 `6381` 端口的从节点：
+
+```bash
+# 过一段时间之后在执行，发现已经切换了 6381 端口
+127.0.0.1:26379> info Sentinel
+# Sentinel
+sentinel_masters:1
+sentinel_tilt:0
+sentinel_running_scripts:0
+sentinel_scripts_queue_length:0
+sentinel_simulate_failure_flags:0
+master0:name=mymaster,status=ok,address=127.0.0.1:6381,slaves=2,sentinels=3
+```
+
+但同时还可以发现，**哨兵节点认为新的主节点仍然有两个从节点** *(上方 slaves=2)*，这是因为哨兵在将 `6381` 切换成主节点的同时，将 `6379` 节点置为其从节点。虽然 `6379` 从节点已经挂掉，但是由于 **哨兵并不会对从节点进行客观下线**，因此认为该从节点一直存在。当 `6379` 节点重新启动后，会自动变成 `6381` 节点的从节点。
+
+另外，在故障转移的阶段，哨兵和主从节点的配置文件都会被改写：
+
+- **对于主从节点：** 主要是 `slaveof` 配置的变化，新的主节点没有了 `slaveof` 配置，其从节点则 `slaveof` 新的主节点。
+- **对于哨兵节点：** 除了主从节点信息的变化，纪元(epoch) *(记录当前集群状态的参数)* 也会变化，纪元相关的参数都 +1 了。
 
 
 

@@ -623,7 +623,7 @@ SELECT salary AS `OUT PUT` FROM employees;  # 使用引号区分关键词
 
 起别名后输出字段名字变成指定的名称。
 
-##### 6. 查询去重 DISTINCT
+##### 6. 查询去重DISTINCT
 
 ```mysql
 # 案例：查询员工表中所有的部门编号

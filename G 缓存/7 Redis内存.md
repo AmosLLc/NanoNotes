@@ -123,6 +123,8 @@ Redis 的内存上限可以通过 **config set maxmemory** 进程**动态修改*
 
 ###### ② 内存溢出控制策略
 
+> MySQL 里有 2000w 数据，Redis 中只存 20w 的数据，如何保证 Redis 中的数据都是热点数据?
+
 内存使用达到 maxmemory 上限时触发内存溢出控制策略。具体由 **maxmemory-policy** 参数控制。
 
 Redis 支持 6 种策略。

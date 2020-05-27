@@ -6,9 +6,9 @@
 
 与以 Java、C++ 等为代表的传统的面向对象的命令式编程语言相比，函数式编程有着完全不同的思维模式和使用方法，从而带来以下优势：
 
-- 无状态变量、不可变对象和无副作用函数的存在，为共享变量提供最大安全保护，从而为函数式编程赋予了并行计算的能力，能够充分利用现代多核CPU的性能优势
-- 对行为的封装，提高了代码的简洁性和可读性（相对而言，尤其是多线程代码的实现），降低代码维护成本
-- 关注于结果的行为抽象，让我们更能把控全局，而不是陷入“细节陷阱”
+- 无状态变量、不可变对象和无副作用函数的存在，为共享变量提供最大安全保护，从而为函数式编程赋予了并行计算的能力，能够充分利用现代多核CPU的性能优势。
+- 对行为的封装，提高了代码的简洁性和可读性（相对而言，尤其是多线程代码的实现），降低代码维护成本。
+- 关注于结果的行为抽象，让我们更能把控全局，而不是陷入“细节陷阱”。
 
 
 
@@ -176,7 +176,9 @@ public void test() {
 
 ##### 4. Predicate\<T>
 
-```dart
+Predicate 接口是只有一个参数的返回布尔类型值的 **断言型** 接口。该接口包含多种默认方法来将 Predicate 组合成其他复杂的逻辑（比如：与，或，非）：
+
+```java
 @FunctionalInterface
 public interface Predicate<T> {
     boolean test(T t);
@@ -305,6 +307,70 @@ Supplier<Apple> s = Apple::new;
 - 在 lambda 表达式中， 只能引用==值不会改变==的变量。lambda表达式中捕获的变量必须实际上是**最终变量** ( ==**final 类型**==)。实际上的最终变量是指， 这个变量初始化之后就不会再为它赋新值。
 - 在 Java 中， lambda 表达式就是**闭包**。
 
+##### 1. 访问局部变量
+
+我们可以直接在 lambda 表达式中访问外部的局部变量：
+
+```java
+final int num = 1;
+Converter<Integer, String> stringConverter =
+        (from) -> String.valueOf(from + num);
+
+stringConverter.convert(2);     // 3
+```
+
+但是和匿名对象不同的是，这里的变量num可以不用声明为final，该代码同样正确：
+
+```java
+int num = 1;
+Converter<Integer, String> stringConverter =
+        (from) -> String.valueOf(from + num);
+
+stringConverter.convert(2);     // 3
+```
+
+不过这里的 num 必须不可被后面的代码修改（即隐性的具有final的语义），例如下面的就无法编译：
+
+```java
+int num = 1;
+Converter<Integer, String> stringConverter =
+        (from) -> String.valueOf(from + num);
+num = 3;//在lambda表达式中试图修改num同样是不允许的。
+```
+
+##### 2. 访问字段和静态变量
+
+与局部变量相比，我们对lambda表达式中的实例字段和静态变量都有读写访问权限。 该行为和匿名对象是一致的。
+
+```java
+class Lambda4 {
+    static int outerStaticNum;
+    int outerNum;
+
+    void testScopes() {
+        Converter<Integer, String> stringConverter1 = (from) -> {
+            outerNum = 23;
+            return String.valueOf(from);
+        };
+
+        Converter<Integer, String> stringConverter2 = (from) -> {
+            outerStaticNum = 72;
+            return String.valueOf(from);
+        };
+    }
+}
+```
+
+##### 3. 访问默认接口方法
+
+还记得第一节中的 formula 示例吗？ `Formula` 接口定义了一个默认方法`sqrt`，可以从包含匿名对象的每个 formula 实例访问该方法。 这不适用于lambda表达式。
+
+无法从 lambda 表达式中访问默认方法,故以下代码无法编译：
+
+```java
+Formula formula = (a) -> sqrt(a * 100);
+```
+
 
 
 #### Lambda 表达式例子
@@ -343,7 +409,7 @@ button.addActionListener(new ActionListener() {
 
 // New way
 button.addActionListener( (e) -> {
-        System.out.println("Hello world");
+    System.out.println("Hello world");
 });
 ```
 
@@ -413,6 +479,95 @@ System.out.println(sum);
 
 
 
+#### Optionals
 
+Optionals 不是函数式接口，而是**用于防止 NullPointerException** 的漂亮工具。
 
+Optional 是一个简单的容器，其**值可能是 null 或者不是 null**。在 Java 8 之前一般某个函数应该返回非空对象但是有时却什么也没有返回，而在 Java 8 中，你**应该返回 Optional 而不是 null**。
+
+译者注：示例中每个方法的作用已经添加。
+
+```java
+//of（）：为非null的值创建一个Optional
+Optional<String> optional = Optional.of("bam");
+// isPresent（）： 如果值存在返回true，否则返回false
+optional.isPresent();           // true
+//get()：如果Optional有值则将其返回，否则抛出NoSuchElementException
+optional.get();                 // "bam"
+//orElse（）：如果有值则将其返回，否则返回指定的其它值
+optional.orElse("fallback");    // "bam"
+//ifPresent（）：如果Optional实例有值则为其调用consumer，否则不做处理
+optional.ifPresent((s) -> System.out.println(s.charAt(0)));     // "b"
+```
+
+使用 Optional，我们就可以把下面这样的代码进行改写。
+
+```java
+public static String getName(User u) {
+    if (u == null || u.name == null)
+        return "Unknown";
+    return u.name;
+}
+```
+
+不过，千万不要改写成这副样子。
+
+```java
+public static String getName(User u) {
+    Optional<User> user = Optional.ofNullable(u);
+    if (!user.isPresent())
+        return "Unknown";
+    return user.get().name;
+}
+```
+
+这样改写非但不简洁，而且其操作还是和第一段代码一样。无非就是用 **isPresent** 方法来替代 u==null。这样的改写并不是 Optional 正确的用法，我们再来改写一次。
+
+```java
+public static String getName(User u) {
+    return Optional.ofNullable(u)
+        .map(user->user.name)
+        .orElse("Unknown");
+}
+```
+
+这样才是正确使用 Optional 的姿势。那么按照这种思路，我们可以安心的进行**链式调用**，而不是一层层判断了。看一段代码：
+
+```java
+public static String getChampionName(Competition comp) throws IllegalArgumentException {
+    if (comp != null) {
+        CompResult result = comp.getResult();
+        if (result != null) {
+            User champion = result.getChampion();
+            if (champion != null) {
+                return champion.getName();
+            }
+        }
+    }
+    throw new IllegalArgumentException("The value of param comp isn't available.");
+}
+```
+
+让我们看看经过 Optional 加持过后，这些代码会变成什么样子。
+
+```java
+public static String getChampionName(Competition comp) throws IllegalArgumentException {
+    return Optional.ofNullable(comp)
+        .map(c->c.getResult())
+        .map(r->r.getChampion())
+        .map(u->u.getName())
+        .orElseThrow(()->new IllegalArgumentException("The value of param comp isn't available."));
+}
+```
+
+这就很舒服了。Optional 给了我们一个真正优雅的 Java 风格的方法来解决 null 安全问题。
+
+Optional 的魅力还不止于此，Optional 还有一些神奇的用法，比如 Optional 可以用来检验参数的合法性。
+
+```java
+public void setName(String name) throws IllegalArgumentException {
+    this.name = Optional.ofNullable(name).filter(User::isNameValid)
+        .orElseThrow(()->new IllegalArgumentException("Invalid username."));
+}
+```
 

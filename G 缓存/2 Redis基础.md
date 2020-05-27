@@ -453,6 +453,18 @@ ziplist 更加紧凑，在数据量较少时可以连续存储元素，更节约
 - 序列号字符串类型：将用户信息序列号之后用一个键保存（需要反序列化）。
 - 使用 hash：只用一个键保存 id，用户信息用 field-value 保存。
 
+##### 4. 再哈希
+
+Redis 中的字典相当于 Java 中的 **HashMap**，内部实现也差不多类似，都是通过 **"数组 + 链表"** 的链地址法来解决部分 **哈希冲突**，同时这样的结构也吸收了两种不同数据结构的优点。
+
+**实际上字典结构的内部包含两个 hashtable**，通常情况下**只有一个** hashtable 是**有值**的，但是在字典扩容缩容时，需要分配新的 hashtable，然后进行 **渐进式搬迁** *(下面说原因)*。
+
+大字典的扩容是比较耗时间的，需要**重新申请新的数组**，然后将旧字典所有链表中的元素重新挂接到新的数组下面，这是一个 O(n) 级别的操作，作为单线程的 Redis 很难承受这样耗时的过程，所以 Redis 使用 **渐进式 rehash** 小步搬迁：
+
+<img src="assets/image-20200527142520437.png" alt="image-20200527142520437" style="zoom:52%;" />
+
+渐进式 rehash 会在 rehash 的同时，保留**新旧两个 hash 结构**，如上图所示，查询时会**==同时查询==两个 hash 结构**，然后在后续的定时任务以及 hash 操作指令中，循序渐进的把旧字典的内容迁移到新字典中。当搬迁完成了，就会使用新的 hash 结构取而代之。
+
 #### List
 
 列表用于存储多个**有序**的字符串，每个字符串称为元素。由于元素是有序的，所以可以通过索引来访问元素或者进行范围访问。
@@ -913,13 +925,53 @@ int dictRehash(dict *d, int n) {
 
 ![1563520325342](2 Redis基础.assets/1563520325342.png)
 
+> **为什么要用跳表而不用其他数据结构？**
+
+首先，因为 zset 要支持随机的插入和删除，所以它 **不宜使用数组来实现**，关于排序问题，我们也很容易就想到 **红黑树/ 平衡树** 这样的树形结构，为什么 Redis 不使用这样一些结构呢？
+
+1. **性能考虑：** 在高并发的情况下，树形结构需要执行一些类似于 rebalance 这样的可能涉及整棵树的操作，相对来说跳跃表的变化只涉及局部 _(下面详细说)_；
+2. **实现考虑：** 在复杂度与红黑树相同的情况下，跳跃表实现起来更简单，看起来也更加直观；
+
+基于以上的一些考虑，Redis 基于 **William Pugh** 的论文做出一些改进后采用了 **跳跃表** 这样的结构。
+
 与红黑树等平衡树相比，跳跃表具有以下优点：
 
 - **==插入速度==非常快速，因为不需要进行旋转等操作来维护平衡性**；
 - 更容易实现；
 - 支持**无锁操作**。
 
+#### redisObject对象
 
+##### 1. 概述
+
+redisObject 其实是一个**结构体**。
+
+Redis 内部使用一个 redisObject 对象来表示**所有的 key 和 value**，每次在 Redis 数据块中创建一个键值对时，一个是键对象，一个是值对象，而 Redis 中的每个对象都是由 redisObject 结构来表示。
+
+在 Redis 中，键总是一个字符串对象，而值可以是字符串、列表、集合等对象，所以我们通常说键为字符串键，表示这个键对应的值为字符串对象，我们说一个键为集合键时，表示这个键对应的值为集合对象。
+
+redisObject 最主要的信息：
+
+```c
+typedef struct redisObject{
+    // 类型
+    unsigned type:4;
+    // 编码
+    unsigned encoding:4;
+    // 指向底层数据结构的指针
+    void *ptr;
+    // 引用计数
+    int refcount;
+    // 记录最后一次被程序访问的时间
+    unsigned lru:22;
+} robj
+```
+
+##### 2. 内存回收与共享
+
+因为 c 语言不具备自动内存回收功能，当将 redisObject 对象作为数据库的键或值而不是作为参数存储时其生命周期是非常长的，为了解决这个问题，Redis 自己构建了一个内存回收机制，通过 redisobject结 构中的 **refcount** 实现。这个属性会随着对象的使用状态而不断变化。当对象的引用计数值变为 0 时，对象所占用的内存就会被释放。
+
+refcount 属性除了能实现内存回收以外，还能实现内存共享 。
 
 ### 四、Redis拓展功能
 
@@ -1100,6 +1152,8 @@ bitops key targetBit [start] [end]
 
 #### HyperLogLog
 
+##### 1. 概述
+
 HyperLogLog 不是一种新的数据结构，实际是字符串类型。它是一种**基数算法**， 通过 HyperLogLog 可以利用**极小的内存**空间完成**独立总数**的统计，数据集可以是 **IP、Email、ID** 等。
 
 提供了三个命令：**pfadd、pfcount、pfmerge**。
@@ -1111,11 +1165,15 @@ HyperLogLog 使用内存量小的惊人，所以存在一定的**误差率**，�
 - 只为了计算独立总数、不需要获取单条数据。
 - 能够容忍一定的误差率。
 
+
+
 ---
 
 #### 发布订阅
 
 Redis 也提供了发布消息、订阅频道、取消订阅以及按照模式订阅的基础发布订阅功能。
+
+<img src="assets/image-20200527205138022.png" alt="image-20200527205138022" style="zoom:50%;" />
 
 相比于专业的消息队列系统，Redis 的发布订阅略显**粗糙**，例如**无法实现消息堆积和回溯**。如果能容忍的场景是可以的，因为实现简单。
 
@@ -1125,9 +1183,15 @@ Redis 也提供了发布消息、订阅频道、取消订阅以及按照模式�
 
 #### GEO
 
-Redis 提供了 GEO（地理信息定位）的功能，可以方便的存放地理位置。可以用于实现**附近位置，摇一摇**这种基于位置信息的功能。GEO 底层采用 **zset** 实现。
+Redis 提供了 GEO（地理信息定位）的功能，可以方便的存放地理位置。可以用于实现==**附近位置，摇一摇**==这种基于位置信息的功能。GEO 底层采用 **zset** 实现。
 
 GEO 可以存储地理位置的精度、维度、成员信息。可以使用 GEO 方便的计算两个位置之间的**距离**以及其他位置信息。
+
+在一个地图应用中，车的数据、餐馆的数据、人的数据可能会有百万千万条，如果使用 **Redis** 的 **Geo** 数据结构，它们将 **全部放在一个** zset 集合中。在 **Redis** 的集群环境中，集合可能会从一个节点迁移到另一个节点，如果单个 key 的数据过大，会对集群的迁移工作造成较大的影响，在集群环境中单个 key 对应的数据量不宜超过 1M，否则会导致集群迁移出现卡顿现象，影响线上服务的正常运行。
+
+所以，这里建议 **Geo** 的数据使用 **单独的 Redis 实例部署**，不使用集群环境。
+
+如果数据量过亿甚至更大，就需要对 **Geo** 数据进行拆分，按国家拆分、按省拆分，按市拆分，在人口特大城市甚至可以按区拆分。这样就可以显著降低单个 zset 集合的大小。
 
 
 
@@ -1409,3 +1473,20 @@ Redis 没有关系型数据库中的**表**这一概念来将同种类型的数�
 - [Redis 3.0 中文版- 分片](http://wiki.jikexueyuan.com/project/redis-guide)
 - [Redis 应用场景](http://www.scienjus.com/redis-use-case/)
 - [Using Redis as an LRU cache](https://redis.io/topics/lru-cache)
+
+**优秀文章**
+
+1. 阿里云 Redis 开发规范 - [https://www.infoq.cn/article/K7dB5AFKI9mr5Ugbs_px](https://www.infoq.cn/article/K7dB5AFKI9mr5Ugbs_px)
+2. 为什么要防止 bigkey？ - [https://mp.weixin.qq.com/s?__biz=Mzg2NTEyNzE0OA==&mid=2247483677&idx=1&sn=5c320b46f0e06ce9369a29909d62b401&chksm=ce5f9e9ef928178834021b6f9b939550ac400abae5c31e1933bafca2f16b23d028cc51813aec&scene=21#wechat_redirect](https://mp.weixin.qq.com/s?__biz=Mzg2NTEyNzE0OA==&mid=2247483677&idx=1&sn=5c320b46f0e06ce9369a29909d62b401&chksm=ce5f9e9ef928178834021b6f9b939550ac400abae5c31e1933bafca2f16b23d028cc51813aec&scene=21#wechat_redirect)
+3. Redis【入门】就这一篇！ - [https://www.wmyskxz.com/2018/05/31/redis-ru-men-jiu-zhe-yi-pian/](https://www.wmyskxz.com/2018/05/31/redis-ru-men-jiu-zhe-yi-pian/)
+4. 《Redis 设计与实现》 - [http://redisbook.com/](http://redisbook.com/)
+5. 【官方文档】Redis 数据类型介绍 - [http://www.redis.cn/topics/data-types-intro.html](http://www.redis.cn/topics/data-types-intro.html)
+6. 《Redis 深度历险》 - [https://book.douban.com/subject/30386804/](https://book.douban.com/subject/30386804/)
+7. 阿里云 Redis 开发规范 - [https://www.infoq.cn/article/K7dB5AFKI9mr5Ugbs_px](https://www.infoq.cn/article/K7dB5AFKI9mr5Ugbs_px)
+8. Redis 快速入门 - 易百教程 - [https://www.yiibai.com/redis/redis_quick_guide.html](https://www.yiibai.com/redis/redis_quick_guide.html)
+9. Redis【入门】就这一篇! - [https://www.wmyskxz.com/2018/05/31/redis-ru-men-jiu-zhe-yi-pian/](https://www.wmyskxz.com/2018/05/31/redis-ru-men-jiu-zhe-yi-pian/)
+
+**Redis**数据结构源码分析
+
+1. Redis 数据结构-字符串源码分析：[https://my.oschina.net/mengyuankan/blog/1926320](https://my.oschina.net/mengyuankan/blog/1926320)
+2. Redis 数据结构-字典源码分析： [https://my.oschina.net/mengyuankan/blog/1929593](https://my.oschina.net/mengyuankan/blog/1929593)

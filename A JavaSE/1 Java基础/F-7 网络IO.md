@@ -419,8 +419,6 @@ AIO 也就是 NIO 2。在 Java 7 中引入了 NIO 的改进版 NIO 2,它是异�
 
 AIO 是异步IO的缩写，虽然 NIO 在网络操作中，提供了非阻塞的方法，但是 NIO 的 IO 行为还是同步的。对于 NIO 来说，我们的业务线程是在 IO 操作准备好时，得到通知，接着就由这个线程自行进行 IO 操作，IO操作本身是同步的。（除了 AIO 其他的 IO 类型都是同步的，这一点可以从底层IO线程模型解释，推荐一篇文章：[《漫话：如何给女朋友解释什么是Linux的五种IO模型？》](https://mp.weixin.qq.com/s?__biz=Mzg3MjA4MTExMw==&mid=2247484746&amp;idx=1&amp;sn=c0a7f9129d780786cabfcac0a8aa6bb7&source=41#wechat_redirect) ）
 
-查阅网上相关资料，我发现就目前来说 AIO 的应用还不是很广泛，Netty 之前也尝试使用过 AIO，不过又放弃了。
-
 AIO（Asynchronous IO）是 Java7 才实现的真正**异步**的 IO。它把 IO **读写操作完全交给了操作系统**。
 
 AIO 最大的一个特性就是**异步能力**，这种能力对 socket 与文件 I/O 都起作用。AIO 其实是一种在**读写操作结束之前允许进行其他操作的 I/O 处理**。AIO 是对 JDK1.4 中提出的**同步非阻塞 I/O(NIO)** 的进一步增强。
@@ -514,6 +512,8 @@ public class Client {
 
 Netty 也支持 **AIO** 并提供了相应的类： `AioEventLoopGroup`,`AioCompletionHandler`, `AioServerSocketChannel`, `AioSocketChannel`， `AioSocketChannelConfig`。
 其它使用方法和 NIO 类似。
+
+目前来说 AIO 的应用还不是很广泛，Netty 之前也尝试使用过 AIO，不过又放弃了。
 
 
 
