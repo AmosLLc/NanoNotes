@@ -715,7 +715,7 @@ MySQL 不允许在触发器中使用 CALL 语句，也就是**不能调用存储
 mysql> show engines;
 ```
 
-![查看MySQL提供的所有存储引擎](https://my-blog-to-use.oss-cn-beijing.aliyuncs.com/2019-6/mysql-engines.png)
+![查看MySQL提供的所有存储引擎](assets/mysql-engines.png)
 
 从上图我们可以查看出 MySQL 当前**默认的存储引擎是 InnoDB**,并且在5.7版本所有的存储引擎中只有 InnoDB 是事务性存储引擎，也就是说只有 InnoDB 支持事务。
 
@@ -733,7 +733,7 @@ mysql> show variables like '%storage_engine%';
 show table status like "table_name" ;
 ```
 
-![查看表的存储引擎](https://my-blog-to-use.oss-cn-beijing.aliyuncs.com/2019-6/查看表的存储引擎.png)
+![image-20200531201235503](assets/image-20200531201235503.png)
 
 ##### 2. InnoDB
 

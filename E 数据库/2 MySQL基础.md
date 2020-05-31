@@ -146,15 +146,15 @@ TIMESTAMP 比 DATETIME 空间效率更高。
 
 ##### 1. 算术运算符
 
-<img src="https://images2015.cnblogs.com/blog/990532/201611/990532-20161104195018111-1270761626.jpg" alt="img" style="zoom:67%;" />
+<img src="assets/image-20200531200834590.png" alt="image-20200531200834590" style="zoom: 67%;" />
 
 ##### 2. 比较运算符
 
-<img src="https://images2015.cnblogs.com/blog/990532/201611/990532-20161104195340565-861208871.jpg" alt="img" style="zoom:67%;" />
+<img src="assets/image-20200531200901951.png" alt="image-20200531200901951" style="zoom:67%;" />
 
 ##### 3. 逻辑运算符
 
-<img src="https://images2015.cnblogs.com/blog/990532/201611/990532-20161104200235596-1291381139.jpg" alt="img" style="zoom:67%;" />
+<img src="assets/image-20200531200924576.png" alt="image-20200531200924576" style="zoom:67%;" />
 
 “＆＆”或者“AND”是**“与”运算**的两种表达方式。如果所有数据不为0且不为空值（NULL），则结果返回 1；如果存在任何一个数据为 0，则结果返回 0；如果存在一个数据为 NULL 且没有数据为 0，则结果返回 NULL。“与”运算符支持多个数据同时进行运算。
 
@@ -164,11 +164,11 @@ TIMESTAMP 比 DATETIME 空间效率更高。
 
 ##### 4. 位运算符
 
-<img src="https://images2015.cnblogs.com/blog/990532/201611/990532-20161104200745268-1627132564.jpg" alt="img" style="zoom:67%;" />
+<img src="assets/image-20200531201011015.png" alt="image-20200531201011015" style="zoom:67%;" />
 
 ##### 5. 优先级
 
-<img src="https://images2015.cnblogs.com/blog/990532/201611/990532-20161104200927783-654853403.jpg" alt="img" style="zoom:67%;" />
+<img src="assets/image-20200531201022804.png" alt="image-20200531201022804" style="zoom:67%;" />
 
 
 
@@ -1209,7 +1209,7 @@ FROM employees
 WHERE commission_pct IS NOT NULL;
 ```
 
-![1563779280284](2 MySQL基础.assets/1563779280284.png)
+![1563779280284](assets/1563779280284-1590927050999.png)
 
 ###### ④ 流程控制函数
 
