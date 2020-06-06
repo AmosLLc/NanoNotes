@@ -1,4 +1,4 @@
-![](http://my-blog-to-use.oss-cn-beijing.aliyuncs.com/18-9-10/56385654.jpg)
+![](assets/56385654.jpg)
 
 ## 前言
 
@@ -31,7 +31,7 @@ ZooKeeper 是一个开源的分布式协调服务，ZooKeeper框架最初是在�
 
 **Zookeeper 一个最常用的使用场景就是用于担任服务生产者和服务消费者的注册中心(提供发布订阅服务)。** 服务生产者将自己提供的服务注册到Zookeeper中心，服务的消费者在进行服务调用的时候先到Zookeeper中查找服务，获取到服务生产者的详细信息之后，再去调用服务生产者的内容与数据。如下图所示，在 Dubbo架构中 Zookeeper 就担任了注册中心这一角色。
 
-![Dubbo](http://my-blog-to-use.oss-cn-beijing.aliyuncs.com/18-9-10/35571782.jpg)
+![Dubbo](assets/35571782.jpg)
 
 ### 1.2 结合个人使用情况的讲一下 ZooKeeper
 
@@ -105,7 +105,7 @@ Zookeeper采用ACL（AccessControlLists）策略来进行权限控制，类似�
 
 ZooKeeper 允许分布式进程通过共享的层次结构命名空间进行相互协调，这与标准文件系统类似。 名称空间由 ZooKeeper 中的数据寄存器组成 - 称为znode，这些类似于文件和目录。 与为存储设计的典型文件系统不同，ZooKeeper数据保存在内存中，这意味着ZooKeeper可以实现高吞吐量和低延迟。
 
-![](http://my-blog-to-use.oss-cn-beijing.aliyuncs.com/18-9-10/94251757.jpg)
+![](assets/94251757.jpg)
 
 ### 4.2 可构建集群
 
@@ -113,7 +113,7 @@ ZooKeeper 允许分布式进程通过共享的层次结构命名空间进行相�
 
 **ZooKeeper 官方提供的架构图：**
 
-![](http://my-blog-to-use.oss-cn-beijing.aliyuncs.com/18-9-10/68900686.jpg)
+![](assets/68900686.jpg)
 
 上图中每一个Server代表一个安装Zookeeper服务的服务器。组成 ZooKeeper 服务的服务器都会在内存中维护当前的服务器状态，并且每台服务器之间都互相保持着通信。集群间通过 Zab 协议（Zookeeper Atomic Broadcast）来保持数据的一致性。
 
@@ -131,7 +131,7 @@ ZooKeeper 允许分布式进程通过共享的层次结构命名空间进行相�
 
 但是，**在 ZooKeeper 中没有选择传统的  Master/Slave 概念，而是引入了Leader、Follower 和 Observer 三种角色**。如下图所示
 
-![](http://my-blog-to-use.oss-cn-beijing.aliyuncs.com/18-9-10/89602762.jpg)
+![](assets/89602762.jpg)
 
  **ZooKeeper 集群中的所有机器通过一个 Leader 选举过程来选定一台称为 “Leader” 的机器，Leader 既可以为客户端提供写服务又能提供读服务。除了 Leader 外，Follower 和  Observer 都只能提供读服务。Follower 和  Observer 唯一的区别在于 Observer 机器不参与 Leader 的选举过程，也不参与写操作的“过半写成功”策略，因此 Observer 机器可以在不影响写性能的情况下提升集群的读性能。**
 

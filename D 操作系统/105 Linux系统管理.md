@@ -303,11 +303,39 @@ procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
 
 查看内存使用状态。
 
-```bash
-[nano@localhost ~]$ free
-              total        used        free      shared  buff/cache   available
-Mem:        7990280      947708     3245952       12108     3796620     6724556
-Swap:       2519036           0     2519036
+free 命令是一个快速查看**内存使用情况**的方法，它是对 `/proc/meminfo` 收集到的信息的一个概述。
+
+这个命令用于显示系统**当前内存的使用情况，包括已用内存、可用内存和交换内存的情况**。
+
+默认情况下 free 会以字节为单位输出内存的使用量。
+
+```shell
+$ free
+             total       used       free     shared    buffers     cached
+Mem:       3566408    1580220    1986188          0     203988     902960
+-/+ buffers/cache:     473272    3093136
+Swap:      4000176          0    4000176
+```
+
+如果你想以其他单位输出内存的使用量，需要加一个选项，`-g` 为GB，`-m` 为MB，`-k` 为KB，`-b` 为字节。
+
+```shell
+$ free -g
+             total       used       free     shared    buffers     cached
+Mem:             3          1          1          0          0          0
+-/+ buffers/cache:          0          2
+Swap:            3          0          3
+```
+
+如果你想查看所有内存的汇总，请使用 -t 选项，使用这个选项会在输出中加一个汇总行。
+
+```shell
+$ free -t
+             total       used       free     shared    buffers     cached
+Mem:       3566408    1592148    1974260          0     204260     912556
+-/+ buffers/cache:     475332    3091076
+Swap:      4000176          0    4000176
+Total:     7566584    1592148    5974436
 ```
 
 ##### 3. 查看CPU信息
@@ -334,3 +362,109 @@ CPU 主要信息保存在 **/proc/cpuinfo** 这个文件中。查看就行。
 - 查看当前系统的**网卡**信息：**ifconfig**
 - 查看与某台机器的连接情况：ping 
 - 查看当前系统的**端口**使用：**netstat -an**
+
+
+
+#### 定时任务crontab
+
+crontab 命令常见于 Unix和类 Unix 的操作系统之中，用于设置周期性被执行的指令。该命令从标准输入设备读取指令，并将其存放于 `crontab` 文件中，以供之后读取和执行。
+
+通常，crontab 储存的指令被守护进程激活，crond 常常在后台运行，每一分钟检查是否有预定的作业需要执行。这类作业一般称为 cron jobs。
+
+**crontab文件**
+
+
+crontab 文件包含送交 cron 守护进程的一系列作业和指令。每个用户可以拥有自己的 crontab 文件；同时，操作系统保存一个针对整个系统的 crontab 文件，该文件通常存放于/etc或者/etc之下的子目录中，而这个文件只能由系统管理员来修改。
+
+crontab 文件的每一行均遵守特定的格式，由空格或 tab 分隔为数个领域，每个领域可以放置单一或多个数值。
+
+```shell
+# cron服务是Linux的内置服务，但它不会开机自动启动。
+# 可以用以下命令启动和停止服务：
+
+/sbin/service crond start
+/sbin/service crond stop
+/sbin/service crond restart
+/sbin/service crond reload
+```
+
+要把 cron 设为在开机的时候自动启动，在 `/etc/rc.d/rc.local` 脚本中加入 `/sbin/service crond start` 即可
+
+查看当前用户的 crontab，输入 crontab -l；
+
+编辑 crontab，输入 crontab -e；
+
+删除 crontab，输入 crontab -r
+
+**操作符号**
+
+在一个区域里填写多个数值的方法：
+
+逗号（','）分开的值，例如：“1,3,4,7,8”
+连词符（'-'）指定值的范围，例如：“1-6”，意思等同于“1,2,3,4,5,6”
+星号（'*'）代表任何可能的值。例如，在“小时域”里的星号等于是“每一个小时”，等等
+某些cron程序的扩展版本也支持斜线（'/'）操作符，用于表示跳过某些给定的数。例如，“/3”在小时域中等于“0,3,6,9,12,15,18,21”等被3整除的数；
+
+<img src="assets/crontab_cheatsheet.png" style="zoom:27%;" />
+
+**时间设置**
+
+```linux
+# 文件格式说明
+#  ——分钟（0 - 59）
+# |  ——小时（0 - 23）
+# | |  ——日（1 - 31）
+# | | |  ——月（1 - 12）
+# | | | |  ——星期（0 - 7，星期日=0或7）
+# | | | | |
+# * * * * * 被执行的命令
+```
+
+注：
+
+1. 在“星期域”（第五个域），0和7都被视为星期日。
+2. 不很直观的用法：如果日期和星期同时被设定，那么其中的一个条件被满足时，指令便会被执行。请参考下例。
+3. 前5个域称之**分时日月周**，可方便个人记忆。
+
+从第六个域起，指明要执行的命令。
+
+
+
+**实例**
+
+ 每1分钟执行一次command
+
+```shell
+* * * * * command
+```
+
+每小时的第3和第15分钟执行
+
+```shell
+3,15 * * * * command
+```
+
+在上午8点到11点的第3和第15分钟执行
+
+```shell
+3,15 8-11 * * * command
+```
+
+每隔两天的上午8点到11点的第3和第15分钟执行
+
+```shell
+3,15 8-11 */2 * * command
+```
+
+
+
+#### 高并发网络编程之epoll详解
+
+详情请转向：[高并发网络编程之epoll详解 - CSDN博客](https://blog.csdn.net/shenya1314/article/details/73691088)
+
+
+
+#### Linux下限制IP访问
+
+Linux下限制IP访问 - sinat_24928447的博客 - CSDN博客
+https://blog.csdn.net/sinat_24928447/article/details/78042290

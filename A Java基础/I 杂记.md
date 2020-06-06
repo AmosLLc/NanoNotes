@@ -194,6 +194,8 @@ int target=in.nextInt();
 
 #### 断言
 
+##### 1. 概述
+
 - 断言机制允许在**测试期间**向代码中插入一些检査语句。当代码发布时，这些插人的检测
     语句将会被自动地移走。
 - 关键字 assert。这个关键字有两种形式：
@@ -212,6 +214,21 @@ assert 条件：表达式;
 - 在启用或禁用断言时**不必**重新编译程序。启用或禁用断言是**类加载器**(class loader) 的功能。当断言被禁用时，**类加载器将跳过**断言代码，因此，不会降低程序运行的速度。
 - 断言失败是致命的、 不可恢复的错误。
 - 断言检查只用于**开发和测试**阶段。断言只应该用于在测试阶段确定程序内部的**错误位置**。
+
+单元测试必须使用断言（Junit/JunitX）。
+
+##### 2. 常用断言方法
+
+|                             断言                             |                             描述                             |
+| :----------------------------------------------------------: | :----------------------------------------------------------: |
+| void assertEquals([String message], expected value, actual value) | 断言两个值相等。值可能是类型有 int, short, long, byte, char or java.lang.Object. 第一个参数是一个可选的字符串消息 |
+|     void assertTrue([String message], boolean condition)     |                       断言一个条件为真                       |
+|     void assertFalse([String message],boolean condition)     |                       断言一个条件为假                       |
+| void assertNotNull([String message], java.lang.Object object) |                   断言一个对象不为空(null)                   |
+|  void assertNull([String message], java.lang.Object object)  |                    断言一个对象为空(null)                    |
+| void assertSame([String message], java.lang.Object expected, java.lang.Object actual) |                 断言，两个对象引用相同的对象                 |
+| void assertNotSame([String message], java.lang.Object unexpected, java.lang.Object actual) |               断言，两个对象不是引用同一个对象               |
+| void assertArrayEquals([String message], expectedArray, resultArray) | 断言预期数组和结果数组相等。数组的类型可能是 int, long, short, char, byte or java.lang.Object. |
 
 
 
@@ -631,3 +648,59 @@ if(obj instanceof String str){
 - 每次 Java 版本的发布都伴随着对 JVM 虚拟机的优化，包括对现有垃圾回收算法的改进，引入新的垃圾回收算法，移除老旧的不再适用于今天的垃圾回收算法等。
 - 整体优化的方向是**高效，低时延的垃圾回收表现。**
 - 对于日常的应用开发者可能比较关注新的语法特性，但是从一个公司角度来说，在考虑是否升级 Java 平台时更加考虑的是**JVM 运行时的提升。**
+
+
+
+#### 正则表达式
+
+| 符号 |       描述       |  例子  |  能匹配  | 不能匹配 |
+| :--: | :--------------: | :----: | :------: | :------: |
+|  ^   | 行首或字符串开始 |  ^yo   |    yo    |   ayo    |
+|  $   | 行末或字符串结束 |  yo$   |    yo    |   yop    |
+|  \b  |     单词边界     | \byo\b | mu yo mu |  muyomu  |
+|  \B  |    非单词边界    | \Byo\B |  muyomu  | mu yo mu |
+
+|   符号   |                             描述                             |   例子    | 能匹配 | 不能匹配 |
+| :------: | :----------------------------------------------------------: | :-------: | :----: | :------: |
+| (?=xxx)  |   正向肯定预查，从任何匹配xxx的字符串开始处匹配查找字符串    |  yo(?=o)  |  yoo   |    yo    |
+| (?!xxx)  | 正向否定预查，从任何不匹配pattern的字符串开始处匹配查找字符串 |  yo(?!o)  |   yo   |   yoo    |
+| (?<=xxx) |        反向肯定预查，与正向肯定预查类拟，只是方向相反        |  (?<=y)o  |   yo   |   yoo    |
+| (?<!xxx) |        反向否定预查，与正向否定预查类拟，只是方向相反        | (?<!goo)d |  mood  |   good   |
+
+| 符号  |            描述             |  例子  |    能匹配     | 不能匹配 |
+| :---: | :-------------------------: | :----: | :-----------: | :------: |
+|  [ ]  |          字符集合           | [ace]  |    a, c, e    |    d     |
+| [ - ] |          字符范围           | [a-c]  |    a, b, c    |    d     |
+| [^ ]  |      不包含的字符集合       | [^abc] |     d, e      | a, b, c  |
+|   .   |   匹配除断行外的任何字符    |  yo.   | yoo, yop, yoh |    yo    |
+|  \s   |  空白字符，等于[\n\r\f\t ]  | la\sla |     la la     |   lala   |
+|  \S   | 非空白字符，等于[^\n\r\f\t] | la\sla |     lala      |  la la   |
+|  \d   |            数字             | \d{2}  |      23       |    1a    |
+|  \D   |           非数字            | \D{3}  |   yoo, abc    |   yo1    |
+|  \w   |   单词，等于[a-z-A-Z0-9_]   | \w{4}  |     v123      |  v12.3   |
+|  \W   | 非单词，等于[^a-z-A-Z0-9_]  |  .$%?  |     .$%?      |   .ab?   |
+
+| 特殊字符 |    描述    |
+| :------: | :--------: |
+|    \n    |    断行    |
+|    \r    |   回车符   |
+|    \t    |   制表符   |
+|    \v    | 垂直制表符 |
+|    \f    |    换页    |
+|   [\b]   |    退格    |
+
+|  符号   |           描述            |   例子   |   能匹配   | 不能匹配 |
+| :-----: | :-----------------------: | :------: | :--------: | :------: |
+|   \|    |         或，其一          |   a\|b   |    a, b    |    c     |
+|  (xxx)  |   匹配xxx并获取这一匹配   | yo(o\|p) | yoo 或 yop |   yoh    |
+| (?:xxx) |  匹配xxx但不获取这一匹配  |  y(?:o)  |     yo     |    ya    |
+|    +    |       重复1次或多次       |   yo+    |  yo, yooo  |    y     |
+|    *    |       重复0次或多次       |   yo*    |   y, yoo   |   yop    |
+|    ?    |       出现0次或1次        |   yo?    |   y, yo    |    ye    |
+|   ??    | ?的懒惰模式，尽可能少匹配 |  yoo??   |     yo     |   yoo    |
+|   +?    |        +的懒惰模式        |   yo+?   |     yo     |   yoo    |
+|   *?    |        *的懒惰模式        |   yo*?   |     y      |    yo    |
+|   {n}   |          重复n次          |  yo{2}   |    yoo     |   yooo   |
+|  {n,m}  |        重复n到m次         | yo{1, 3} |  yo,yooo   |  yoooo   |
+|  {n,}   |        重复至少n次        |  yo{2,}  | yoo, yooo  |    yo    |
+

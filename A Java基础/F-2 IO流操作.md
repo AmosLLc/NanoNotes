@@ -18,9 +18,13 @@
 
 当然我们不用都记住，而实际在使用过程中用的最多的还是文件类操作、转换类操作、序列化操作，当然在此基础上我们可以使用 **Buffered** 来提高效率（Java IO 使用了**装饰器模式**）。
 
+
+
 #### 字节流
 
 抽象化磁盘文件的 File 类型，它仅仅用于**抽象**化描述一个**磁盘文件或目录**，却**不具备**访问和修改一个文件**内容**的能力。Java 的 **IO 流**就是用于**读写文件内容**的一种设计，它能完成将磁盘文件内容输出到**内存**或者是将内存数据输出到**磁盘**文件的数据传输工作。
+
+<img src="assets/DP-Decorator-java.io.png" style="zoom:67%;" />
 
 流操作类大致分为两大类，一类是针对二进制文件的==**字节流**==，另一类是针对文本文件的==**字符流**==。
 
@@ -850,7 +854,56 @@ private static class A implements Serializable {
 }
 ```
 
-##### 3. transient 关键字
+假定一个User类，它的对象需要序列化，可以有如下三种方法：
+
+（1）若 User 类**仅仅实现了 Serializable 接口**，则可以按照以下方式进行序列化和反序列化
+
+- ObjectOutputStream 采用**默认**的序列化方式，对 User 对象的非 transient 的实例变量进行序列化。
+- ObjcetInputStream 采用默认的反序列化方式，对对 User 对象的非 transient 的实例变量进行反序列化。
+
+（2）若 User 类仅仅实现了 Serializable 接口，并且还定义了 `readObject(ObjectInputStream in)` 和`writeObject(ObjectOutputSteam out)`，则采用以下方式进行序列化与反序列化。
+
+- ObjectOutputStream 调用 User 对象的 **writeObject**(ObjectOutputStream out) 的方法进行序列化。 
+- ObjectInputStream 会调用 User 对象的 **readObject**(ObjectInputStream in) 的方法进行反序列化。
+
+（3）若 User 类实现了 **Externalnalizable** 接口，且 User 类必须实现 `readExternal(ObjectInput in)` 和 `writeExternal(ObjectOutput out)` 方法，则按照以下方式进行序列化与反序列化。
+
+- ObjectOutputStream 调用 User 对象的 **writeExternal**(ObjectOutput out)) 的方法进行序列化。 
+- ObjectInputStream 会调用 User 对象的 **readExternal**(ObjectInput in) 的方法进行反序列化。
+
+##### 3. JDK序列化与反序列化步骤
+
+**JDK类库中序列化的步骤**
+
+步骤一：创建一个对象输出流，它可以包装一个其它类型的目标输出流，如文件输出流：
+
+```java
+ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("D:\\object.out"));
+```
+
+步骤二：通过对象输出流的writeObject()方法写对象：
+
+```java
+oos.writeObject(new User("xuliugen", "123456", "male"));
+```
+
+**JDK类库中反序列化的步骤**
+
+步骤一：创建一个对象输入流，它可以包装一个其它类型输入流，如文件输入流：
+
+```java
+ObjectInputStream ois= new ObjectInputStream(new FileInputStream("object.out"));
+```
+
+步骤二：通过对象输出流的readObject()方法读取对象：
+
+```java
+User user = (User) ois.readObject();
+```
+
+说明：为了正确读取数据，完成反序列化，必须保证向对象输出流写对象的顺序与从对象输入流中读对象的顺序一致。
+
+##### 4. transient关键字
 
 transient 关键字可以使一些属性**不会**被序列化。
 
@@ -862,9 +915,35 @@ private transient Object[] elementData;
 
 不止 ArrayList，还有好几个使用动态数组的集合类都是如此。
 
+##### 5. 注意事项
 
+1、序列化时，只对**对象的状态**进行保存，而不管对象的方法；
 
+2、当一个父类实现序列化，子类**自动实现序列化**，不需要显式实现 Serializable 接口；
 
+3、当一个对象的实例变量引用其他对象，序列化该对象时也把引用对象进行序列化；
+
+4、并非所有的对象都可以序列化，至于为什么不可以，有很多原因了，比如：
+
+- 安全方面的原因，比如一个对象拥有 private，public 等 field，对于一个要传输的对象，比如写到文件，或者进行RMI 传输等等，在序列化进行传输的过程中，这个对象的 privat e等域是不受保护的；
+- 资源分配方面的原因，比如 socket，thread 类，如果可以序列化，进行传输或者保存，也无法对他们进行重新的资源分配，而且，也是没有必要这样实现；
+
+5、**声明为 static 和 transient 类型的成员数据不能被序列化**。因为 static 代表**类的状态**，transient 代表对象的临时数据。
+
+6、序列化运行时使用一个称为 **serialVersionUID** 的**版本号**与每个可序列化类相关联，该序列号在反序列化过程中用于验证序列化对象的发送者和接收者是否为该对象加载了与序列化兼容的类。为它赋予明确的值。显式地定义 serialVersionUID 有两种用途：
+
+- 在某些场合，希望类的不同版本对序列化兼容，因此需要确保类的不同版本具有相同的 serialVersionUID；
+- 在某些场合，不希望类的不同版本对序列化兼容，因此需要确保类的不同版本具有不同的 serialVersionUID。
+
+7、Java 有很多基础类已经实现了 serializable 接口，比如 String , Vector 等。但是也有一些没有实现 serializable 接口的；
+
+8、如果一个对象的成员变量是一个对象，那么这个对象的数据成员也会被保存！这是能用序列化解决深拷贝的重要原因；
+
+9、**ArrayList 序列化和反序列化的实现** ：ArrayList 中存储数据的数组是用 **transient** 修饰的，因为这个数组是动态扩展的，并不是所有的空间都被使用，因此就不需要所有的内容都被序列化。通过**重写序列化和反序列化方法**，使得可以只序列化数组中有内容的那部分数据。
+
+```java
+private transient Object[] elementData;
+```
 
 
 

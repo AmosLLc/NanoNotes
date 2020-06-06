@@ -51,7 +51,7 @@ public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize);
 
 这四种方法都是用的 Executors 中的 **ThreadFactory** 建立的线程。
 
-
+<img src="assets/820628cf179f4952812da4e8ca5de672.png" style="zoom:70%;" />
 
 #### 线程池分类
 
@@ -1308,8 +1308,8 @@ ThreadPoolExecutor.CallerRunsPolicy;	// 由调用线程处理该任务
 
 ThreadPoolExecutor提供了两个方法，用于线程池的关闭，分别是 **shutdown**() 和 **shutdownNow**()，其中：
 
-- shutdown()：不会立即终止线程池，而是要**等所有任务缓存队列中的任务都执行完**后才终止，但再也不会接受新的任务
-- shutdownNow()：**立即终止线程池**，并尝试打断正在执行的任务，并且清空任务缓存队列，返回尚未执行的任务
+- **shutdown**()：不会立即终止线程池，而是要**等所有任务缓存队列中的任务都执行完**后才终止，但再也不会接受新的任务
+- **shutdownNow**()：**立即终止线程池**，并尝试打断正在执行的任务，并且清空任务缓存队列，返回尚未执行的任务
 
 ##### 7. 线程池容量的动态调整
 
@@ -1416,7 +1416,11 @@ task 9执行完毕
 
 任务之间有依赖可能造成线程池死锁。可以使用 newCachedThreadPool 创建线程池，让线程数**不受限制**。也可以使用 **SynchronousQueue** 来避免线程池死锁，可以立马创建线程。
 
+##### 10. 如何合理设置线程池的大小
 
+一般需要根据任务的类型来配置线程池大小：
+如果是 CPU 密集型任务，就需要尽量压榨 CPU，参考值可以设为 NCPU + 1。
+如果是 IO 密集型任务，参考值可以设置为 2 * NCPU。
 
 #### 源码解析
 

@@ -22,8 +22,8 @@ Throwable 可以用来表示任何可以作为异常抛出的**类**，分为两
 
 **Exception** 是异常，主要分为两种：
 
-- **受查异常** ：需要用 **try...catch...** 语句捕获并进行处理，并且可以从异常中恢复；就是**可以检查**到的，与 **IO 操作相关**的很多异常就是这个。比如 ：ClassNotFoundException，NoSuchFieldException，NoSuchMetodException。除了 **RuntimeException** 及其子类以外，都是 Checked Exception。
-- **非受查异常** ：是程序**运行时**错误，例如除 0 会引发 ArithmeticException，此时程序崩溃并且无法恢复。派生于 **Error** 类和 **RuntimeException 类**的异常。运行时才能发现的异常，所以是不能检查的异常。
+- **受查异常** ：发生在==**编译阶段**==，必须要使用 try…catch（或者throws）否则编译不通过。 需要用 **try...catch...** 语句捕获并进行处理，并且可以从异常中恢复；就是**可以检查**到的，与 **IO 操作相关**的很多异常就是这个。比如 ：ClassNotFoundException，NoSuchFieldException，NoSuchMetodException。除了 **RuntimeException** 及其子类以外，都是 Checked Exception。
+- **非受查异常** ：是程序==**运行时**==错误，例如除 0 会引发 ArithmeticException，此时程序崩溃并且无法恢复。派生于 **Error** 类和 **RuntimeException 类**的异常。运行时才能发现的异常，所以是不能检查的异常。
 
 **常见的 RuntimeException 表（非受查异常）**
 
@@ -178,7 +178,7 @@ PrintWriter out = new Pri ntWriter("out.txt")){
 
 > **Java 中 finally 块一定会执行吗？**
 
-不一定，分情况。因为首先想要执行 finally 块的**前提是必须执行到了 try 块**，当在 try 块或者 catch 块中**有 System.exit(0);** 这样的语句存在时 finally 块就**不会被执行**到了，因为程序**被结束**了。此外当在 try 块或者 catch 块里 return 时 finally 会被执行；而且 finally 块里 return 语句会把 try 块或者 catch 块里的 return 语句效果给覆盖掉**且吞掉了异常**。
+不一定，分情况。因为首先想要执行 finally 块的**前提是必须执行到了 try 块**，当在 try 块或者 catch 块中**有 System.exit(0);** 这样的语句存在时 finally 块就**不会被执行**到了，因为程序**被结束**了。此外当在 try 块或者 catch 块里 return 时 finally 会被执行；而且 finally 块里 return 语句会把 try 块或者 catch 块里的 return 语句效果给覆盖掉**且吞掉了异常**。当一个线程在执行 try 语句块或者 catch 语句块时被打断（interrupted）或者被终止（killed），与其相对应的 finally 语句块可能不会执行。还有更极端的情况，就是在线程运行 try 语句块或者 catch 语句块时，突然死机或者断电。可能有人认为死机、断电这些理由有些强词夺理，没有关系，我们只是为了说明这个问题。
 
 
 

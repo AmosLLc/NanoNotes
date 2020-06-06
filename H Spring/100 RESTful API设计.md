@@ -9,6 +9,10 @@ GET    /classes：列出所有班级
 POST   /classes：新建一个班级
 ```
 
+可以总结为一句话：REST 是所有 Web 应用都应该遵守的架构设计指导原则。 
+Representational State Transfer，翻译是”表现层状态转化”。 
+面向资源是 REST 最明显的特征，对于同一个资源的一组不同的操作。资源是服务器上一个可命名的抽象概念，资源是以名词为核心来组织的，首先关注的是名词。REST要求，必须通过统一的接口来对资源执行各种操作。对于每个资源只能执行一组有限的操作。（7个HTTP方法：GET/POST/PUT/DELETE/PATCH/HEAD/OPTIONS）
+
 ####  重要概念
 
 REST，即 **REpresentational State Transfer** 的缩写。这个词组的翻译过来就是"**表现层状态转化**"。这样理解起来甚是晦涩，实际上 REST 的全称是 **Resource Representational State Transfe** ，直白地翻译过来就是 **“资源”在网络传输中以某种“表现形式”进行“状态转移”** 。如果还是不能继续理解，请继续往下看，相信下面的讲解一定能让你理解到底啥是 REST 。

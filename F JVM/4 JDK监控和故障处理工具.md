@@ -25,6 +25,15 @@
 jps命令格式 jps [options] [hostid]
 ```
 
+**options 参数选项说明如下：**
+
+```shell
+-q 不输出类名、Jar名和传入main方法的参数
+-m 输出传入main方法的参数
+-l 输出main类或Jar的全限名
+-v 输出传入JVM的参数
+```
+
 例子：
 
 ```java
@@ -48,8 +57,13 @@ C:\Users\Nano>jps -l
 ```
 
 - `jps -v`：输出虚拟机进程启动时 **JVM 参数**。
-
 - `jps -m`：输出传递给 Java 进程 **main() 函数的参数**。
+
+**使用（查看所有 Java 进程）**
+
+```shell
+jps -lv
+```
 
 ##### 2. jstat：监视虚拟机各种运行状态信息
 
@@ -84,6 +98,10 @@ jstat -gcpermcapacity vmid 	// 显示永久代大小
 jstat -gcutil vmid 		// 显示垃圾收集信息
 ```
 
+例如：需要每 1000 毫秒查询一次进程 16418 垃圾收集状况，一共查询 10 次，那命令如下：
+
+<img src="assets/tools_stat.png" style="zoom:50%;" />
+
 ##### 3. jinfo: 实时地查看和调整虚拟机各项参数
 
 - `jinfo vmid` : 输出当前 jvm 进程的**全部参数和系统属性** (第一部分是系统的属性，第二部分是 JVM 的参数)。
@@ -95,6 +113,13 @@ C:\Users\Nano>jinfo  -flag MaxHeapSize 17340
 -XX:MaxHeapSize=2124414976
 C:\Users\Nano>jinfo  -flag PrintGC 17340
 -XX:-PrintGC
+```
+
+查看 2788 的 MaxPerm 大小可以用：
+
+```shell
+[root@Bill-8 bin]# jinfo -flag MaxPermSize 2788
+-XX:MaxPermSize=134217728
 ```
 
 ##### 4. jmap：生成堆转储快照
@@ -135,9 +160,9 @@ Server is ready.
 
 ##### 6. jstack：生成虚拟机当前时刻的线程快照
 
-jstack 命令用于生成虚拟机当前时刻的**线程快照**（一般称为 **threaddump** 或者 javacore 文件）。线程快照就是当前虚拟机内每一条线程正在执行的**方法堆栈集合**，生成线程快照的主要目的是**定位线程出现长时间==停顿==的原因**，如**线程死锁、死循环、请求外部资源导致长时间等待**等。
+jstack 命令用于生成虚拟机当前时刻的**线程快照**（一般称为 **threaddump** 或者 javacore 文件）。线程快照就是当前虚拟机内每一条线程正在执行的**方法堆栈集合**，生成线程快照的主要目的是**定位线程出现长时间==停顿==的原因**，如**线程死锁、死循环、请求外部资源导致长时间等待**等。线程出现**停顿**的时候通过 jstack 来查看各个线程的调用堆栈，就可以知道没有响应的线程到底在后台做些什么事情。
 
-jstack 命令格式 
+jstack 命令格式：
 
 ```java
 jstack [option] vmid（进程号）
@@ -256,7 +281,9 @@ JDK 中除了提供大量的命令行工具外，还有两个功能强大的可�
 
 ##### 1. JConsole
 
-JConsole 工具在  JDK/bin 目录下，启动 JConsole 后，将自动搜索本机运行的 Jvm 进程，不需要 jps 命令来查询指定。双击其中一个 Jvm 进程即可开始监控，也可使用“远程进程”来连接远程服务器。
+JConsole 中，您将能够监视 JVM 内存的使用情况、线程堆栈跟踪、已装入的类和 VM 信息以及 CE MBean。
+
+JConsole ：一个 Java GUI 监视工具，可以以图表化的形式显示各种数据。并可通过远程连接监视远程的服务器 VM。用 Java 写的 GUI 程序，用来监控 VM，并可监控远程的 VM，非常易用，而且功能非常强。命令行里打 JConsole ，选则进程就可以了。
 
 提供内存监控和线程监控的功能。
 

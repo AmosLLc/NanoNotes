@@ -38,27 +38,20 @@ SpringMVC 框架是以请求为驱动，围绕 Servlet 设计，将请求发给�
 客户端发送请求-> 前端控制器 DispatcherServlet 接受客户端请求 -> 找到处理器映射 HandlerMapping 解析请求对应的 Handler-> HandlerAdapter 会根据 Handler 来调用真正的处理器开处理请求，并处理相应的业务逻辑 -> 处理器返回一个模型视图 ModelAndView -> 视图解析器进行解析 -> 返回一个视图对象->前端控制器 DispatcherServlet 渲染数据（Moder）->将得到视图对象返回给用户
 
 **如下图所示：**
-![SpringMVC运行原理](assets/49790288.jpg)
-
-上图的一个笔误的小问题：Spring MVC 的入口函数也就是前端控制器 DispatcherServlet 的作用是接收请求，响应结果。
+<img src="assets/Spring-mvc-framework-1536053968817.png"/>
 
 **流程说明（重要）：**
 
-（1）客户端（浏览器）发送请求，直接请求到 DispatcherServlet。
 
-（2）DispatcherServlet 根据请求信息调用 HandlerMapping，解析请求对应的 Handler。
 
-（3）解析到对应的 Handler（也就是我们平常说的 Controller 控制器）后，开始由 HandlerAdapter 适配器处理。
-
-（4）HandlerAdapter 会根据 Handler 来调用真正的处理器开处理请求，并处理相应的业务逻辑。
-
-（5）处理器处理完业务后，会返回一个 ModelAndView 对象，Model 是返回的数据对象，View 是个逻辑上的 View。
-
-（6）ViewResolver 会根据逻辑 View 查找实际的 View。
-
-（7）DispaterServlet 把返回的 Model 传给 View（视图渲染）。
-
-（8）把 View 返回给请求者（浏览器）
+- ① 客户端的所有请求都交给前端控制器DispatcherServlet来处理，它会负责调用系统的其他模块来真正处理用户的请求。  
+- ② DispatcherServlet收到请求后，将根据请求的信息（包括URL、HTTP协议方法、请求头、请求参数、Cookie等）以及HandlerMapping的配置找到处理该请求的Handler（任何一个对象都可以作为请求的Handler）。  
+- ③ 在这个地方Spring会通过HandlerAdapter对该处理进行封装。  
+- ④ HandlerAdapter是一个适配器，它用统一的接口对各种Handler中的方法进行调用。  
+- ⑤ Handler完成对用户请求的处理后，会返回一个ModelAndView对象给DispatcherServlet，ModelAndView顾名思义，包含了数据模型以及相应的视图的信息。  
+- ⑥ ModelAndView的视图是逻辑视图，DispatcherServlet还要借助ViewResolver完成从逻辑视图到真实视图对象的解析工作。  
+- ⑦ 当得到真正的视图对象后，DispatcherServlet会利用视图对象对模型数据进行渲染。  
+- ⑧ 客户端得到响应，可能是一个普通的HTML页面，也可以是XML或JSON字符串，还可以是一张图片或者一个PDF文件。 
 
 
 

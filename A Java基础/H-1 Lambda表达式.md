@@ -304,7 +304,7 @@ Supplier<Apple> s = Apple::new;
 #### 变量作用域
 
 - lambda 表达式可以==捕获==外围作用域中变量的值。
-- 在 lambda 表达式中， 只能引用==值不会改变==的变量。lambda表达式中捕获的变量必须实际上是**最终变量** ( ==**final 类型**==)。实际上的最终变量是指， 这个变量初始化之后就不会再为它赋新值。
+- 在 lambda 表达式中， 只能引用==值不会改变==的变量。lambda表达式中捕获的变量必须实际上是**最终变量** ( ==**final 类型**==)。实际上的最终变量是指， 这个变量初始化之后就不会再为它赋新值。lambda 表达式**只能引用标记了 final 的外层局部变量**，这就是说不能在 lambda 内部修改定义在域外的局部变量，否则会编译错误。
 - 在 Java 中， lambda 表达式就是**闭包**。
 
 ##### 1. 访问局部变量
@@ -319,7 +319,7 @@ Converter<Integer, String> stringConverter =
 stringConverter.convert(2);     // 3
 ```
 
-但是和匿名对象不同的是，这里的变量num可以不用声明为final，该代码同样正确：
+但是和匿名对象不同的是，lambda 表达式内部的局部变量 num 可以**不用声明为 final**，该代码同样正确：
 
 ```java
 int num = 1;
@@ -329,7 +329,7 @@ Converter<Integer, String> stringConverter =
 stringConverter.convert(2);     // 3
 ```
 
-不过这里的 num 必须不可被后面的代码修改（即隐性的具有final的语义），例如下面的就无法编译：
+不过这里的 num 必须不可被后面的代码修改（即**隐性**的具有 final 的语义），例如下面的就无法编译：
 
 ```java
 int num = 1;

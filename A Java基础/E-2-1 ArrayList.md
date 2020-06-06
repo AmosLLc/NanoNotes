@@ -86,7 +86,7 @@ public class ArrayList<E> extends AbstractList<E>
 
 存放元素数组为 **elementData**，其默认大小为 **DEFAULT_CAPACITY** = **10**。如果初始化时没有指定数组大小，那么第一次添加元素时会扩容，这时候就会**扩容到默认的 10**，如果指定了容量，那就按容量 1.5 扩容了。
 
-![1582447809913](assets/1582447809913.png)
+<img src="assets/ArrayList_base-1591168031889.png" alt="1582447809913" style="zoom:71%;" />
 
 ##### 2. 初始化
 
@@ -531,6 +531,18 @@ Fail-fast 机制并不保证在不同步的修改下一定会抛出异常，它�
 在我们常见的 Java 集合中就可能出现 fail-fast 机制，比如 ArrayList，HashMap。
 
 在**多线程和单线程**环境下都有可能出现 Fail-fast。
+
+fail-fast 会在以下两种情况下抛出 Concurrent Modification Exception
+
+（1）**单线程环境**
+
+- 集合被创建后，在遍历它的过程中修改了结构。
+
+- 注意 remove() 方法会让 expectModcount 和 modcount 相等，所以是不会抛出这个异常。
+
+（2）**多线程环境**
+
+- 当一个线程在遍历这个集合，而另一个线程对这个集合的结构进行了修改。
 
 **modCount** 属性是继承自 **AbstractList** 的，用来记录 **结构发生变化的次数**。结构发生变化是指添加或者删除至少一个元素的所有操作，或者是调整内部数组的大小，仅仅只是设置元素的值不算结构发生变化。可以用于**检查并发修改**的情况。
 

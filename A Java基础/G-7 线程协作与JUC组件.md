@@ -542,7 +542,7 @@ java.util.concurrent（**JUC**）大大提高了并发性能，**AQS** 被认为
 
 维护了一个**计数器 cnt**，每次调用 countDown() 方法会让计数器的值**减 1**，**减到 0** 的时候，那些**因为**调用 **await()** 方法而在等待的线程就会被**唤醒**。
 
-![1563602021597](file://C:/Users/nano/Desktop/project/JavaNotes/A%20JavaSE/1%20Java%E5%9F%BA%E7%A1%80/assets/1563602021597.png?lastModify=1589250095)
+<img src="assets/CountdownLatch.png"/>
 
 类中有**三个方法**是最重要的：
 
@@ -1302,9 +1302,27 @@ public class TestThread extends Thread {
 }
 ```
 
+#### 总结
+
+下面对上面说的三个组件类进行一个总结：
+
+- CountDownLatch 和 CyclicBarrier 都能够实现线程之间的等待，只不过它们侧重点不同：
+    - CountDownLatch 一般用于某个线程A等待若干个其他线程执行完任务之后，它才执行；
+    - CyclicBarrier 一般用于一组线程互相等待至某个状态，然后这一组线程再同时执行；
+    - 另外，CountDownLatch 是不能够重用的，而 CyclicBarrier 是可以重用的。
+- Semaphore 其实和锁有点类似，它一般用于控制对某组资源的访问权限。
+
 
 
 ### 三、JUC其他组件
+
+JUC 下面的常见包 
+
+- Executor  用来创建线程池，在实现Callable接口时，添加线程。 
+- FeatureTask 此 FutureTask 的 get 方法所返回的结果类型。 
+- TimeUnit 
+- Semaphore  
+- LinkedBlockingQueue  
 
 #### FutureTask
 

@@ -17,7 +17,7 @@ AOP(Aspect-Oriented Programming:面向切面编程)能够将那些与业务无�
 
 AOP 主要用来解决：在不改变原有业务逻辑的情况下，增强横切逻辑代码，根本上解耦合，避免横切逻辑代码重复。
 
-
+AOP（Aspect Oriented Programming ）称为面向切面编程，扩展功能不是修改源代码实现，在程序开发中主要用来解决一些系统层面上的问题，比如日志，事务，权限等待，Struts2的拦截器设计就是基于AOP的思想，是个比较经典的例子。
 
 **为什么使用AOP？**
 
@@ -30,6 +30,10 @@ AOP 主要用来解决：在不改变原有业务逻辑的情况下，增强横�
 Spring AOP 的**流程约定**如下
 
 ![1565089790690](assets/1565089790690.png)
+
+
+
+<img src="assets/spring-aop.png"/>
 
 
 
@@ -314,6 +318,32 @@ public User validateAndPrint(Long id, String userName, String note) {
 
 
 
+#### 底层原理
+
+<img src="assets/aop2.png"/>
+
+##### 第一种 JDK 自带的动态代理技术
+
+JDK动态代理必须基于接口进行代理
+
+作用：使用代理可以对目标对象进行性能监控（计算运行时间）、安全检查（是否具有权限）、 记录日志等。
+
+注意：必须要有接口才能进行代理，代理后对象必须转换为接口类型
+
+
+
+##### 第二种 CGLIB(CodeGenerationLibrary)是一个开源项目
+
+Spring使用CGlib 进行AOP代理， hibernate 也是支持CGlib（默认使用 javassist ）需要下载cglib 的jar包（Spring 最新版本3.2 内部已经集成了cglib ，**无需下载cglib的jar** ）
+
+**作用：可以为目标类，动态创建子类，对目标类方法进行代理（无需接口）**
+
+原理：Spring AOP 底层，会判断用户是根据接口代理还是目标类代理，如果针对接口代理就使用JDK代理，如果针对目标类代理就使用Cglib代理。
+
+<img src="assets/aop1.png"/>
+
+
+
 ####  多个切面
 
 定义第一个切面类 实现Order接口
@@ -419,6 +449,764 @@ public class Chapter4Application {
 
 
 
+#### Spring的AOP操作
+
+- 在Spring里面进行Aop操作，使用aspectj实现
+    - aspectj不是Spring的一部分，和Spring一起使用进行Aop操作 
+    - Spring2.0以后新增了对aspectj的支持
+
+- 使用aspectj实现aop有两种方式
+    - 基于aspectj的xml配置
+    - 基于aspectj的注解方式
+
+##### （1）AOP准备操作
+
+1、除了导入基本的jar包之外，还需要导入aop相关的jar包：
+
+```
+aopalliance-1.0.jar
+aspectjweaver-1.8.7.jar
+spring-aspects-5.0.4.RELEASE.jar
+spring-aop-5.0.4.RELEASE.jar
+```
+
+2、创建Spring核心配置文件 
+除了引入了约束spring-beans之外还需要引入新约束spring-aop
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-aop.xsd">
+
+</beans>12345678
+```
+
+##### （2）使用表达式配置切入点
+
+1. 切入点：实际增强的方法
+2. 常用的表达式
+    execution(<访问修饰符>? <返回类型> <方法名>(<参数>)<异常>)
+    （1）对包内的add方法进行增强
+    `execution(* cn.blinkit.aop.Book.add(..))`
+    （2）* 是对类里面的所有方法进行增强
+    `execution(* cn.blinkit.aop.Book.*(..))`
+    （3）*.* 是所有的类中的方法进行增强
+    `execution(* *.*(..))`
+    （4）匹配所有save开头的方法
+    `execution(* save*(..))`
+
+
+
+#### 3.5 使用xml实现AOP
+
+**aop配置代码：** Book
+
+```java
+public class Book {
+    public void add() {
+        System.out.println("add......");
+    }
+}
+```
+
+MyBook
+
+```java
+public class MyBook {
+    public void before1() {
+        System.out.println("前置增强......");
+    }
+
+    public void after1() {
+        System.out.println("后置增强......");
+    }
+
+    //环绕通知
+    public void around1(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
+        //方法之前
+        System.out.println("方法之前.....");
+
+        //执行被增强的方法
+        proceedingJoinPoint.proceed();
+
+        //方法之后
+        System.out.println("方法之后......");
+
+    }
+}
+```
+
+xml配置
+
+```xml
+    <!--1. 配置对象-->
+    <bean id="book" class="cn.blinkit.aop.Book"></bean>
+    <bean id="myBook" class="cn.blinkit.aop.MyBook"></bean>
+
+    <!--2. 配置aop操作-->
+    <aop:config>
+        <!--2.1 配置切入点-->
+        <aop:pointcut id="pointcut1" expression="execution(* cn.blinkit.aop.Book.*(..))"></aop:pointcut>
+
+        <!--2.2 配置切面
+                把增强用到方法上面
+        -->
+        <aop:aspect ref="myBook">
+            <!--
+                aop:before   :前置通知
+                aop:after    :后置通知
+                aop:around   :环绕通知
+                配置增强类型
+                method : 增强类里面使用哪个方法作为前置
+            -->
+            <aop:before method="before1" pointcut-ref="pointcut1"></aop:before>
+            <aop:after method="after1" pointcut-ref="pointcut1"></aop:after>
+            <aop:around method="around1" pointcut-ref="pointcut1"></aop:around>
+        </aop:aspect>
+    </aop:config>
+```
+
+测试代码
+
+```java
+public class AOPTest {
+    @Test
+    public void testBook() {
+        ApplicationContext context = new ClassPathXmlApplicationContext("cn/blinkit/aop/spring-aop.xml");
+        Book book = (Book) context.getBean("book");
+        book.add();
+
+    }
+}
+```
+
+
+
+#### 3.6 使用注解实现AOP
+
+1. 创建对象
+    (1)创建Book和MyBook **（增强类）** 对象
+
+2. 在spring核心配置文件中，开启aop操作
+    具体操作见xml配置文件代码：
+
+    ```xml
+    <?xml version="1.0" encoding="UTF-8"?>
+    <beans xmlns="http://www.springframework.org/schema/beans"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:aop="http://www.springframework.org/schema/aop"
+           xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+    
+        <!-- 1.开启aop操作 -->
+        <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+    
+        <!-- 2.配置对象 -->
+        <bean id="book" class="com.jxs.aspectj.Book"></bean>
+        <bean id="nbBook" class="com.jxs.aspectj.NBBook"></bean>
+    
+    </beans>
+    ```
+
+3. 在增强类上面使用注解完成aop操作
+    （1）类上面加上`@Aspect`
+    （2）方法上面加上
+    `@Before(value = "execution(* cn.blinkit.aop.anno.Book.*(..))")`
+    `@After(value = "表达式")`
+    `@Around(value = "表达式")`等...
+
+4. 
+
+**Book**
+
+```java
+public class Book {
+    public void add() {
+        System.out.println("add...注解版本...");
+    }
+}
+```
+
+**MyBook增强类**
+
+```java
+@Aspect
+public class MyBook {
+    //在方法上面使用注解完成增强配置
+    @Before(value = "execution(* cn.blinkit.aop.anno.Book.*(..))")
+    public void before1() {
+        System.out.println("前置增强...注解版本...");
+    }
+
+    @After(value = "execution(* cn.blinkit.aop.anno.Book.*(..))")
+    public void after1() {
+        System.out.println("后置增强...注解版本...");
+    }
+
+    //环绕通知
+    @Around(value = "execution(* cn.blinkit.aop.anno.Book.*(..))")
+    public void around1(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
+        //方法之前
+        System.out.println("方法之前...注解版本...");
+
+        //执行被增强的方法
+        proceedingJoinPoint.proceed();
+
+        //方法之后
+        System.out.println("方法之后...注解版本...");
+
+    }
+}
+```
+
+**xml配置**
+
+```xml
+<!--开启aop操作-->
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+
+    <!--创建对象-->
+    <bean id="book" class="cn.blinkit.aop.anno.Book"></bean>
+    <bean id="myBook" class="cn.blinkit.aop.anno.MyBook"></bean>
+```
+
+
+
+#### 3.7 为什么需要代理模式？
+
+假设需实现一个计算的类Math、完成加、减、乘、除功能，如下所示：  
+
+```java
+package com.zhangguo.Spring041.aop01;
+
+public class Math {
+    //加
+    public int add(int n1,int n2){
+        int result=n1+n2;
+        System.out.println(n1+"+"+n2+"="+result);
+        return result;
+    }
+    
+    
+    //减
+    public int sub(int n1,int n2){
+        int result=n1-n2;
+        System.out.println(n1+"-"+n2+"="+result);
+        return result;
+    }
+    
+    //乘
+    public int mut(int n1,int n2){
+        int result=n1*n2;
+        System.out.println(n1+"X"+n2+"="+result);
+        return result;
+    }
+    
+    //除
+    public int div(int n1,int n2){
+        int result=n1/n2;
+        System.out.println(n1+"/"+n2+"="+result);
+        return result;
+    }
+}
+```
+
+现在需求发生了变化，要求项目中所有的类在执行方法时输出执行耗时。最直接的办法是修改源代码，如下所示：  
+
+```java
+package com.zhangguo.Spring041.aop01;
+
+import java.util.Random;
+
+public class Math {
+    //加
+    public int add(int n1,int n2){
+        //开始时间
+        long start=System.currentTimeMillis();
+        lazy();
+        int result=n1+n2;
+        System.out.println(n1+"+"+n2+"="+result);
+        Long span= System.currentTimeMillis()-start;
+        System.out.println("共用时："+span);
+        return result;
+    }
+    
+    //减
+    public int sub(int n1,int n2){
+        //开始时间
+        long start=System.currentTimeMillis();
+        lazy();
+        int result=n1-n2;
+        System.out.println(n1+"-"+n2+"="+result);
+        Long span= System.currentTimeMillis()-start;
+        System.out.println("共用时："+span);
+        return result;
+    }
+    
+    //乘
+    public int mut(int n1,int n2){
+        //开始时间
+        long start=System.currentTimeMillis();
+        lazy();
+        int result=n1*n2;
+        System.out.println(n1+"X"+n2+"="+result);
+        Long span= System.currentTimeMillis()-start;
+        System.out.println("共用时："+span);
+        return result;
+    }
+    
+    //除
+    public int div(int n1,int n2){
+        //开始时间
+        long start=System.currentTimeMillis();
+        lazy();
+        int result=n1/n2;
+        System.out.println(n1+"/"+n2+"="+result);
+        Long span= System.currentTimeMillis()-start;
+        System.out.println("共用时："+span);
+        return result;
+    }
+    
+    //模拟延时
+    public void lazy()
+    {
+        try {
+            int n=(int)new Random().nextInt(500);
+            Thread.sleep(n);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+
+
+缺点：
+
+1. 工作量特别大，如果项目中有多个类，多个方法，则要修改多次。
+2. 违背了设计原则：开闭原则（OCP），对扩展开放，对修改关闭，而为了增加功能把每个方法都修改了，也不便于维护。
+3. 违背了设计原则：单一职责（SRP），每个方法除了要完成自己本身的功能，还要计算耗时、延时；每一个方法引起它变化的原因就有多种。
+4. 违背了设计原则：依赖倒转（DIP），抽象不应该依赖细节，两者都应该依赖抽象。而在Test类中，Test与Math都是细节。
+
+解决：
+
+- 使用静态代理可以解决部分问题（请往下看...）
+
+
+
+
+
+
+
+#### 3.8 静态代理
+
+ 1、定义抽象主题接口
+
+```java
+package com.zhangguo.Spring041.aop02;
+
+/**
+ * 接口
+ * 抽象主题
+ */
+public interface IMath {
+    //加
+    int add(int n1, int n2);
+
+    //减
+    int sub(int n1, int n2);
+
+    //乘
+    int mut(int n1, int n2);
+
+    //除
+    int div(int n1, int n2);
+
+}
+```
+
+2、主题类，算术类，实现抽象接口
+
+```java
+package com.zhangguo.Spring041.aop02;
+
+/**
+ * 被代理的目标对象
+ *真实主题
+ */
+public class Math implements IMath {
+    //加
+    public int add(int n1,int n2){
+        int result=n1+n2;
+        System.out.println(n1+"+"+n2+"="+result);
+        return result;
+    }
+    
+    //减
+    public int sub(int n1,int n2){
+        int result=n1-n2;
+        System.out.println(n1+"-"+n2+"="+result);
+        return result;
+    }
+    
+    //乘
+    public int mut(int n1,int n2){
+        int result=n1*n2;
+        System.out.println(n1+"X"+n2+"="+result);
+        return result;
+    }
+    
+    //除
+    public int div(int n1,int n2){
+        int result=n1/n2;
+        System.out.println(n1+"/"+n2+"="+result);
+        return result;
+    }
+}
+```
+
+3、代理类 
+
+```java
+package com.zhangguo.Spring041.aop02;
+
+import java.util.Random;
+
+/**
+ * 静态代理类
+ */
+public class MathProxy implements IMath {
+
+    //被代理的对象
+    IMath math=new Math();
+    
+    //加
+    public int add(int n1, int n2) {
+        //开始时间
+        long start=System.currentTimeMillis();
+        lazy();
+        int result=math.add(n1, n2);
+        Long span= System.currentTimeMillis()-start;
+        System.out.println("共用时："+span);
+        return result;
+    }
+
+    //减法
+    public int sub(int n1, int n2) {
+        //开始时间
+        long start=System.currentTimeMillis();
+        lazy();
+        int result=math.sub(n1, n2);
+        Long span= System.currentTimeMillis()-start;
+        System.out.println("共用时："+span);
+        return result;
+    }
+
+    //乘
+    public int mut(int n1, int n2) {
+        //开始时间
+        long start=System.currentTimeMillis();
+        lazy();
+        int result=math.mut(n1, n2);
+        Long span= System.currentTimeMillis()-start;
+        System.out.println("共用时："+span);
+        return result;
+    }
+    
+    //除
+    public int div(int n1, int n2) {
+        //开始时间
+        long start=System.currentTimeMillis();
+        lazy();
+        int result=math.div(n1, n2);
+        Long span= System.currentTimeMillis()-start;
+        System.out.println("共用时："+span);
+        return result;
+    }
+
+    //模拟延时
+    public void lazy()
+    {
+        try {
+            int n=(int)new Random().nextInt(500);
+            Thread.sleep(n);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+4、测试运行 
+
+```java
+package com.zhangguo.Spring041.aop02;
+
+public class Test {
+    
+    IMath math=new MathProxy();
+    @org.junit.Test
+    public void test01()
+    {
+        int n1=100,n2=5;
+        math.add(n1, n2);
+        math.sub(n1, n2);
+        math.mut(n1, n2);
+        math.div(n1, n2);
+    }
+}
+```
+
+5、小结 
+
+通过静态代理，是否完全解决了上述的4个问题：
+
+**已解决：**
+
+- 解决了“开闭原则（OCP）”的问题，因为并没有修改Math类，而扩展出了MathProxy类。
+
+- 解决了“依赖倒转（DIP）”的问题，通过引入接口。
+
+- 解决了“单一职责（SRP）”的问题，Math类不再需要去计算耗时与延时操作，但从某些方面讲MathProxy还是存在该问题。
+
+**未解决：**
+
+- 如果项目中有多个类，则需要编写多个代理类，工作量大，不好修改，不好维护，不能应对变化。
+
+如果要解决上面的问题，可以使用动态代理。
+
+
+
+
+
+#### 3.9 动态代理，使用JDK内置的Proxy实现
+
+只需要一个代理类，而不是针对每个类编写代理类。
+
+在上一个示例中修改代理类MathProxy如下：
+
+```java
+package com.zhangguo.Spring041.aop03;
+
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Random;
+
+/**
+ * 动态代理类
+ */
+public class DynamicProxy implements InvocationHandler {
+
+    //被代理的对象
+    Object targetObject;
+    
+    /**
+     * 获得被代理后的对象
+     * @param object 被代理的对象
+     * @return 代理后的对象
+     */
+    public Object getProxyObject(Object object){
+        this.targetObject=object;
+        return Proxy.newProxyInstance(
+                targetObject.getClass().getClassLoader(), //类加载器
+                targetObject.getClass().getInterfaces(),  //获得被代理对象的所有接口
+                this);  //InvocationHandler对象
+        //loader:一个ClassLoader对象，定义了由哪个ClassLoader对象来生成代理对象进行加载
+        //interfaces:一个Interface对象的数组，表示的是我将要给我需要代理的对象提供一组什么接口，如果我提供了一组接口给它，那么这个代理对象就宣称实现了该接口(多态)，这样我就能调用这组接口中的方法了
+        //h:一个InvocationHandler对象，表示的是当我这个动态代理对象在调用方法的时候，会关联到哪一个InvocationHandler对象上，间接通过invoke来执行
+    }
+    
+    
+    /**
+     * 当用户调用对象中的每个方法时都通过下面的方法执行，方法必须在接口
+     * proxy 被代理后的对象
+     * method 将要被执行的方法信息（反射）
+     * args 执行方法时需要的参数
+     */
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        //被织入的内容，开始时间
+        long start=System.currentTimeMillis();
+        lazy();
+        
+        //使用反射在目标对象上调用方法并传入参数
+        Object result=method.invoke(targetObject, args);
+        
+        //被织入的内容，结束时间
+        Long span= System.currentTimeMillis()-start;
+        System.out.println("共用时："+span);
+        
+        return result;
+    }
+    
+    //模拟延时
+    public void lazy()
+    {
+        try {
+            int n=(int)new Random().nextInt(500);
+            Thread.sleep(n);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+}
+```
+
+测试运行：  
+
+```java
+package com.zhangguo.Spring041.aop03;
+
+public class Test {
+    
+    //实例化一个MathProxy代理对象
+    //通过getProxyObject方法获得被代理后的对象
+    IMath math=(IMath)new DynamicProxy().getProxyObject(new Math());
+    @org.junit.Test
+    public void test01()
+    {
+        int n1=100,n2=5;
+        math.add(n1, n2);
+        math.sub(n1, n2);
+        math.mut(n1, n2);
+        math.div(n1, n2);
+    }
+    
+    IMessage message=(IMessage) new DynamicProxy().getProxyObject(new Message());
+    @org.junit.Test
+    public void test02()
+    {
+        message.message();
+    }
+}
+```
+
+小结：
+
+ JDK内置的Proxy动态代理可以在运行时动态生成字节码，而没必要针对每个类编写代理类。中间主要使用到了一个接口InvocationHandler与Proxy.newProxyInstance静态方法，参数说明如下：
+
+使用内置的Proxy实现动态代理有一个问题：**被代理的类必须实现接口，未实现接口则没办法完成动态代理。**
+
+如果项目中有些类没有实现接口，则不应该为了实现动态代理而刻意去抽出一些没有实例意义的接口，通过cglib可以解决该问题。
+
+
+
+#### 3.10 动态代理，使用cglib实现
+
+CGLIB(Code Generation Library)是一个开源项目,是一个强大的，高性能，高质量的Code生成类库，它可以在运行期扩展Java类与实现Java接口，通俗说cglib可以在运行时动态生成字节码。
+
+1、引用cglib，通过maven
+
+2、使用cglib完成动态代理，大概的原理是：cglib继承被代理的类，重写方法，织入通知，动态生成字节码并运行，因为是继承所以final类是没有办法动态代理的。具体实现如下：  
+
+```java
+package com.zhangguo.Spring041.aop04;
+
+import java.lang.reflect.Method;
+import java.util.Random;
+
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.MethodInterceptor;
+import net.sf.cglib.proxy.MethodProxy;
+
+/*
+ * 动态代理类
+ * 实现了一个方法拦截器接口
+ */
+public class DynamicProxy implements MethodInterceptor {
+
+    // 被代理对象
+    Object targetObject;
+
+    //Generate a new class if necessary and uses the specified callbacks (if any) to create a new object instance. 
+    //Uses the no-arg constructor of the superclass.
+    //动态生成一个新的类，使用父类的无参构造方法创建一个指定了特定回调的代理实例
+    public Object getProxyObject(Object object) {
+        this.targetObject = object;
+        //增强器，动态代码生成器
+        Enhancer enhancer=new Enhancer();
+        //回调方法
+        enhancer.setCallback(this);
+        //设置生成类的父类类型
+        enhancer.setSuperclass(targetObject.getClass());
+        //动态生成字节码并返回代理对象
+        return enhancer.create();
+    }
+
+    // 拦截方法
+    public Object intercept(Object object, Method method, Object[] args, MethodProxy methodProxy) throws Throwable {
+        // 被织入的横切内容，开始时间 before
+        long start = System.currentTimeMillis();
+        lazy();
+
+        // 调用方法
+        Object result = methodProxy.invoke(targetObject, args);
+
+        // 被织入的横切内容，结束时间
+        Long span = System.currentTimeMillis() - start;
+        System.out.println("共用时：" + span);
+        
+        return result;
+    }
+
+    // 模拟延时
+    public void lazy() {
+        try {
+            int n = (int) new Random().nextInt(500);
+            Thread.sleep(n);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+}
+```
+
+测试运行：  
+
+```java
+package com.zhangguo.Spring041.aop04;
+
+public class Test {
+    //实例化一个DynamicProxy代理对象
+    //通过getProxyObject方法获得被代理后的对象
+    Math math=(Math)new DynamicProxy().getProxyObject(new Math());
+    @org.junit.Test
+    public void test01()
+    {
+        int n1=100,n2=5;
+        math.add(n1, n2);
+        math.sub(n1, n2);
+        math.mut(n1, n2);
+        math.div(n1, n2);
+    }
+    //另一个被代理的对象,不再需要重新编辑代理代码
+    Message message=(Message) new DynamicProxy().getProxyObject(new Message());
+    @org.junit.Test
+    public void test02()
+    {
+        message.message();
+    }
+}
+```
+
+**小结**
+
+使用cglib可以实现动态代理，即使被代理的类没有实现接口，但被代理的类必须不是final类。
+
+
+
+
+
+
+
+
+
 #### 面试题
 
 ##### 1. Spring AOP和AspectJ AOP有什么区别？
@@ -429,7 +1217,47 @@ Spring AOP 已经**集成了 AspectJ**  ，AspectJ  应该算的上是 Java 生�
 
 如果我们的切面比较少，那么两者性能差异不大。但是，当切面太多的话，最好选择 AspectJ ，它比 Spring AOP 快很多。
 
+##### 2. 对AOP的理解？
+
+**我的理解**
+
+- AOP（Aspect Oriented Programming ）称为面向切面编程，扩展功能不是修改源代码实现，在程序开发中主要用来解决一些系统层面上的问题，比如日志，事务，权限等待，Struts2的拦截器设计就是基于AOP的思想，是个比较经典的例子。
+- 面向切面编程（aop）是对面向对象编程（oop）的补充 
+- 面向切面编程提供声明式事务管理
+- AOP就是典型的代理模式的体现
+
+**Spring AOP实现原理** 
+
+- 动态代理（利用**反射和动态编译**将代理模式变成动态的） 
+
+- JDK的动态代理
+
+    - JDK内置的Proxy动态代理可以在运行时动态生成字节码，而没必要针对每个类编写代理类
+    - JDKProxy返回动态代理类，是目标类所实现接口的另一个实现版本，它实现了对目标类的代理（如同UserDAOProxy与UserDAOImp的关系） 
+
+- cglib动态代理 
+
+    - CGLibProxy返回的动态代理类，则是目标代理类的一个子类（代理类扩展了UserDaoImpl类） 
+    - cglib继承被代理的类，重写方法，织入通知，动态生成字节码并运行
+
+**优点**
+
+- 各个步骤之间的良好隔离性 
+- 源代码无关性
+- 松耦合
+- 易扩展
+- 代码复用
 
 
 
+AOP（Aspect Oriented Programming ）称为面向切面编程，扩展功能不是修改源代码实现，在程序开发中主要用来解决一些系统层面上的问题，比如日志，事务，权限等待，Struts2的拦截器设计就是基于AOP的思想，是个比较经典的例子。
+
+- AOP：面向切面编程，扩展功能不修改源代码实现
+- AOP采取**横向抽取机制**，取代了传统**纵向继承**体系重复性代码（性能监视、事务管理、安全检查、缓存）
+
+**spring的底层采用两种方式进行增强**
+
+         第一：Spring传统AOP 纯java实现，在运行期，对目标对象进行代理，织入增强代码
+    
+         第二：AspectJ第三方开源技术，Spring已经整合AspectJ，提供对AspectJ注解的支持，开发AOP程序 更加容易（企业主流）
 

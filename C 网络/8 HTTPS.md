@@ -181,6 +181,8 @@ HTTPS 的报文摘要功能之所以安全，是因为它结合了**加密和认
 
 #### SSL与TLS
 
+##### 1. 概述
+
 TLS/SSL是一种**加密通道的规范**。
 
 - **SSL**：（Secure Socket Layer） 安全套接层，于 1994 年由网景公司设计，并于 1995 年发布了 3.0 版本。
@@ -190,7 +192,97 @@ TLS/SSL是一种**加密通道的规范**。
 
 在**发送方**，SSL 接收**应用层**的数据，对数据进行**加密**，然后把加了密的数据送往 **TCP 套接字**。在**接收方**，SSL 从 TCP 套接字**读取**数据，**解密**后把数据交给应用层。 
 
-**==// TODO：待补充：SSL/TLS单向与双向认证流程。==**
+TLS 1.0是IETF（Internet Engineering Task Force，Internet工程任务组）制定的一种新的协议，它建立在SSL 3.0协议规范之上，是SSL 3.0的后续版本，可以理解为SSL 3.1，它是写入了 RFC 的。该协议由两层组成： TLS 记录协议（TLS Record）和 TLS 握手协议（TLS Handshake）。较低的层为 TLS 记录协议，位于某个可靠的传输协议（例如 TCP）上面。
+
+##### 2. SSL/TLS 握手流程
+
+SSL/TLS 握手是为了**安全**地协商出一份**对称加密**的秘钥，这个过程很有意思，下面我们一起来了解一下。
+
+<img src="assets/https_com.png" style="zoom:67%;" />
+
+
+
+###### （1）client hello
+
+握手第一步是客户端向服务端发送 Client Hello 消息，这个消息里包含了一个客户端生成的随机数 **Random1**、客户端支持的**加密套件**（Support Ciphers）和 SSL Version 等信息。
+
+
+
+###### （2）server hello
+
+第二步是服务端向客户端发送 Server Hello 消息，这个消息会从 Client Hello 传过来的 Support Ciphers 里确定一份加密套件，这个套件决定了后续加密和生成摘要时具体使用哪些算法，另外还会生成一份随机数 **Random2**。注意，至此客户端和服务端都拥有了两个随机数（Random1+ Random2），这两个随机数会在后续生成对称秘钥时用到。
+
+
+
+###### （3）server certificate
+
+这一步是服务端将自己的证书下发给客户端，让客户端验证自己的身份，客户端验证通过后取出证书中的公钥。
+
+
+
+###### （4）Server Hello Done
+
+Server Hello Done 通知客户端 Server Hello 过程结束。
+
+
+
+###### （5）Client Key Exchange
+
+上面客户端根据服务器传来的公钥生成了 **PreMaster Key**，Client Key Exchange 就是将这个 key 传给服务端，服务端再用自己的私钥解出这个 **PreMaster Key** 得到客户端生成的 **Random3**。至此，客户端和服务端都拥有 **Random1** + **Random2** + **Random3**，两边再根据同样的算法就可以生成一份秘钥，握手结束后的应用层数据都是使用这个秘钥进行对称加密。
+
+为什么要使用三个随机数呢？这是因为 SSL/TLS 握手过程的数据都是明文传输的，并且多个随机数种子来生成秘钥不容易被暴力破解出来。
+
+
+
+###### （6）Change Cipher Spec(Client)
+
+这一步是客户端通知服务端后面再发送的消息都会使用前面协商出来的秘钥加密了，是一条事件消息。
+
+
+
+###### （7）Finished(Client)
+
+客户端发送Finished报文。该报文包含连接至今全部报文的整理校验值。这次握手协议是否能成功，要以服务器是否能够正确解密该报文作为判定标准。
+
+
+
+###### （8）Change Cipher Spec(Server)
+
+服务器同样发送Change Cipher Spec报文给客户端
+
+
+
+###### （9）Finished(Server)
+
+服务器同样发送Finished报文给客户端
+
+
+
+###### （10-11）Application Data
+
+到这里，双方已安全地协商出了同一份秘钥，所有的应用层数据都会用这个秘钥加密后再通过 TCP 进行可靠传输。 
+
+
+
+###### （12）Alert：warning, close notify
+
+最后由客户端断开连接。断开连接时，发送close_notify报文。上图做了一些省略，在这步之后再发送一种叫做MAC（Message Authentication Code）的报文摘要。MAC能够查知报文是否遭到篡改，从而保护报文的完整性。
+
+
+
+###### （*）demand client certificate
+
+Certificate Request 是服务端要求客户端上报证书，这一步是可选的，对于安全性要求高的场景会用到。
+
+
+
+###### （*）check server certificate
+
+客户端收到服务端传来的证书后，先从 CA 验证该证书的合法性，验证通过后取出证书中的服务端公钥，再生成一个随机数 **Random3**，再用服务端公钥非对称加密 **Random3** 生成 **PreMaster Key**。
+
+<img src="assets/SSL_handshake.png"/>
+
+
 
 
 

@@ -415,6 +415,15 @@ public class User {
 
 #### 依赖注入
 
+所谓依赖注入，就是把底层类作为参数传入上层类，实现上层类对下层类的控制。DI依赖注入，向类里面属性注入值 ，依赖注入不能单独存在，需要在IOC基础上完成操作。
+
+注入方式：
+
+- 使用set方法注入 
+- 使用有参构造注入 
+- 使用接口注入
+- 注解注入(@Autowire) 
+
 ##### 注解@Autowired
 
 getBean() 方法支持根据类型和名称来获取对应的 bean。@Autowired 注解首先根据类型去**寻找对应的 bean**，找不到再根据**属性名称和 bean 名称**来寻找 bean。默认必须找到对应 Bean，否则报错（可以使用 required = false 关闭必须装配）。
@@ -539,7 +548,172 @@ Animal animal = null;
 
 
 
-#### 生命周期
+#### DI（依赖注入）
+
+##### 什么是依赖注入
+
+在依赖注入的模式下，创建被调用者得工作不再由调用者来完成，创建被调用者实例的工作通常由Spring容器完成，然后注入调用者。**创建对象时，向类里的属性设置值**
+
+##### 为什么使用依赖注入
+
+为了实现代码/模块之间松耦合。
+
+##### 为什么要实现松耦合
+
+上层调用下层，上层依赖于下层，当下层剧烈变动时上层也要跟着变动，这就会导致模块的复用性降低而且大大提高了开发的成本。
+
+一般情况下抽象的变化概率很小，让用户程序依赖于抽象，实现的细节也依赖于抽象。即使实现细节不断变动，只要抽象不变，客户程序就不需要变化。这大大降低了客户程序与实现细节的耦合度。
+
+##### IOC和DI区别
+
+1. IOC控制反转，把对象创建交给Spring配置 
+2. DI依赖注入，向类里面属性注入值 
+3. 关系，依赖注入不能单独存在，需要在IOC基础上完成操作
+
+##### 依赖注入方式
+
+1. 使用set方法注入 
+
+2. 使用有参构造注入 
+
+3. 使用接口注入
+
+说明：Spring框架中支持前两种方式
+
+###### （1）使用set方法注入
+
+```xml
+<bean id="person" class="cn.wang.property.Person">
+<!--set方法注入属性
+    name属性值：类中定义的属性名称
+    value属性值：设置具体的值
+-->
+        <property name="pname" value="zs"></property>
+</bean>1234567
+```
+
+###### （2）使用有参构造注入
+
+```java
+public class Person {
+    private String pname;
+
+    public void setPname(String pname) {
+        this.pname = pname;
+    }
+}
+```
+
+```xml
+<bean id="user" class="cn.wang.ioc.User">
+        <!--构造方法注入属性-->
+        <constructor-arg name="pname" value="Tony"></constructor-arg>
+</bean>
+```
+
+###### （3）注入对象类型属性
+
+- 创建service和dao类，在service中得到dao 
+
+具体实现过程 
+
+- 在service中把dao作为属性，生成dao的set方法
+
+```java
+public class UserService {
+    // 1.定义UserDao类型属性
+    private UserDao userDao;
+
+    // 2.生成set方法
+    public void setUserDao(UserDao userDao) {
+        this.userDao = userDao;
+    }
+}
+```
+
+1. 配置文件注入关系
+
+```java
+<bean id="userDao" class="cn.wang.property.UserDao">
+        <property name="name" value="Tom"></property>
+    </bean>
+    <bean id="userService" class="cn.wang.property.UserService">
+        <!--name属性值：UserService类里的属性名称-->
+        <!--ref属性:UserDao类配置bean标签中的id值-->
+        <property name="userDao" ref="userDao"></property>
+    </bean>12345678
+```
+
+###### （4）p名称空间注入
+
+<img src="assets/ioc-p1.png" alt="p名称空间注入" style="zoom:47%;" />
+
+<img src="assets/ioc-p2.png" alt="p名称空间注入" style="zoom:40%;" />
+
+###### （5）注入复杂类型属性
+
+```xml
+<!-- 注入复杂类型属性值 -->
+<!-- 
+    String pname;
+String[] arrs;
+List<String> list;
+Map<String, String> map;
+Properties props; 
+-->
+<bean id="person" class="cn.wang.property.Person">
+    <property name="pname" value="zs"></property>
+    <property name="arrs">
+        <list>
+            <value>aaa</value>
+            <value>bbb</value>
+            <value>ccc</value>
+        </list>
+    </property>
+    <property name="list">
+        <list>
+            <value>qqq</value>
+            <value>www</value>
+            <value>eee</value>
+        </list>
+    </property>
+    <property name="map">
+        <map>
+            <entry key="001" value="Tom"></entry>
+            <entry key="002" value="Amy"></entry>
+            <entry key="003" value="Jim"></entry>
+        </map>
+    </property>
+    <property name="props">
+        <props>
+            <prop key="username">admin</prop>
+            <prop key="passwprd">admin</prop>
+        </props>
+    </property>
+</bean>
+```
+
+
+
+
+
+#### IOC初始化过程
+
+<img src="assets/bean-init2.png"/>
+
+ IOC容器的初始化分为三个过程实现：
+
+- 第一个过程是Resource资源定位。这个Resouce指的是BeanDefinition的资源定位。这个过程就是容器找数据的过程，就像水桶装水需要先找到水一样。
+- 第二个过程是BeanDefinition的载入过程。这个载入过程是把用户定义好的Bean表示成Ioc容器内部的数据结构，而这个容器内部的数据结构就是BeanDefition。
+- 第三个过程是向IOC容器注册这些BeanDefinition的过程，这个过程就是将前面的BeanDefition保存到HashMap中的过程。
+
+
+
+更详细说明请阅读：[2 IOC容器初始化过程 - CSDN博客](
+
+
+
+#### Bean的生命周期
 
 - Bean定义、Bean初始化、Bean生存期、Bean销毁。
 
@@ -557,12 +731,12 @@ Animal animal = null;
 
 ![1564994754829](assets/1564994754829.png)
 
-- Bean容器找到配置文件中 Spring Bean 的定义。
-- Bean容器利用 Java Reflection API 创建一个 Bean 的实例。
+- Bean 容器找到配置文件中 Spring Bean 的定义。
+- Bean 容器利用 Java Reflection API 创建一个 Bean 的**实例**。
 - 如果涉及到一些属性值 利用 set 方法设置一些属性值。
 - 如果Bean实现了 BeanNameAware 接口，调用 setBeanName() 方法，传入 Bean 的名字。
 - 如果 Bean 实现了 BeanClassLoaderAware 接口，调用 setBeanClassLoader() 方法，传入 ClassLoader 对象的实例。
-- 如果 Bean 实现了 BeanFactoryAware 接口，调用 setBeanFactory() 方法，传入 BeanFactory 对象的实例。
+- 如果 Bean 实现了 **BeanFactoryAware** 接口，调用 setBeanFactory() 方法，传入 BeanFactory 对象的实例。
 - 与上面的类似，如果实现了**其他 *Aware 接口**，就调用相应的方法。
 - 如果有和加载这个 Bean 的 Spring 容器相关的 **BeanPostProcessor** 对象，执行 postProcessBeforeInitialization()方法。
 - 如果 Bean 实现了 **InitializingBean** 接口，执行 afterPropertiesSet() 方法。
@@ -1354,6 +1528,146 @@ public class MainConfig {
 
 
 
+#### BeanFactory和ApplicationContext的区别
+
+##### 1. BeanFactory
+
+是Spring里面最低层的接口，提供了最简单的容器的功能，只提供了实例化对象和拿对象的功能。
+
+##### 2. 两者装载bean的区别
+
+- **BeanFactory**：在启动的时候不会去实例化Bean，中有从容器中拿Bean的时候才会去实例化；
+- **ApplicationContext**：在启动的时候就把所有的Bean全部实例化了。它还可以为Bean配置lazy-init=true来让Bean延迟实例化；
+
+##### 3. 我们该用BeanFactory还是ApplicationContent
+
+**BeanFactory** 延迟实例化的优点：
+
+应用启动的时候占用资源很少，对资源要求较高的应用，比较有优势；
+
+缺点：速度会相对来说慢一些。而且有可能会出现空指针异常的错误，而且通过bean工厂创建的bean生命周期会简单一些
+
+**ApplicationContext** 不延迟实例化的优点：
+
+- 所有的Bean在启动的时候都加载，系统运行的速度快；
+- 在启动的时候所有的Bean都加载了，我们就能在系统启动的时候，尽早的发现系统中的配置问题
+- 建议web应用，在启动的时候就把所有的Bean都加载了。
+
+缺点：把费时的操作放到系统启动中完成，所有的对象都可以预加载，缺点就是消耗服务器的内存
+
+##### 4. ApplicationContext其他特点
+
+除了提供BeanFactory所支持的所有功能外，ApplicationContext还有额外的功能
+
+- 默认初始化所有的Singleton，也可以通过配置取消预初始化。
+- 继承MessageSource，因此支持国际化。
+- 资源访问，比如访问URL和文件（ResourceLoader）；
+- 事件机制，（有继承关系）上下文 ，使得每一个上下文都专注于一个特定的层次，比如应用的web层；
+- 同时加载多个配置文件。
+- 消息发送、响应机制（ApplicationEventPublisher）；
+- 以声明式方式启动并创建Spring容器。
+
+由于ApplicationContext会预先初始化所有的Singleton Bean，于是在系统创建前期会有较大的系统开销，但一旦ApplicationContext初始化完成，程序后面获取Singleton Bean实例时候将有较好的性能。
+
+也可以为bean设置lazy-init属性为true，即Spring容器将不会预先初始化该bean。
+
+
+
+#### ApplicationContext上下文的生命周期
+
+PS：可以借鉴Servlet的生命周期，实例化、初始init、接收请求service、销毁destroy;
+
+Spring上下文中的Bean也类似，【Spring上下文的生命周期】
+
+1. 实例化一个Bean，也就是我们通常说的new；
+2. 按照Spring上下文对实例化的Bean进行配置，也就是IOC注入
+3. 如果这个Bean实现了BeanNameAware接口，会调用它实现的setBeanName(String beanId)方法，此处传递的是Spring配置文件中Bean的ID；
+4. 如果这个Bean实现了BeanFactoryAware接口，会调用它实现的setBeanFactory()，传递的是Spring工厂本身（可以用这个方法获取到其他Bean）；
+5. 如果这个Bean实现了ApplicationContextAware接口，会调用setApplicationContext(ApplicationContext)方法，传入Spring上下文，该方式同样可以实现步骤4，但比4更好，以为ApplicationContext是BeanFactory的子接口，有更多的实现方法；
+6. 如果这个Bean关联了BeanPostProcessor接口，将会调用postProcessBeforeInitialization(Object obj, String s)方法，BeanPostProcessor经常被用作是Bean内容的更改，并且由于这个是在Bean初始化结束时调用After方法，也可用于内存或缓存技术；
+7. 如果这个Bean在Spring配置文件中配置了init-method属性会自动调用其配置的初始化方法；
+8. 如果这个Bean关联了BeanPostProcessor接口，将会调用postAfterInitialization(Object obj, String s)方法；
+
+注意：以上工作完成以后就可以用这个Bean了，那这个Bean是一个single的，所以一般情况下我们调用同一个ID的Bean会是在内容地址相同的实例
+
+1. 当Bean不再需要时，会经过清理阶段，如果Bean实现了DisposableBean接口，会调用其实现的destroy方法
+2. 最后，如果这个Bean的Spring配置中配置了destroy-method属性，会自动调用其配置的销毁方法
+
+以上10步骤可以作为面试或者笔试的模板，另外这里描述的是应用Spring上下文Bean的生命周期，如果应用Spring的工厂也就是BeanFactory的话去掉第5步就Ok了；
+
+
+
+
+
+#### Spring中autowire和resourse关键字的区别
+
+@Resource和@Autowired都是做bean的注入时使用，其实@Resource并不是Spring的注解，它的包是javax.annotation.Resource，需要导入，但是Spring支持该注解的注入。 
+
+1、共同点
+
+两者都可以写在字段和setter方法上。两者如果都写在字段上，那么就不需要再写setter方法。
+
+2、不同点
+
+**（1）@Autowired**
+
+@Autowired为Spring提供的注解，需要导入包org.springframework.beans.factory.annotation.Autowired;只按照byType注入。
+
+```java
+public class TestServiceImpl {
+    // 下面两种@Autowired只要使用一种即可
+    @Autowired
+    private UserDao userDao; // 用于字段上
+    
+    @Autowired
+    public void setUserDao(UserDao userDao) { // 用于属性的方法上
+        this.userDao = userDao;
+    }
+}
+```
+
+@Autowired注解是按照类型（byType）装配依赖对象，默认情况下它要求依赖对象必须存在，如果允许null值，可以设置它的required属性为false。如果我们想使用按照名称（byName）来装配，可以结合@Qualifier注解一起使用。如下：
+
+```java
+public class TestServiceImpl {
+    @Autowired
+    @Qualifier("userDao")
+    private UserDao userDao; 
+}
+```
+
+**（2）@Resource**
+
+@Resource默认按照ByName自动注入，由J2EE提供，需要导入包javax.annotation.Resource。@Resource有两个重要的属性：name和type，而Spring将@Resource注解的name属性解析为bean的名字，而type属性则解析为bean的类型。所以，如果使用name属性，则使用byName的自动注入策略，而使用type属性时则使用byType自动注入策略。如果既不制定name也不制定type属性，这时将通过反射机制使用byName自动注入策略。
+
+```javascript
+public class TestServiceImpl {
+    // 下面两种@Resource只要使用一种即可
+    @Resource(name="userDao")
+    private UserDao userDao; // 用于字段上
+    
+    @Resource(name="userDao")
+    public void setUserDao(UserDao userDao) { // 用于属性的setter方法上
+        this.userDao = userDao;
+    }
+}
+```
+
+注：最好是将@Resource放在setter方法上，因为这样更符合面向对象的思想，通过set、get去操作属性，而不是直接去操作属性。
+
+@Resource装配顺序：
+
+1. 如果同时指定了name和type，则从Spring上下文中找到唯一匹配的bean进行装配，找不到则抛出异常。
+
+2. 如果指定了name，则从上下文中查找名称（id）匹配的bean进行装配，找不到则抛出异常。
+
+3. 如果指定了type，则从上下文中找到类似匹配的唯一bean进行装配，找不到或是找到多个，都会抛出异常。
+4. 如果既没有指定name，又没有指定type，则自动按照byName方式进行装配；如果没有匹配，则回退为一个原始类型进行匹配，如果匹配则自动装配。
+
+@Resource的作用相当于@Autowired，只不过@Autowired按照byType自动注入。
+
+
+
 #### 面试题
 
 ##### 1. 谈谈对IOC的理解？
@@ -1368,6 +1682,12 @@ IoC （Inversion of control ）控制反转/反转控制。它是一种思想不
 - **使用 IoC 思想的开发方式** ：不通过 new 关键字来创建对象，而是通过 IoC 容器(Spring 框架) 来帮助我们实例化对象。我们需要哪个对象，直接从 IoC 容器里面过去即可。
 
 从以上两种开发方式的对比来看：我们 “丧失了一个权力” (创建、管理对象的权力)，从而也得到了一个好处（不用再考虑对象的创建、管理等一系列的事情）
+
+**我的理解**
+
+- 正常的情况下，比如有一个类，在类里面有方法（不是静态的方法），调用类里面的方法，创建类的对象，使用对象调用方法，创建类对象的过程，需要new出来对象
+- 通过控制反转，把对象的创建不是通过new方式实现，而是交给Spring配置创建类对象
+- IOC的意思是控件反转也就是由容器控制程序之间的关系，这也是spring的优点所在，把控件权交给了外部容器，之前的写法，由程序代码直接操控，而现在控制权由应用代码中转到了外部容器，控制权的转移是所谓反转。换句话说之前用new的方式获取对象，现在由spring给你至于怎么给你就是di了。
 
 > 为什么叫控制反转？
 
@@ -1385,6 +1705,21 @@ Spring 时代我们一般通过 XML 文件来配置 Bean，后来开发人员觉
 
 <img src="assets/image-20200528120916014.png" alt="image-20200528120916014" style="zoom:80%;" />
 
+> 什么是IOC
+
+IoC(Inversion of Control)，意为控制反转，不是什么技术，而是一种设计思想。Ioc意味着**将你设计好的对象交给容器控制，而不是传统的在你的对象内部直接控制**。
+
+如何理解好Ioc呢？理解好Ioc的关键是要明确“谁控制谁，控制什么，为何是反转（有反转就应该有正转了），哪些方面反转了”，那我们来深入分析一下：
+
+- **谁控制谁，控制什么**：传统Java SE程序设计，我们直接在对象内部通过new进行创建对象，是程序主动去创建依赖对象；而IoC是有专门一个容器来创建这些对象，即由Ioc容器来控制对 象的创建；谁控制谁？当然是IoC 容器控制了对象；控制什么？那就是主要控制了外部资源获取（不只是对象包括比如文件等）。
+- **为何是反转，哪些方面反转了**：有反转就有正转，传统应用程序是由我们自己在对象中主动控制去直接获取依赖对象，也就是正转；而反转则是由容器来帮忙创建及注入依赖对象；为何是反转？因为由容器帮我们查找及注入依赖对象，对象只是被动的接受依赖对象，所以是反转；哪些方面反转了？依赖对象的获取被反转了。
+
+**简单来说**
+
+> 正转：比如有一个类，在类里面有方法（不是静态的方法），调用类里面的方法，创建类的对象，使用对象调用方法，创建类对象的过程，需要new出来对象
+>
+> 反转：把对象的创建不是通过new方式实现，而是交给Spring配置创建类对象
+
 > IOC带来了什么好处？
 
 IoC 的思想就是两方之间不互相依赖，由第三方容器来管理相关资源。这样有什么好处呢？
@@ -1399,6 +1734,35 @@ IoC 的思想就是两方之间不互相依赖，由第三方容器来管理相�
 IoC（Inverse of Control:控制反转）是一种**设计思想** 或者说是某种模式。这个设计思想就是 **将原本在程序中手动创建对象的控制权，交由 Spring 框架来管理。** IoC 在其他语言中也有应用，并非 Spring 特有。**IoC 容器是 Spring 用来实现 IoC 的载体， IoC 容器实际上就是个 Map（key，value）,Map 中存放的是各种对象。**
 
 **IoC 最常见以及最合理的实现方式叫做依赖注入（Dependency Injection，简称 DI）。**DI(Dependecy Inject,依赖注入)是实现控制反转的一种设计模式，依赖注入就是将实例变量传入到一个对象中去。
+
+> **Spring IOC实现原理** 
+
+- 创建xml配置文件，配置要创建的对象类
+- 通过反射创建实例； 
+- 获取需要注入的接口实现类并将其赋值给该接口。 
+
+> IOC能做什么
+
+IoC 不是一种技术，只是一种思想，一个重要的面向对象编程的法则，它能指导我们如何设计出松耦合、更优良的程序。传统应用程序都是由我们在类内部主动创建依赖对象，从而导致类与类之间高耦合，难于测试；有了IoC容器后，把创建和查找依赖对象的控制权交给了容器，由容器进行注入组合对象，所以对象与对象之间是松散耦合，这样也方便测试，利于功能复用，更重要的是使得程序的整个体系结构变得非常灵活。
+
+其实IoC对编程带来的最大改变不是从代码上，而是从思想上，发生了“主从换位”的变化。应用程序原本是老大，要获取什么资源都是主动出击，但是在IoC/DI思想中，应用程序就变成被动的了，被动的等待IoC容器来创建并注入它所需要的资源了。
+
+IoC很好的体现了面向对象设计法则之一—— 好莱坞法则：“别找我们，我们找你”；即由IoC容器帮对象找相应的依赖对象并注入，而不是由对象主动去找。
+
+> IOC与DI
+
+**DI—Dependency Injection，即“依赖注入”**：组件之间依赖关系由容器在运行期决定，形象的说，即由容器动态的将某个依赖关系注入到组件之中。依赖注入的目的并非为软件系统带来更多功能，而是为了提升组件重用的频率，并为系统搭建一个灵活、可扩展的平台。通过依赖注入机制，我们只需要通过简单的配置，而无需任何代码就可指定目标需要的资源，完成自身的业务逻辑，而不需要关心具体的资源来自何处，由谁实现。
+
+理解DI的关键是：“**谁依赖谁，为什么需要依赖，谁注入谁，注入了什么**”，那我们来深入分析一下：
+
+- **谁依赖于谁：** 当然是应用程序依赖于IoC容器；
+- **为什么需要依赖：** 应用程序需要IoC容器来提供对象需要的外部资源；
+- **谁注入谁：** 很明显是IoC容器注入应用程序某个对象，应用程序依赖的对象；
+- **注入了什么：** 就是注入某个对象所需要的外部资源（包括对象、资源、常量数据）。
+
+IoC和DI由什么关系呢？其实它们是同一个概念的不同角度描述，由于控制反转概念比较含糊（可能只是理解为容器控制对象这一个层面，很难让人想到谁来维护对象关系），所以2004年大师级人物Martin Fowler又给出了一个新的名字：“依赖注入”，相对IoC 而言，**“依赖注入”**明确描述了**“被注入对象依赖IoC容器配置依赖对象”**。
+
+对于Spring Ioc这个核心概念，我相信每一个学习Spring的人都会有自己的理解。这种概念上的理解没有绝对的标准答案，仁者见仁智者见智。 理解了IoC和DI的概念后，一切都将变得简单明了，剩下的工作只是在框架中堆积木而已，下一节来看看Spring是怎么用的
 
 ##### 2. Spring中的单例bean的线程安全问题了解吗？
 
@@ -1425,7 +1789,97 @@ IoC（Inverse of Control:控制反转）是一种**设计思想** 或者说是�
 - @**Service** : 对应服务层，主要涉及一些复杂的逻辑，需要用到 Dao层。
 - @**Controller** : 对应 Spring MVC 控制层，主要用户接受用户请求并调用 Service 层返回数据给前端页面。
 
+##### 5. 深入浅出IOC
 
+要了解**控制反转( Inversion of Control )**, 我觉得有必要先了解软件设计的一个重要思想：**依赖倒置原则（Dependency Inversion Principle ）**。
+
+###### 什么是依赖倒置原则
+
+假设我们设计一辆汽车：先设计轮子，然后根据轮子大小设计底盘，接着根据底盘设计车身，最后根据车身设计好整个汽车。这里就出现了一个“依赖”关系：汽车依赖车身，车身依赖底盘，底盘依赖轮子。
+
+<img src="assets/ioc1.jpg"/>
+
+这样的设计看起来没问题，但是可维护性却很低。假设设计完工之后，上司却突然说根据市场需求的变动，要我们把车子的轮子设计都改大一码。这下我们就蛋疼了：因为我们是根据轮子的尺寸设计的底盘，轮子的尺寸一改，底盘的设计就得修改；同样因为我们是根据底盘设计的车身，那么车身也得改，同理汽车设计也得改——整个设计几乎都得改！
+
+我们现在换一种思路。我们先设计汽车的大概样子，然后根据汽车的样子来设计车身，根据车身来设计底盘，最后根据底盘来设计轮子。这时候，依赖关系就倒置过来了：轮子依赖底盘， 底盘依赖车身， 车身依赖汽车。
+
+<img src="assets/ioc2.jpg"/>
+
+这时候，上司再说要改动轮子的设计，我们就只需要改动轮子的设计，而不需要动底盘，车身，汽车的设计了。
+
+这就是依赖倒置原则——把原本的高层建筑依赖底层建筑“倒置”过来，变成底层建筑依赖高层建筑。高层建筑决定需要什么，底层去实现这样的需求，但是高层并不用管底层是怎么实现的。这样就不会出现前面的“牵一发动全身”的情况。
+
+
+
+###### 控制反转和依赖注入
+
+**控制反转（Inversion of Control）** 就是依赖倒置原则的一种代码设计的思路。具体采用的方法就是所谓的**依赖注入（Dependency Injection）**。其实这些概念初次接触都会感到云里雾里的。说穿了，这几种概念的关系大概如下：
+
+<img src="assets/ioc3.jpg"/>
+
+为了理解这几个概念，我们还是用上面汽车的例子。只不过这次换成代码。我们先定义四个Class，**车，车身，底盘，轮胎**。然后初始化这辆车，最后跑这辆车。代码结构如下：
+
+<img src="assets/ioc4.jpg"/>
+
+这样，就相当于上面第一个例子，上层建筑依赖下层建筑——每一个类的构造函数都直接调用了底层代码的构造函数。假设我们需要改动一下轮胎（Tire）类，把它的尺寸变成动态的，而不是一直都是30。我们需要这样改：
+
+<img src="assets/ioc5.jpg"/>
+
+
+
+由于我们修改了轮胎的定义，为了让整个程序正常运行，我们需要做以下改动：
+
+<img src="assets/ioc6.jpg"/>
+
+
+
+由此我们可以看到，仅仅是为了修改轮胎的构造函数，这种设计却需要**修改整个上层所有类的构造函数**！在软件工程中，**这样的设计几乎是不可维护的**——在实际工程项目中，有的类可能会是几千个类的底层，如果每次修改这个类，我们都要修改所有以它作为依赖的类，那软件的维护成本就太高了。
+
+所以我们需要进行控制反转（IoC），及上层控制下层，而不是下层控制着上层。我们用依赖注入（Dependency Injection）这种方式来实现控制反转。**所谓依赖注入，就是把底层类作为参数传入上层类，实现上层类对下层类的“控制**”。这里我们用**构造方法传递的依赖注入方式**重新写车类的定义：
+
+<img src="assets/ioc7.jpg"/>
+
+这里我们再把轮胎尺寸变成动态的，同样为了让整个系统顺利运行，我们需要做如下修改：
+
+<img src="assets/ioc8.jpg"/>
+
+看到没？这里 **我只需要修改轮胎类就行了，不用修改其他任何上层类。** 这显然是更容易维护的代码。不仅如此，在实际的工程中，这种设计模式还有利于**不同组的协同合作和单元测试：**比如开发这四个类的分别是四个不同的组，那么只要定义好了接口，四个不同的组可以同时进行开发而不相互受限制；而对于单元测试，如果我们要写Car类的单元测试，就只需要Mock（ 模拟）一下Framework类传入Car就行了，而不用把Framework, Bottom, Tire全部new一遍再来构造Car。
+
+这里我们是采用的**构造函数传入**的方式进行的依赖注入。其实还有另外两种方法：**Setter传递**和**接口传递**。这里就不多讲了，核心思路都是一样的，都是为了实现**控制反转**。
+
+<img src="assets/ioc9.jpg"/>
+
+
+
+###### 控制反转的好处
+
+看到这里你应该能理解什么控制反转和依赖注入了。那什么是 **控制反转容器(IoC Container)** 呢？其实上面的例子中，对车类进行初始化的那段代码发生的地方，就是控制反转容器。
+
+<img src="assets/ioc10.jpg"/>
+
+显然你也应该观察到了，因为采用了依赖注入，在初始化的过程中就不可避免的会写大量的new。这里IoC容器就解决了这个问题。**这个容器可以自动对你的代码进行初始化，你只需要维护一个Configuration（可以是xml可以是一段代码），而不用每次初始化一辆车都要亲手去写那一大段初始化的代码**。这是引入IoC Container的第一个好处。
+
+IoC Container的第二个好处是：**我们在创建实例的时候不需要了解其中的细节。**在上面的例子中，我们自己手动创建一个车instance时候，是从底层往上层new的：
+
+<img src="assets/ioc11.jpg"/>
+
+这个过程中，我们需要了解整个Car/Framework/Bottom/Tire类构造函数是怎么定义的，才能一步一步new/注入。
+
+而IoC Container在进行这个工作的时候是反过来的，它先从最上层开始往下找依赖关系，到达最底层之后再往上一步一步new（有点像深度优先遍历）：
+
+<img src="assets/ioc12.jpg"/>
+
+这里IoC Container可以直接隐藏具体的创建实例的细节，在我们来看它就像一个工厂：
+
+<img src="assets/ioc13.png"/>
+
+我们就像是工厂的客户。我们只需要向工厂请求一个Car实例，然后它就给我们按照Config创建了一个Car实例。我们完全不用管这个Car实例是怎么一步一步被创建出来。
+
+###### 总结
+
+实际项目中，有的Service Class可能是十年前写的，有几百个类作为它的底层。假设我们新写的一个API需要实例化这个Service，我们总不可能回头去搞清楚这几百个类的构造函数吧？IoC Container的这个特性就很完美的解决了这类问题——**因为这个架构要求你在写class的时候需要写相应的Config文件，所以你要初始化很久以前的Service类的时候，前人都已经写好了Config文件，你直接在需要用的地方注入这个Service就可以了**。这大大增加了项目的可维护性且降低了开发难度。
+
+这里只是很粗略的讲了一下我自己对IoC和DI的理解。主要的目的是在于**最大限度避免晦涩难懂的专业词汇，用尽量简洁，通俗，直观的例子**来解释这些概念。如果让大家能有一个类似“哦！原来就是这么个玩意嘛！”的印象，我觉得就OK了。想要深入了解的话，可以上网查阅一些更权威的资料。这里推荐一下 [Dependency injection ](https://link.zhihu.com/?target=https%3A//en.wikipedia.org/wiki/Dependency_injection) 和 [Inversion of Control Containers and the Dependency Injection pattern](https://link.zhihu.com/?target=https%3A//martinfowler.com/articles/injection.html) 这两篇文章，讲的很好很详细。
 
 
 

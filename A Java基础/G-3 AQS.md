@@ -10,6 +10,15 @@ AQS 的全称为（**AbstractQueuedSynchronizer**），这个类在 **java.util.
 
 AQS 是一个用来**构建锁和同步器的框架**，使用 AQS 能简单且高效地构造出应用广泛的**大量的同步器**，比如我们提到的 ReentrantLock，Semaphore，其他的诸如 ReentrantReadWriteLock，SynchronousQueue，FutureTask 等等皆是基于 AQS 的。当然我们自己也能**利用 AQS** 非常轻松容易地构造出符合我们自己需求的**同步器**。
 
+AQS (AbstractQueuedSynchronizer) 被认为是 J.U.C 的核心。它提供了一个**基于 FIFO 队列**，这个队列可以用来构建锁或者其他相关的同步装置的基础框架。下图是 AQS 底层的数据结构：
+
+<img src="assets/616953-20160403170136176-573839888.png" style="zoom:70%;" />
+
+它底层使用的是**双向列表**，是队列的一种实现 , 因此也可以将它当成一种队列。
+
+- Sync queue 是同步列表，它是双向列表 , 包括 head，tail 节点。其中 head 节点主要用来后续的调度 ;
+- Condition queue 是**单向链表** , 不是必须的 , 只有当程序中**需要** Condition 的时候，才会存在这个单向链表 , 并且可能会有多个 Condition queue。
+
 
 
 ### AQS源码分析

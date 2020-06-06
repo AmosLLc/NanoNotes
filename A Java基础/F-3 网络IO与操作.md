@@ -8,25 +8,31 @@ Java 中的 BIO、NIO和 AIO 理解为是 Java 语言对**操作系统的各种 
 
 ##### 1. 同步与异步
 
-同步和异步是针对应用**程序和内核的交互**而言的。
+同步和异步是针对应用**程序和内核的交互**而言的。同步和异步关注的是消息通信机制。
 
-- **同步** ：两个同步任务相互依赖，并且一个任务必须以依赖于另一任务的某种方式执行。 比如在`A->B`事件模型中，你需要先完成 A 才能执行B。 再换句话说，同步调用种被调用者未处理完请求之前，调用不返回，调用者会一直等待结果的返回。
-- **异步**： 两个异步的任务完全独立的，一方的执行不需要等待另外一方的执行。再换句话说，异步调用种一调用就返回结果不需要等待结果返回，当结果返回的时候通过回调函数或者其他方式拿着结果再做相关事情。
+- **同步** ：两个同步任务相互依赖，并且一个任务必须以依赖于另一任务的某种方式执行。 比如在`A->B`事件模型中，你需要先完成 A 才能执行B。 再换句话说，同步调用种被调用者未处理完请求之前，调用不返回，调用者会一直等待结果的返回。例如：按下电饭锅的煮饭按钮，然后等待饭煮好，把饭盛出来，然后再去炒菜。
+- **异步**： 两个异步的任务完全独立的，一方的执行不需要等待另外一方的执行。再换句话说，**异步调用种一调用就返**回结果不需要等待结果返回，当结果返回的时候通过回调函数或者其他方式拿着结果再做相关事情。例如：按下电钮锅的煮饭按钮，直接去炒菜或者做别的事情，当电饭锅“滴滴滴”响的时候，再回去把饭盛出来。显然，异步式编程要比同步式编程高效得多。
 
 ##### 2. 阻塞与非阻塞
 
-阻塞和非阻塞是针对于**进程在访问数据**的时候，根据 IO 操作的**就绪状态**来采取的不同方式，说白了是一种读取或者写入操作函数的实现方式，阻塞方式下读取或者写入函数将一直等待，而非阻塞方式下，读取或者写入函数会立即返回一个状态值。
+阻塞和非阻塞是针对于**进程在访问数据**的时候，根据 IO 操作的**就绪状态**来采取的不同方式，说白了是一种读取或者写入操作函数的实现方式，阻塞方式下读取或者写入函数将一直等待，而非阻塞方式下，读取或者写入函数会立即返回一个状态值。阻塞和非阻塞关注的是程序在等待调用结果（消息，返回值）时的状态。
 
-- **阻塞：** 阻塞就是发起一个请求，调用者一直等待请求结果返回，也就是当前线程会被挂起，无法从事其他任务，只有当条件就绪才能继续。
-- **非阻塞：** 非阻塞就是发起一个请求，调用者不用一直等着结果返回，可以先去干其他事情。
+- **阻塞：** 阻塞就是发起一个请求，调用者一直等待请求结果返回，也就是当前线程会被挂起，无法从事其他任务，只有当条件就绪才能继续。例子：你打电话问书店老板有没有《分布式系统》这本书，你如果是阻塞式调用，你会一直把自己“挂起”，直到得到这本书有没有的结果 
+- **非阻塞：** 非阻塞就是发起一个请求，调用者不用一直等着结果返回，可以先去干其他事情，在不能立刻得到结果之前，该调用不会阻塞当前线程。。例子：你打电话问书店老板有没有《分布式系统》这本书，你不管老板有没有告诉你，你自己先一边去玩了， 当然你也要偶尔过几分钟check一下老板有没有返回结果。 
 
 **由上描述基本可以总结一句简短的话，同步和异步是目的，阻塞和非阻塞是实现方式。**同步/异步是从**行为角度**描述事物的，而阻塞和非阻塞描述的当前**事物的状态**（等待调用结果时的状态）。
+
+##### 3. 总结
+
+- **同步阻塞IO（BIO）**：用户进程发起一个 IO 操作以后，必须等待 IO 操作的真正完成后，才能继续运行；
+- **同步非阻塞IO（NIO）**：用户进程发起一个 IO 操作以后，可做其它事情，但用户进程需要经常询问 IO 操作是否完成，这样造成不必要的 CPU 资源浪费；
+- **异步非阻塞IO（AIO）**：用户进程发起一个 IO 操作然后，立即返回，等 IO 操作真正的完成以后，应用程序会得到IO 操作完成的通知。类比 Future 模式。
 
 
 
 #### BIO
 
-BIO（Blocking IO） 是**面向流**的**同步阻塞 IO**。Java BIO 面向流意味着每次从流中读**一个或多个字节**，**直到读取所有字节**，**没有被缓存**到任何地方。
+BIO（Blocking IO） 是**面向流**的**同步阻塞 IO**。Java BIO 面向流意味着每次从流中读**一个或多个字节**，**直到读取所有字节**，**没有被缓存**到任何地方。是一个比较传统的通信方式，**模式简单**，**使用方便**。但**并发处理能力低**，**通信耗时**，**依赖网速**。
 
 **阻塞**的时候线程什么都不能做。同步阻塞I/O模式，数据的读取写入必须阻塞在一个线程内等待其完成。
 
@@ -44,7 +50,7 @@ BIO 的网络编程模型基本是 C/S 模型，即两个进程间的通信。
 
 BIO通信（一请求一应答）模型图如下：
 
-<img src="assets/2.png" alt="传统BIO通信模型图" style="zoom:70%;" />
+<img src="assets/java-bio2.png"/>
 
 采用 **BIO 通信模型** 的服务端，通常由一个独立的 Acceptor 线程负责监听客户端的连接。我们一般通过在`while(true)` 循环中服务端会调用 `accept()` 方法等待接收客户端的连接的方式监听请求，请求一旦接收到一个连接请求，就可以建立通信套接字在这个通信套接字上进行读写操作，此时不能再接收其他客户端连接请求，只能等待同当前连接的客户端的操作执行完成， 不过可以通过多线程来支持多个客户端的连接，如上图所示。
 
@@ -54,11 +60,29 @@ BIO通信（一请求一应答）模型图如下：
 
 在 Java 虚拟机中，线程是宝贵的资源，线程的创建和销毁成本很高，除此之外，线程的切换成本也是很高的。尤其在 Linux 这样的操作系统中，线程本质上就是一个进程，创建和销毁线程都是重量级的系统函数。如果并发访问量增加会导致线程数急剧膨胀可能会导致线程堆栈溢出、创建新线程失败等问题，最终导致进程宕机或者僵死，不能对外提供服务。
 
+为了改进这种一连接一线程的模型，我们可以使用线程池来管理这些线程（需要了解更多请参考前面提供的文章），实现1个或多个线程处理N个客户端的模型（但是底层还是使用的同步阻塞I/O），通常被称为“**伪异步I/O模型**“。
+
+<img src="assets/java-bio-threadpool.png"/>
+
+实现很简单，我们只需要将新建线程的地方，交给线程池管理即可。
+
+我们知道，如果使用 CachedThreadPool 线程池（不限制线程数量，如果不清楚请参考文首提供的文章），其实除了能自动帮我们管理线程（复用），看起来也就像是 1:1 的客户端：线程数模型，而使用 FixedThreadPool 我们就有效的控制了线程的最大数量，保证了系统有限的资源的控制，实现了N:M的伪异步 I/O 模型。
+
+但是，正因为限制了线程数量，如果发生大量并发请求，超过最大数量的线程就只能等待，直到线程池中的有空闲的线程可以被复用。而对 Socket 的输入流就行读取时，会一直阻塞，直到发生：
+
+- 有数据可读
+- 可用数据以及读取完毕
+- 发生空指针或 I/O 异常
+
+所以在读取数据较慢时（比如数据量大、网络传输慢等），大量并发的情况下，其他接入的消息，只能一直等待，这就是最大的弊端。
+
 
 
 #### NIO
 
-新的输入/输出 (NIO) 库是在 JDK **1.4** 中引入的，弥补了原来的 I/O 的不足，提供了**高速的、面向块**的 I/O。
+新的输入/输出 (NIO) 库是在 JDK **1.4** 中引入的，弥补了原来的 I/O 的不足，提供了**高速的、面向块**的 I/O。也叫 Non-Block IO 是一种**同步非阻塞**的通信模式。
+
+客户端和服务器之间通过 Channel通信。NIO 可以在 Channel 进行读写操作。这些 Channel 都会被注册在 Selector 多路复用器上。Selector 通过一个线程不停的轮询这些 Channel。找出已经准备就绪的 Channel 执行 IO 操作。
 
 ##### 1. 流与块
 
@@ -72,7 +96,7 @@ I/O 包和 NIO 已经很好地集成了，java.io.\* 已经以 NIO 为基础重�
 
 ##### 2. 通道与缓冲区
 
-###### ① 通道 Channel
+###### ① 通道Channel
 
 通道 **Channel** 是对原 I/O 包中的**流的模拟**，可以通过它**读取和写入**数据。
 
@@ -90,7 +114,7 @@ I/O 包和 NIO 已经很好地集成了，java.io.\* 已经以 NIO 为基础重�
 - **SocketChannel**：通过 **TCP** 读写网络中数据；
 - **ServerSocketChannel**：可以监听新进来的 TCP 连接，对每一个新进来的**连接**都会创建一个 **SocketChannel**。
 
-###### ② 缓冲区 Buffer
+###### ② 缓冲区Buffer
 
 发送给一个通道的**所有数据**都必须首先放到**缓冲区**中，同样地，从通道中读取的任何数据都要先**读到缓冲区**中。也就是说，==**不会直接对通道进行读写数据，而是要先经过缓冲区**==。
 
@@ -139,9 +163,11 @@ Buffer 的**操作**一般遵循几个步骤，操作分为**读模式和写模�
 
 ![1563439494891](assets/1563439494891.png)
 
-##### 4. 选择器 Selector
+##### 4. 多路复用器Selector
 
 NIO 常常被叫做**非阻塞 IO**，主要是因为 NIO 在**网络通信**中的非阻塞特性被广泛使用。
+
+多路复用器提供选择已经就绪的任务的能力。就是 Selector 会不断地轮询注册在其上的通道（Channel），如果某个通道处于就绪状态，会被 Selector 轮询出来，然后通过 SelectionKey 可以取得就绪的 Channel 集合，从而进行后续的 IO 操作。服务器端只要提供一个线程负责 Selector 的轮询，就可以接入成千上万个客户端，这就是 J**DK NIO** 库的巨大进步。
 
 NIO 实现了 ==IO **多路复用**中的 **Reactor** 模型==，**一个线程** Thread 使用一个**选择器** Selector 通过**轮询**的方式去**监听多个通道**  Channel 上的事件，从而让一个线程就可以处理多个事件。
 
@@ -154,6 +180,10 @@ NIO 实现了 ==IO **多路复用**中的 **Reactor** 模型==，**一个线程*
 应该注意的是，只有**套接字 Channel** 才能配置为**非阻塞**，而 FileChannel 不能，为 FileChannel 配置非阻塞也没有意义。
 
 <img src="assets/1582687139737.png" alt="1582687139737" style="zoom:52%;" />
+
+小结：**NIO 模型中通过 SocketChannel 和 ServerSocketChannel 完成套接字通道的实现。非阻塞/阻塞，同步，避免 TCP 建立连接使用三次握手带来的开销。**
+
+<img src="assets/java-nio.png"/>
 
 ###### ① 创建选择器
 
@@ -245,7 +275,7 @@ while (true) {
 }
 ```
 
-##### 5. 文件 NIO
+##### 5. 文件NIO
 
 使用 NIO 读取数据基本流程：
 
@@ -295,7 +325,7 @@ public static void fastCopy(String src, String dist) throws IOException {
 }
 ```
 
-##### 6. 套接字 NIO 实例
+##### 6. 套接字NIO实例
 
 NIO服务器
 
@@ -303,31 +333,31 @@ NIO服务器
 public class NIOServer {
 
     public static void main(String[] args) throws IOException {
-		// 创建选择器
+        // 创建选择器
         Selector selector = Selector.open();	
-		// 创建Channel
+        // 创建Channel
         ServerSocketChannel ssChannel = ServerSocketChannel.open();
         // 设置Channel为非阻塞 必须
         ssChannel.configureBlocking(false);
         // 注册Channel到Selector上并制定事件
         ssChannel.register(selector, SelectionKey.OP_ACCEPT);
-		// 通过Channel获取服务Socket
+        // 通过Channel获取服务Socket
         ServerSocket serverSocket = ssChannel.socket();
         InetSocketAddress address = new InetSocketAddress("127.0.0.1", 8888);
         // 绑定端口
         serverSocket.bind(address);
-		// 死循环监听
+        // 死循环监听
         while (true) {
-			// 调用完成则阻塞 直到事件到达
+            // 调用完成则阻塞 直到事件到达
             selector.select();
             // 遍历SelectionKey
             Set<SelectionKey> keys = selector.selectedKeys();
             Iterator<SelectionKey> keyIterator = keys.iterator();
-			// 循环遍历就绪的事件集
+            // 循环遍历就绪的事件集
             while (keyIterator.hasNext()) {
-				
+
                 SelectionKey key = keyIterator.next();
-				// 判断SelectionKey的类型
+                // 判断SelectionKey的类型
                 if (key.isAcceptable()) {
                     // 得到事件的channel
                     ServerSocketChannel ssChannel1 = (ServerSocketChannel) key.channel();
@@ -339,7 +369,7 @@ public class NIOServer {
                     sChannel.register(selector, SelectionKey.OP_READ);
 
                 } else if (key.isReadable()) {
-					
+
                     SocketChannel sChannel = (SocketChannel) key.channel();
                     System.out.println(readDataFromSocketChannel(sChannel));
                     sChannel.close();
@@ -352,7 +382,7 @@ public class NIOServer {
 
     // 从socket通道中读取数据：读取的过程可以结合缓存区状态变量的图示过程
     private static String readDataFromSocketChannel(SocketChannel sChannel) throws IOException {
-		// 分配缓冲区
+        // 分配缓冲区
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         StringBuilder data = new StringBuilder();
         while (true) {
@@ -425,99 +455,33 @@ Jdk7 主要增加了三个新的**异步通道**:
 
 因为 AIO 的实施需**充分调用 OS** 参与，IO 需要操作系统支持、并发也同样需要操作系统的支持，所以性能方面不同操作系统差异会比较明显。
 
-##### 2. 实例
+- **异步非阻塞**，服务器实现模式为一个有效请求一个线程，客户端的 I/O 请求都是由 OS **先完成**了再通知服务器应用去启动线程进行处理. 
+- AIO 方式使用于连接数目多且连接比较长（重操作）的架构，比如**相册服务器**，充分调用 OS 参与并发操作，编程比较复杂，JDK7 开始支持。 
 
-下面以一个最简单的 Time 服务的例子演示如何使用异步 I/O。 客户端连接到服务器后服务器就发送一个当前的时间字符串给客户端。 客户端毋须发送请求。 逻辑很简单。
+AIO 并**没有采用 NIO 的多路复用器**，而是使用**异步通道**的概念。其 read，write 方法的返回类型都是 **Future 对象**。而 **Future 模型是异步**的，其核心思想是：去主函数等待时间。
 
-**Server**
-
-```java
-public class Server {
-    private static Charset charset = Charset.forName("US-ASCII");
-    private static CharsetEncoder encoder = charset.newEncoder();
-
-    public static void main(String[] args) throws Exception {
-        AsynchronousChannelGroup group = AsynchronousChannelGroup.withThreadPool(Executors.newFixedThreadPool(4));
-        AsynchronousServerSocketChannel server = AsynchronousServerSocketChannel.open(group).bind(new InetSocketAddress("0.0.0.0", 8013));
-        server.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
-            @Override
-            public void completed(AsynchronousSocketChannel result, Void attachment) {
-                server.accept(null, this); // 接受下一个连接
-                try {
-                    String now = new Date().toString();
-                    ByteBuffer buffer = encoder.encode(CharBuffer.wrap(now + "\r\n"));
-                    //result.write(buffer, null, new CompletionHandler<Integer,Void>(){...}); //callback or
-                    Future<Integer> f = result.write(buffer);
-                    f.get();
-                    System.out.println("sent to client: " + now);
-                    result.close();
-                } catch (IOException | InterruptedException | ExecutionException e) {
-                    e.printStackTrace();
-                }
-            }
-            @Override
-            public void failed(Throwable exc, Void attachment) {
-                exc.printStackTrace();
-            }
-        });
-        group.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
-    }
-}
-```
-
-这个例子使用了两种方式。 `accept`使用了**回调**的方式， 而发送数据使用了`future`的方式。
-
-**Client**
-
-```java
-public class Client {
-    public static void main(String[] args) throws Exception {
-        AsynchronousSocketChannel client = AsynchronousSocketChannel.open();
-        Future<Void> future = client.connect(new InetSocketAddress("127.0.0.1", 8013));
-        future.get();
-
-        ByteBuffer buffer = ByteBuffer.allocate(100);
-        client.read(buffer, null, new CompletionHandler<Integer, Void>() {
-            @Override
-            public void completed(Integer result, Void attachment) {
-                System.out.println("client received: " + new String(buffer.array()));
-
-            }
-            @Override
-            public void failed(Throwable exc, Void attachment) {
-                exc.printStackTrace();
-                try {
-                    client.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-            }
-        });
-
-        Thread.sleep(10000);
-    }
-}
-```
-
-客户端也使用了两种方式， `connect`使用了 **future** 方式，而接收数据使用了**回调**的方式。
+小结：**AIO 模型中通过 AsynchronousSocketChannel 和 AsynchronousServerSocketChannel 完成套接字通道的实现。非阻塞，异步**。
 
 ##### 3. Netty AIO
 
 Netty 也支持 **AIO** 并提供了相应的类： `AioEventLoopGroup`,`AioCompletionHandler`, `AioServerSocketChannel`, `AioSocketChannel`， `AioSocketChannelConfig`。
 其它使用方法和 NIO 类似。
 
-目前来说 AIO 的应用还不是很广泛，Netty 之前也尝试使用过 AIO，不过又放弃了。
+目前来说 AIO 的应用还不是很广泛，Netty 之前也尝试使用过 AIO，不过又**放弃**了。
 
 
 
 #### 对比
 
-- **BIO：同步并阻塞**，服务器实现模式为**一个连接一个线程**，即客户端有连接请求时服务器端就需要启动一个线程进行处理，如果这个连接不做任何事情会造成不必要的线程开销，当然可以通过线程池机制改善。
+- **BIO：同步并阻塞**，服务器实现模式为**一个连接一个线程**，即客户端有连接请求时服务器端就需要启动一个线程进行处理，如果这个连接不做任何事情会造成不必要的线程开销，当然可以通过线程池机制改善。通过 **Socket** 和 **ServerSocket** 完成套接字通道实现。阻塞，同步，连接耗时。
 
-- **NIO：同步非阻塞**，服务器实现模式为**一个线程多个连接**，即客户端发送的**连接请求**都会注册到**多路复用器**上，多路复用器轮询到连接有 I/O 请求时才启动一个线程进行**处理**。
+- **NIO：同步非阻塞**，服务器实现模式为**一个线程多个连接**，即客户端发送的**连接请求**都会注册到**多路复用器**上，多路复用器轮询到连接有 I/O 请求时才启动一个线程进行**处理**。通过 **SocketChannel** 和 **ServerSocketChannel** 完成套接字通道实现。非阻塞/阻塞，同步，避免 TCP 建立连接使用三次握手带来的开销。
 
-- **AIO：异步非阻塞**，服务器实现模式为**一个有效请求一个线程**，客户端的 I/O 请求都是**由 OS 先完成了再通知服务器**应用去启动线程进行处理。
+- **AIO：异步非阻塞**，服务器实现模式为**一个有效请求一个线程**，客户端的 I/O 请求都是**由 OS 先完成了再通知服务器**应用去启动线程进行处理。通过 **AsynchronousSocketChannel** 和 **AsynchronousServerSocketChannel** 完成套接字通道实现。非阻塞，异步。
+
+<img src="assets/java-io-compare.png"/>
+
+**另外，**I/O属于**底层操作**，需要**操作系统支持**，并发也需要操作系统的支持，所以性能方面不同操作系统差异会比较明显。 
 
 
 
@@ -571,4 +535,76 @@ Proactor 中写入操作和读取操作类似，只不过感兴趣的事件是**
 从上面可以看出，Reactor 和 Proactor 模式的主要区别就是**真正的读取和写入操作是有谁来完成**的，Reactor 中需要应用程序自己读取或者写入数据，而 Proactor 模式中，应用程序不需要进行实际的读写过程，它只需要从缓存区读取或者写入即可，操作系统会读取缓存区或者写入缓存区到真正的 IO 设备.。
 
 综上所述，同步和异步是相对于应用和内核的交互方式而言的，同步需要主动去询问，而异步的时候内核在 IO 事件发生的时候通知应用程序，而阻塞和非阻塞仅仅是系统在调用系统调用的时候函数的实现方式而已。
+
+
+
+### 网络操作
+
+Java 中的网络支持：
+
+- InetAddress：用于表示网络上的硬件资源，即 IP 地址；
+- URL：统一资源定位符；
+- Sockets：使用 TCP 协议实现网络通信；
+- Datagram：使用 UDP 协议实现网络通信。
+
+
+
+#### InetAddress
+
+没有公有的构造函数，只能通过**静态方法**来创建实例。
+
+```java
+InetAddress.getByName(String host);
+InetAddress.getByAddress(byte[] address);
+```
+
+
+
+#### URL
+
+可以直接从 URL 中读取字节流数据。
+
+```java
+public static void main(String[] args) throws IOException {
+
+    URL url = new URL("http://www.baidu.com");
+
+    /* 字节流 */
+    InputStream is = url.openStream();
+
+    /* 字符流 */
+    InputStreamReader isr = new InputStreamReader(is, "utf-8");
+
+    /* 提供缓存功能 */
+    BufferedReader br = new BufferedReader(isr);
+
+    String line;
+    while ((line = br.readLine()) != null) {
+        System.out.println(line);
+    }
+
+    br.close();
+}
+```
+
+
+
+#### Sockets
+
+- ServerSocket：服务器端类
+- Socket：客户端类
+- 服务器和客户端通过 InputStream 和 OutputStream 进行输入输出。
+
+<img src="assets/1563439394302.png" alt="1563439394302" style="zoom:70%;" />
+
+
+
+#### Datagram类
+
+- DatagramSocket：通信类
+- DatagramPacket：数据报类
+
+
+
+
 
