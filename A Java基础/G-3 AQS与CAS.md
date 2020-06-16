@@ -16,10 +16,24 @@ AQS (AbstractQueuedSynchronizer) 被认为是 J.U.C 的核心。它提供了一�
 
 它底层使用的是**双向列表**，是队列的一种实现 , 因此也可以将它当成一种队列。
 
-- Sync queue 是同步列表，它是双向列表 , 包括 head，tail 节点。其中 head 节点主要用来后续的调度 ;
+- Sync queue 是同步列表，它是**双向链表** , 包括 head，tail 节点。其中 head 节点主要用来后续的调度 ;
 - Condition queue 是**单向链表** , 不是必须的 , 只有当程序中**需要** Condition 的时候，才会存在这个单向链表 , 并且可能会有多个 Condition queue。
 
+JUC 当中的大多数**同步器**实现都是围绕着**共同的基础行为**，比如等待队列、条件队列、独占获取、共享获取等，而这个行为的抽象就是基于 AbstractQueuedSynchronizer 简称 AQS，AQS 定义了一套**多线程访问共享资源的同步器框架**，是一个**依赖状态(state)的同步器**。
 
+**AQS具备特性**
+
+- 阻塞等待队列
+
+- 共享/独占
+
+- 公平/非公平
+
+- 可重入
+
+- 允许中断
+
+不管是条件队列还是 CLH 等待队列，都是基于 AQS 内部类 Node 构建。等待队列是双向链表，条件队列是单向链表。条件队列里面 prev = null，next = null。
 
 ### AQS源码分析
 
@@ -41,7 +55,7 @@ AQS 定义两种资源共享方式：**Exclusive**（**独占**，只有一个�
 
 不同的自定义同步器争用共享资源的方式也不同。**自定义同步器在实现时只需要实现共享资源 state 的获取与释放方式即可**，至于具体线程等待队列的维护（如获取资源失败入队/唤醒出队等），AQS 已经在顶层实现好了。自定义**同步器实现时主要实现以下几种方法：**
 
-- **isHeldExclusively**()：该线程是否正在独占资源。只有用到 condition才需要去实现它。
+- **isHeldExclusively**()：该线程是否正在**独占**资源。只有用到 condition 才需要去实现它。
 - **tryAcquire**(int)：独占方式。尝试获取资源，成功则返回 true，失败则返回 false。
 - **tryRelease**(int)：独占方式。尝试释放资源，成功则返回 true，失败则返回 false。
 - **tryAcquireShared**(int)：共享方式。尝试获取资源。负数表示失败；0表示成功，但没有剩余可用资源；正数表示成功，且有剩余资源。
@@ -69,6 +83,14 @@ AQS 维护一个**共享资源 state**，通过内置的 **FIFO** 来完成获�
 
 其实就是个**双端双向链表**。当线程获取资源失败（比如 tryAcquire 时试图设置 state 状态失败），会被构造成一个结点加入 **CLH 队列**中，同时当前线程会被**阻塞**在队列中（通过 **LockSupport.park** 实现，其实是**等待态**）。当持有同步状态的线程释放同步状态时，会唤醒后继结点，然后此结点线程继续加入到对同步状态的争夺中。
 
+AQS 中 **state** 字段（int 类型，32 位），此处 state 上分别描述**读锁和写锁的数量**，于是将 state 变量“按位切割”切分成了两个部分：
+
+- **高 16 位**表示**读锁**状态（读锁个数）。
+
+- **低 16 位**表示**写锁**状态（写锁个数）。
+
+![image-20200611195954373](assets/image-20200611195954373.png)
+
 ##### Node结点
 
 Node 结点是 AbstractQueuedSynchronizer 中的一个**静态内部类**，我们捡 Node 的几个重要属性来说一下。
@@ -95,8 +117,6 @@ static final class Node {
     /** ...... */
 }
 ```
-
-
 
 本节开始讲解 AQS 的源码实现。依照 **acquire-release**、**acquireShared-releaseShared** 的次序来。
 
@@ -736,6 +756,20 @@ protected final boolean compareAndSetState(int expect, int update) {
 
 
 
+#### 两个队列
+
+##### 1. 同步等待队列
+
+AQS 当中的同步等待队列也称 CLH 队列，CLH 队列是Craig、Landin、Hagersten三人发明的一种基于双向链表数据结构的队列，是 FIFO 先入先出线程。等待队列，Java 中的 CLH 队列是原 CLH 队列的一个变种,线程由原自旋机制改为阻塞机制。  
+
+![image-20200611200029272](assets/image-20200611200029272.png)
+
+##### 2. 条件等待队列
+
+Condition是 一个多线程间协调通信的工具类，使得某个，或者某些线程一起等待某个条件（Condition）,只有当该条件具备时，这些等待线程才会被唤醒，从而重新争夺锁。
+
+![image-20200611200045343](assets/image-20200611200045343.png)
+
 #### AQS对资源的共享方式
 
 **AQS定义两种资源共享方式**
@@ -797,6 +831,14 @@ protected boolean isHeldExclusively();
 - **Semaphore(信号量)-允许多个线程同时访问：** synchronized 和 ReentrantLock 都是一次只允许一个线程访问某个资源，Semaphore (信号量)可以指定多个线程同时访问某个资源。
 - **CountDownLatch （倒计时器）：** CountDownLatch是一个同步工具类，用来协调多个线程之间的同步。这个工具通常用来控制线程等待，它可以让某一个线程等待直到倒计时结束，再开始执行。
 - **CyclicBarrier(循环栅栏)：** CyclicBarrier 和 CountDownLatch 非常类似，它也可以实现线程间的技术等待，但是它的功能比 CountDownLatch 更加复杂和强大。主要应用场景和 CountDownLatch 类似。CyclicBarrier 的字面意思是可循环使用（Cyclic）的屏障（Barrier）。它要做的事情是，让一组线程到达一个屏障（也可以叫同步点）时被阻塞，直到最后一个线程到达屏障时，屏障才会开门，所有被屏障拦截的线程才会继续干活。CyclicBarrier默认的构造方法是 CyclicBarrier(int parties)，其参数表示屏障拦截的线程数量，每个线程调用await()方法告诉 CyclicBarrier 我已经到达了屏障，然后当前线程被阻塞。
+
+
+
+#### CAS
+
+随着硬件指令集的发展，我们可以使用基于**冲突检测的乐观并发策略**：先进行操作，如果没有其它线程争用共享数据，那操作就成功了，否则采取补偿措施（不断地重试，直到成功为止）。这种乐观的并发策略的许多实现都不需要将线程阻塞，因此这种同步操作称为非阻塞同步。
+
+乐观锁需要操作和冲突检测这两个步骤具备原子性，这里就不能再使用互斥同步来保证了，只能靠硬件来完成。硬件支持的原子性操作最典型的是：**比较并交换（Compare-and-Swap，CAS）**。CAS 指令需要有 3 个操作数，分别是内存地址 V、旧的预期值 A 和新值 B。当执行操作时，只有当 V 的值等于 A，才将 V 的值更新为 B。
 
 
 

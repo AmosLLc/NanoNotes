@@ -538,9 +538,11 @@ java.util.concurrent（**JUC**）大大提高了并发性能，**AQS** 被认为
 
 可理解为一个**倒计时门栓**，一开始是关闭的，所有**希望通过该门**的线程都需要**等待**，然后开始倒计时，倒计时变为 **0** 之后，门栓打开，等待的**所有线程都可以通过**，它是**一次性**的，打开之后不能再关上。
 
-应用：用来控制一个线程**等待**多个线程。CountDownLatch 这个类使**一个线程等待其他线程各自执行完毕后**再执行。
+CountDownLatch 这个类能够使一个线程**等待**其他线程完成**各自的工作**后再执行。
 
-维护了一个**计数器 cnt**，每次调用 countDown() 方法会让计数器的值**减 1**，**减到 0** 的时候，那些**因为**调用 **await()** 方法而在等待的线程就会被**唤醒**。
+应用：用来控制一个线程**等待**多个线程。CountDownLatch 这个类使**一个线程等待其他线程各自执行完毕后**再执行。例子：比如开一把王者荣耀，开始游戏的线程需要等待所有玩家都准备好之后才开始。
+
+维护了一个**计数器 cnt**，计数器的初始值为线程的数量。每次调用 countDown() 方法会让计数器的值**减 1**，**减到 0** 的时候，那些**因为**调用 **await()** 方法而在等待的线程就会被**唤醒**。
 
 <img src="assets/CountdownLatch.png"/>
 
@@ -553,6 +555,11 @@ public void await() throws InterruptedException {};
 public boolean await(long timeout, TimeUnit unit) throws InterruptedException {};  
 // 将count值减1
 public void countDown() {};  
+```
+
+Demo：
+
+```java
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -586,6 +593,94 @@ run..run..run..run..run..run..run..run..run..run..end
 ```
 
 CountDownLatch 是**一次性**的，计算器的值只能在构造方法中初始化一次，之后没有任何机制再次对其设置值，当CountDownLatch使用完毕后，它**不能再次被使用**。
+
+另一个demo，就是模拟看病的过程，看病分为看医生与排队买药的两个任务，只有两个任务都完成才能溜。
+
+```java
+public class CountDownLaunchSample {
+
+	public static void main(String[] args) throws InterruptedException {
+		long now = System.currentTimeMillis();
+		// 定义栅栏
+		CountDownLatch countDownLatch = new CountDownLatch(2);
+		// 开启看医生线程
+		new Thread(new SeeDoctorTask(countDownLatch)).start();
+		// 开启买药任务
+		new Thread(new ByMedicineTask(countDownLatch)).start();
+		// 等待前面的2个任务执行完毕，否则一直阻塞
+		countDownLatch.await();
+		System.out.println("Over，回家 cost:" + (System.currentTimeMillis() - now));
+	}
+
+    /**
+     * 看医生的任务
+     */
+    static class SeeDoctorTask implements Runnable {
+
+        private CountDownLatch countDownLatch;
+
+        // 传入这个CountDownLatch
+        public SeeDoctorTask(CountDownLatch countDownLatch){
+            this.countDownLatch = countDownLatch;
+        }
+
+        @Override
+        public void run() {
+            try {
+                System.out.println("开始看医生");
+                Thread.sleep(2000);
+                System.out.println("看医生结束，准备离开病房");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }finally {
+                if (countDownLatch != null) {
+                    // 任务完成一个
+                    countDownLatch.countDown();
+                }
+            }
+        }
+
+    }
+
+    /**
+     * 买药任务
+     */
+    static class ByMedicineTask implements Runnable {
+
+        private CountDownLatch countDownLatch;
+
+        public ByMedicineTask(CountDownLatch countDownLatch){
+            this.countDownLatch = countDownLatch;
+        }
+
+        @Override
+        public void run() {
+            try {
+                System.out.println("开始在医院药房排队买药....");
+                Thread.sleep(5000);
+                System.out.println("排队成功，可以开始缴费买药");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }finally {
+                if (countDownLatch != null) {
+                    // 买药任务完成通知栅栏
+                    countDownLatch.countDown();
+                }
+            }
+        }
+    }
+}
+```
+
+输出如下：
+
+```java
+开始看医生
+开始在医院药房排队买药....
+看医生结束，准备离开病房
+排队成功，可以开始缴费买药
+Over，回家 cost:5029
+```
 
 ##### 2. 源码解析
 
@@ -688,6 +783,15 @@ public CyclicBarrier(int parties, Runnable barrierAction) {
 public CyclicBarrier(int parties) {
     this(parties, null);
 }
+```
+
+重要 API
+
+```java
+cyclicBarrier.await();
+```
+
+```java
 public class CyclicBarrierExample {
 
     public static void main(String[] args) {
@@ -929,19 +1033,19 @@ public void reset() {
 
 ##### 1. 概述
 
-Semaphore 类似于操作系统中的**信号量**，可以控制对**互斥资源的访问线程数**。
+Semaphore 类似于操作系统中的**信号量**，可以控制对**互斥资源的访问线程数**。可用于**==限流==**。这跟 Hystrix 的原理其实类似的。用于控制对**公共资源**的获取。
 
-我们以一个**停车场**运作为例来说明信号量的作用。假设停车场只有三个车位，一开始三个车位都是空的。这时如果同时来了三辆车，看门人允许它们进入，然后放下车拦。以后来的车必须在**入口等待**，直到停车场中有车辆离开。这时，如果有一辆车离开停车场，看门人得知后，打开车拦，放入一辆，如果又离开一辆，则又可以放入一辆，如此往复。
+我们以一个**停车场**运作为例来说明信号量的作用。假设停车场只有三个车位，一开始三个车位都是空的。这时如果同时来了三辆车，看门人允许它们进入，然后放下车拦。以后来的车必须在**入口等待**，直到停车场中有车辆离开。这时，如果有一辆车离开停车场，看门人得知后，打开车拦，放入一辆，如果又离开一辆，则**又可以放入一辆**，如此往复。
 
 在这个停车场系统中，车位是**公共资源**，每辆车好比一个线程，看门人起的就是**信号量**的作用。信号量是一个非负整数，**表示了当前公共资源的可用数目**（在上面的例子中可以用空闲的停车位类比信号量），当一个线程要使用公共资源时（在上面的例子中可以用车辆类比线程），首先要查看信号量，如果信号量的值大于 1，则将其减 1，然后去占有公共资源。如果信号量的值为 0，则线程会将自己**阻塞**，**直到有其它线程释放公共资源**。
 
-在信号量上我们定义两种操作： **acquire**（获取） 和 **release**（释放）。当一个线程调用 acquire 操作时，它要么通过成功获取信号量（信号量减 1），要么一直等下去，直到有线程释放信号量，或超时。**release**（释放）实际上会将信号量的值**加 1**，然后**唤醒**等待的线程。
+在**信号量**上我们定义两种操作： **acquire**（获取） 和 **release**（释放）。当一个线程调用 acquire 操作时，它要么通过成功获取信号量（信号量减 1），要么一直等下去，直到有线程释放信号量，或超时。**release**（释放）实际上会将信号量的值**加 1**，然后**唤醒**等待的线程。
 
 信号量主要用于**两个目的，一个是用于多个共享资源的互斥使用，另一个用于并发线程数的控制**。
 
 **计数信号量**用来控制**同时访问**某个特定资源的操作数量，或者同时执行某个指定操作的数量。信号量还可以用来实现某种**资源池**，或者对**容器施加边界**。**Semaphore** 管理着一组**许可（permit）**,许可的初始数量可以通过构造函数设定，操作时首先要**获取到许可**，才能进行操作，操作完成后需要**释放**许可。如果没有获取许可，则**阻塞**到有许可被释放。
 
-如果初始化了一个许可为 **1** 的**Semaphore**，那么就相当于一个**不可重入**的互斥锁（**Mutex**）。
+如果初始化了一个许可为 **1** 的 **Semaphore**，那么就相当于一个**不可重入**的互斥锁（**Mutex**）。
 
 以下代码模拟了对某个服务的并发请求，每次只能有 3 个客户端同时访问，请求总数为 10。
 
@@ -976,6 +1080,16 @@ public class SemaphoreExample {
 }
 2 1 2 2 2 2 2 1 2 2
 ```
+
+构造方法：
+
+````java
+public Semaphore(int permits)
+public Semaphore(int permits, boolean fair)
+````
+
+- permits 表示许可线程的数量
+- fair 表示公平性，如果这个设为 true 的话，下次执行的线程会是等待最久的线程  
 
 ##### 2. 源码解析
 
@@ -1112,6 +1226,7 @@ public class Semaphore implements java.io.Serializable {
 }
 
 public Semaphore(int permits) {
+    // 默认创建的是非公平锁
     sync = new NonfairSync(permits);
 }
 
@@ -1152,7 +1267,7 @@ protected int tryAcquireShared(int acquires) {
 }
 ```
 
-该方法调用了父类中 Sync 中的 nonfairTyAcquireShared 方法。
+该方法调用了父类中 Sync 中的 **nonfairTyAcquireShared** 方法。
 
 ```java
 final int nonfairTryAcquireShared(int acquires) {
@@ -1169,11 +1284,11 @@ final int nonfairTryAcquireShared(int acquires) {
 }
 ```
 
-这里的释放就是对 state 变量减一（或者更多）的。
+这里的**释放**就是对 **state 变量减一**（或者更多）的。
 
-返回了剩余的 state 大小。
+返回了**剩余的 state 大小**。
 
-当返回值小于 0 的时候，说明获取锁失败了，那么就需要**进入 AQS 的等待队列**了。
+当**返回值小于 0** 的时候，说明获取锁失败了，那么就需要**进入 AQS 的等待队列**了。
 
 看完了非公平的获取，再看下**公平的获取 acquire**，代码如下：
 
@@ -1185,6 +1300,7 @@ protected int tryAcquireShared(int acquires) {
             return -1;
         // 后面与非公平一样
         int available = getState();
+        // 判断剩余资源是否小于0
         int remaining = available - acquires;
         if (remaining < 0 ||
             compareAndSetState(available, remaining))
@@ -1193,13 +1309,77 @@ protected int tryAcquireShared(int acquires) {
 }
 ```
 
-FairSync 与 NonFairSync 的区别就在于会首先**判断当前队列中有没有线程在等待**，如果有，就老老实实进入到等待队列；而不像 NonfairSync 一样首先试一把，说不定就恰好获得了一个许可，这样就可以插队了。
+FairSync 与 NonFairSync 的区别就在于会首先**判断当前队列中有没有线程在等待**，如果有，就**老老实实**进入到等待队列；而不像 NonfairSync 一样首**先试一把**，说不定就**恰好获得了一个许可**，这样就可以**插队**了。
 
-这里就分析这么多，核心全是 AQS 啊。
+这里就分析这么多，**核心全是 AQS 啊**。也就是构造方法传入的 **permits** 被映射到 AQS 的 **state 状态变量**上，用于实现对线程数量的控制。
 
 ##### 3. demo
 
-Semaphore 代码并没有很复杂，常用的操作就是获取和释放一个许可证，这些操作的实现逻辑也都比较简单，但这并不妨碍 Semaphore 的广泛应用。下面我们就来利用 Semaphore 实现一个**简单的数据库连接池**，通过这个例子希望读者们能更加深入的掌握 Semaphore 的运用。
+###### (1) 基础例子
+
+Semaphore 代码并没有很复杂，常用的操作就是**获取和释放一个许可证**，这些操作的实现逻辑也都比较简单，但这并不妨碍 Semaphore 的广泛应用。
+
+```java
+public class SemaphoreSample {
+
+	public static void main(String[] args) {
+		// 传入访问线程限制数
+		Semaphore semaphore = new Semaphore(2);
+		for (int i = 0; i < 5; i++) {
+			new Thread(new Task(semaphore, "Thread + " + i)).start();
+		}
+	}
+
+    /**
+     * 任务线程
+     */
+	static class Task extends Thread {
+
+		Semaphore semaphore;
+
+		public Task(Semaphore semaphore, String threadName) {
+			this.semaphore = semaphore;
+			this.setName(threadName);
+		}
+
+		@Override
+		public void run() {
+			try {
+                // 执行完后，如果没有获取到资源则阻塞等待
+                System.out.println(Thread.currentThread().getName() + "我要获取资源");
+			    // 获取公共资源
+				semaphore.acquire();
+				System.out.println(Thread.currentThread().getName() + ":aquire() at time:" + System.currentTimeMillis());
+				Thread.sleep(5000);
+
+                // 释放公共资源
+				semaphore.release();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+}
+```
+
+结果如下：
+
+```java
+Thread-3我要获取资源
+Thread-5我要获取资源
+Thread-5:aquire() at time:1591881451362
+Thread-3:aquire() at time:1591881451363
+Thread-7我要获取资源
+Thread-1我要获取资源
+Thread-9我要获取资源
+Thread-7:aquire() at time:1591881456362
+Thread-1:aquire() at time:1591881456363
+Thread-9:aquire() at time:1591881461363
+```
+
+###### (2) 基于Semaphore的连接池
+
+下面我们就来利用 Semaphore 实现一个**简单的数据库连接池**，通过这个例子希望读者们能更加深入的掌握 Semaphore 的运用。
 
 ```java
 public class ConnectPool {
@@ -1311,6 +1491,12 @@ public class TestThread extends Thread {
     - CyclicBarrier 一般用于一组线程互相等待至某个状态，然后这一组线程再同时执行；
     - 另外，CountDownLatch 是不能够重用的，而 CyclicBarrier 是可以重用的。
 - Semaphore 其实和锁有点类似，它一般用于控制对某组资源的访问权限。
+
+
+
+#### Exchanger
+
+当一个线程运行到 exchange() 方法时会**阻塞**，另一个线程运行到 exchange() 时，二者交换数据，然后执行后面的程序。  应用较少，了解即可。
 
 
 
@@ -1483,6 +1669,8 @@ BlockingQueue 是一个**接口**，继承了 Queue 接口。
 public interface BlockingQueue<E> extends Queue<E> 
 ```
 
+内部多基于 **ReentrantLock 和 Condition**（Condition 只能在**独占模式**使用）实现。
+
 ##### 1. 基本定义
 
 阻塞队列（BlockingQueue）是一个支持**两个附加操作**的队列。这两个附加的操作是： 
@@ -1518,29 +1706,21 @@ public interface BlockingQueue<E> extends Queue<E>
 
 java.util.concurrent.**BlockingQueue** 接口有以下**阻塞队列**的实现：
 
-- **FIFO 队列** ：**LinkedBlockingQueue**、**ArrayBlockingQueue**（固定长度）
-- **优先级队列** ：**PriorityBlockingQueue**
-
-
+- **FIFO 队列** ：**LinkedBlockingQueue**、**ArrayBlockingQueue**（固定长度）。
+- **优先级队列** ：**PriorityBlockingQueue。**
 
 BlockingQueue 接口有众多**实现类**，如下所示。
 
+- ArrayBlockingQueue：由数组支持的有界队列。
+- LinkedBlockingQueue：由链接节点支持的可选有界队列。
+- PriorityBlockingQueue：由优先级堆支持的无界优先级队列。
+- DelayQueue：由优先级堆支持的、基于时间的调度队列。
+
 ##### 2. ArrayBlockingQueue
-
-**重要方法**
-
-```java
-// 将指定的元素插入到此队列的尾部（如果立即可行且不会超过该队列的容量），在成功时返回 true，如果此队列已满，则抛出IllegalStateException
-add(E e) 
-// 将指定的元素插入到此队列的尾部（如果立即可行且不会超过该队列的容量），在成功时返回 true，如果此队列已满，则返回 false
-offer(E e)
-// 将指定的元素插入此队列的尾部，如果该队列已满，则在到达指定的等待时间之前等待可用的空间
-offer(E e, long timeout, TimeUnit unit)
-```
 
 **定义**
 
-ArrayBlockingQueue 是一个**有边界**的阻塞队列，它的内部实现是一个**数组**。 有边界的意思是它的**容量是有限**的，我们必须在其初始化的时候指定它的容量大小，容量大小一旦指定就**不可改变**。 
+ArrayBlockingQueue 是一个**有边界**的阻塞队列，它的内部实现是一个**数组**。 有边界的意思是它的**容量是有限**的，我们必须在其初始化的时候指定它的容量大小，容量大小一旦指定就**不可改变**，不可扩容。 
 ArrayBlockingQueue 是以**先进先出**的方式存储数据，最新插入的对象是**尾部**，最新移出的对象是**头部**。
 
 下面是一个初始化和使用 ArrayBlockingQueue 的例子：
@@ -1555,6 +1735,90 @@ array.add("大圣");
 boolean a=array.offer("王五",1, TimeUnit.SECONDS);
 System.out.println(a);
 // 运行结果：false
+```
+
+重要的属性
+
+```java
+/** The queued items */
+final Object[] items;
+
+/** items index for next take, poll, peek or remove */
+int takeIndex;
+
+/** items index for next put, offer, or add */
+int putIndex;
+
+/** Number of elements in the queue */
+int count;
+
+/** Main lock guarding all access */
+final ReentrantLock lock;
+
+/** Condition for waiting takes */
+private final Condition notEmpty;
+
+/** Condition for waiting puts */
+private final Condition notFull;
+```
+
+初始化：
+
+```java
+ArrayBlockingQueue blockingQueue = new ArrayBlockingQueue(6);
+```
+
+```java
+public ArrayBlockingQueue(int capacity) {
+    this(capacity, false);
+}
+```
+
+可以看到默认是**非公平锁**。
+
+```java
+public ArrayBlockingQueue(int capacity, boolean fair) {
+    if (capacity <= 0)
+        throw new IllegalArgumentException();
+    this.items = new Object[capacity];
+    // 里面有CLH队列用于阻塞等待
+    lock = new ReentrantLock(fair);
+    // 两组条件对应两个不同的操作
+    notEmpty = lock.newCondition();
+    notFull =  lock.newCondition();
+}
+```
+
+**put方法**
+
+```java
+public void put(E e) throws InterruptedException {
+    checkNotNull(e);
+    final ReentrantLock lock = this.lock;
+    // 获取独占锁
+    lock.lockInterruptibly();
+    try {
+        // 判断当前的队列是否已经满了
+        while (count == items.length)
+            // 满了就阻塞等待
+            notFull.await();
+        // 加入队列
+        enqueue(e);
+    } finally {
+        lock.unlock();	// 释放锁
+    }
+}
+```
+
+**重要方法**
+
+```java
+// 将指定的元素插入到此队列的尾部（如果立即可行且不会超过该队列的容量），在成功时返回 true，如果此队列已满，则抛出IllegalStateException
+add(E e) 
+// 将指定的元素插入到此队列的尾部（如果立即可行且不会超过该队列的容量），在成功时返回 true，如果此队列已满，则返回 false
+offer(E e)
+// 将指定的元素插入此队列的尾部，如果该队列已满，则在到达指定的等待时间之前等待可用的空间
+offer(E e, long timeout, TimeUnit unit)
 ```
 
 ##### 3. LinkedBlockingQueue
@@ -1587,6 +1851,12 @@ PriorityBlockingQueue 是一个**没有边界**的队列，它的排序规则和
 
 PriorityBlockingQueue 实现了 BlockingQueue 接口，在队列**为空**时，take 方法会**阻塞等待**。
 
+底层是数组存放元素。
+
+```java
+private transient Object[] queue;
+```
+
 ##### 4. SynchronousQueue
 
 **定义：**
@@ -1595,7 +1865,11 @@ SynchronousQueue 队列内部**仅允许容纳一个元素**。当一个线程�
 
 这个在有的地方应用可以啊。
 
-##### 5.  基于BlockingQueue的生产者与消费者
+##### 5. DelayQueue
+
+由优先级堆支持的、基于时间的调度队列。
+
+##### 6.  基于BlockingQueue的生产者与消费者
 
 ###### ① 生产者
 
@@ -1682,10 +1956,13 @@ class ConsumerThread implements Runnable {
 ```java
 public class ProducerAndConsumer {
     public static void main(String[] args) throws InterruptedException {
+        // 初始化阻塞队列
         BlockingQueue<String> queue = new LinkedBlockingQueue<String>(10);
+        // 往生产者和消费者同时阻塞队列
         ProducerThread producerThread1 = new ProducerThread(queue);
         ProducerThread producerThread2 = new ProducerThread(queue);
         ConsumerThread consumerThread1 = new ConsumerThread(queue);
+        // 开启线程
         Thread t1 = new Thread(producerThread1);
         Thread t2 = new Thread(producerThread2);
         Thread c1 = new Thread(consumerThread1);

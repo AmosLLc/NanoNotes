@@ -39,7 +39,7 @@ ConcurrentHashMap 则没有上述的问题。同样实现了 Map 接口，也是
 
 <img src="assets/image-20200507203656141.png" alt="image-20200507203656141" style="zoom:80%;" />
 
-Segment 数组的意义就是将一个大的 table 分割成多个小的 table 来进行**加锁**，也就是上面的提到的**锁分离技术**，而每一个 Segment 元素存储的是 HashEntry 数组 + 链表，这个和 HashMap 的数据存储结构一样。
+Segment 数组的意义就是将一个大的 table 分割成多个小的 table 来进行**加锁**，也就是上面的提到的**锁分离技术**，而每**一个 Segment 元素存储的是 HashEntry 数组 + 链表**，这个和 HashMap 的数据存储结构一样。
 
 ```java
 static final class HashEntry<K,V> {
@@ -54,7 +54,7 @@ ConcurrentHashMap 和 HashMap 实现上类似，最主要的差别是 Concurrent
 
 采用分段技术，可以大大提高并发度，多个段之间可以**并行读写**。默认段是 **16 个**。实现的效果是对于**读操作可以并行**，对于**写操作需要获取锁**，不能并行。
 
-Segment 继承自 **ReentrantLock**。具有显式锁的一些机制。
+**Segment 继承**自 **ReentrantLock**。具有**显式锁**的一些机制。
 
 ```java
 static final class Segment<K,V> extends ReentrantLock implements Serializable {
@@ -118,7 +118,7 @@ HashEntry 大小的计算也是 2 的 N 次方（cap <<=1）， cap 的初始值
 对于 ConcurrentHashMap 的数据插入，这里要进行**两次 Hash** 去定位数据的存储位置。
 
 ```java
-static class  Segment<K,V> extends  ReentrantLock implements  Serializable {
+static class Segment<K,V> extends  ReentrantLock implements  Serializable {
 }
 ```
 
@@ -208,13 +208,13 @@ public int size() {
 
 <img src="assets/image-20200507205549890.png" alt="image-20200507205549890" style="zoom:80%;" />
 
-说明：ConcurrentHashMap 的数据结构（**数组+链表+红黑树**），**桶中的结构可能是链表，也可能是红黑树**，红黑树是为了提高查找效率。
+说明：ConcurrentHashMap 的数据结构（**==数组+链表+红黑树==**），**桶中的结构可能是链表，也可能是红黑树**，红黑树是为了提高查找效率。
 
 ##### 1. 存储结构
 
-###### ① Node
+###### (1) Node
 
-**普通数据存储结点**如下。Node是最核心的静态内部类，它包装了key-value键值对，所有插入ConcurrentHashMap的数据都包装在这里面。它与 HashMap 中的结点类定义很相似，但是但是有一些差别，它对 value 和 next 属性使用了 **volatile **修饰，它不允许调用 setValue 方法**直接改变** Node 的 value 域，它增加了 find 方法辅助 map.get() 方法。
+**普通数据存储结点**如下。Node 是最核心的静态内部类，它包装了 key-value 键值对，所有插入 ConcurrentHashMap 的数据都包装在这里面。它与 HashMap 中的结点类定义很相似，但是但是有一些差别，它对 value 和 next 属性使用了 **volatile **修饰，它不允许调用 setValue 方法**直接改变** Node 的 value 域，它增加了 find 方法辅助 map.get() 方法。
 
 ```java
 static class Node<K, V> implements Map.Entry<K, V> {
@@ -289,9 +289,11 @@ static class Node<K, V> implements Map.Entry<K, V> {
 
 Node 数据结构很简单，从上可知，就是一个**链表**，但是**只允许对数据进行查找**，**不允许进行修改**。
 
-###### ② TreeNode
+**锁住的是每个桶的头结点。**
 
-TreeNode 继承于 Node，但是数据结构换成了**二叉树**结构，它是**红黑树**的数据的存储结构，用于红黑树中存储数据，当链表的节点数大于 8 时会转换成红黑树的结构，他就是通过 TreeNode 作为存储结构**代替 Node 来转换成黑红树**。源代码如下：
+###### (2) TreeNode
+
+TreeNode **继承于 Node**，但是数据结构换成了**二叉树**结构，它是**红黑树**的数据的存储结构，用于红黑树中存储数据，当链表的节点数大于 8 时会**转换成红黑树的结构**，他就是通过 TreeNode 作为存储结构**==代替 Node== 来转换成黑红树（因为 Node 与 TreeNode 是==继承关系==，所以可以替换）**。源代码如下：
 
 ```java
 static final class TreeNode<K, V> extends Node<K, V> {
@@ -305,7 +307,7 @@ static final class TreeNode<K, V> extends Node<K, V> {
 }
 ```
 
-###### ③ TreeBin
+###### (3) TreeBin
 
 TreeBin 从字面含义中可以理解为**存储树形结构的容器**，而树形结构就是指 TreeNode，所以 TreeBin 就是封装 TreeNode 的容器，它提供转换黑红树的一些条件和锁的控制。
 
@@ -530,13 +532,13 @@ final V putVal(K key, V value, boolean onlyIfAbsent) {
 - 最后一个如果该链表的**数量大于阈值 8**，就要先转换成**黑红树**的结构，break 再一次进入循环。
 - 如果添加成功就调用 **addCount**() 方法统计 **size**，并且检查是否**需要扩容**。
 
-###### ① 初始化
+###### (1) 初始化
 
 添加元素时如果 **table 为空**或大小为 0，那么将对其进行**初始化**操作，**initTable**: 没有初始化进行初始化。即：
 
 ```java
 if (tab == null || (n = tab.length) == 0)
-            tab = initTable();
+    tab = initTable();
 }
 ```
 
@@ -580,13 +582,13 @@ private transient volatile int sizeCtl;
 - 负值(小于-1)：表示正在**进行扩容**，因为 ConcurrentHashMap 支持**多线程并行扩容**。
 - 正数：表示下一次**触发扩容**的**临界值大小**，即**当前值 * 0.75(负载因子)**。
 
-从源码中可以看出，ConcurrentHashMap 只允许**一个线程**进行**初始化**操作，当其它线程竞争失败 (sizeCtl < 0) 时便会进行**自旋**，直到竞争成功(初始化)线程完成初始化，那么此时 table 便**不再为 null**，也就退出了 while 循环。
+从源码中可以看出，ConcurrentHashMap 只允许**一个线程**进行**初始化**操作，当其它线程竞争失败 (sizeCtl < 0) 时便会进行**自旋**，直到**竞争成功**(初始化)线程完成初始化，那么此时 table 便**不再为 null**，也就退出了 while 循环。也就是使用 CAS 解决了**并发更新**首节点造成数据丢失的问题。
 
 Thread.yield 方法用于提示 CPU 可以放弃当前线程的执行，当然这只是一个提示(hint)，这里对此方法的调用是一个优化手段。
 
-对 SIZECTL 字段 CAS 更新的成功便标志者线程赢得了竞争，可以进行初始化工作了，剩下的就是一个数组的构造过程，一目了然。
+对 SIZECTL 字段 **CAS 更新**的成功便标志者线程赢得了竞争，可以进行初始化工作了，剩下的就是一个数组的构造过程，一目了然。
 
-###### ② 插入槽的头结点
+###### (2) 插入槽的头结点
 
 如果 key 对应的 bin 为空，那么我们只需要将给定的节点 **设为头结点 **即可，这里对应 putVal 源码中的下面的部分:
 
@@ -605,11 +607,11 @@ else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {
 i = (n - 1) & hash
 ```
 
-就是在求 hash 对应的数据槽索引，这跟 HashMap 是一样的。
+就是在求 **hash 对应的数据槽索引**，这跟 HashMap 是一样的。
 
-如果 key 对应的 bin 不为 null，那么就说明需要进行**节点添加**，从源码可以看出，这里对 bin 的头结点进行了**加锁操作**。我的理解为，这里需要**遍历整个链表或搜索红黑树以判断给定的节点(值)是否已存在，同时需要记录链表节点的个数，以决定是否需要将其转化为红黑树**。
+如果 key 对应的 bin 不为 null，那么就说明需要进行**节点添加**，从源码可以看出，这里对 bin 的头结点进行了**加锁操作**。这里需要**遍历整个链表或搜索红黑树以判断给定的节点(值)是否已存在，同时需要记录链表节点的个数，以决定是否需要将其转化为红黑树**。
 
-###### ③ 转为红黑树
+###### (3) 转为红黑树
 
 指 putVal 源码中的 :
 
@@ -627,7 +629,7 @@ if (binCount != 0) {
 
 TREEIFY_THRESHOLD 表示将链表转为红黑树的**链表长度的临界值**，默认为 **8.**
 
-###### ④ 扩容
+###### (4) 扩容
 
 如果当前 数据槽 中的个数未达到 **MIN_TREEIFY_CAPACITY**（默认 64），那么**不再转为红黑树**，转而进行**扩容**。
 
@@ -681,7 +683,7 @@ private final void tryPresize(int size) {
 
 前面提到过了，ConcurrentHashMap 支持**多线程并行扩容**，具体来说，是支持**多线程将节点从老的数组拷贝到新的数组**，而新数组创建仍是一个线程完成(不然多个线程创建多个对象，最后只使用一个，这不是浪费是什么?)
 
-**竞争成功**的线程为 **transfer** 方法的 nextTab 参数传入null，这将导致**新数组的创建**。**竞争失败**的线程将会判断当前节点转移工作是否已经完成，如果已经完成，那么意味着**扩容的完成**，退出即可，如果没有完成，那么此线程将会进行**辅助转移**。
+**竞争成功**的线程为 **transfer** 方法的 nextTab 参数传入 null，这将导致**新数组的创建**。**竞争失败**的线程将会判断当前节点转移工作是否已经完成，如果已经完成，那么意味着**扩容的完成**，退出即可，如果没有完成，那么此线程将会进行**辅助转移**。
 
 其实 helpTransfer() 方法的目的就是调用多个工作线程**一起帮助进行扩容**，这样的效率就会更高，而不是只有检查到要扩容的那个线程进行扩容操作，其他线程就要等待扩容操作完成才能工作。
 
@@ -890,7 +892,7 @@ helpTransfer 方法的实现和 tryPresize 方法的相关代码**很像**，在
 
 所以我们只要用**哈希值 & 8**，判断结果**是否为零**即可。
 
-###### ⑤ 计数
+###### (5) 计数
 
 在 putVal 方法的结尾通过调用 **addCount** 方法(略去大小检查，扩容部分，这里我们只关心计数) 进行**计数**。从而判断是否需要进行扩容（截取了部分）:
 
