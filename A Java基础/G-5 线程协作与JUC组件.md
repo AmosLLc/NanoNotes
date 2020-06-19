@@ -1574,7 +1574,19 @@ FutureTask计算完成时间:1582793226518
 
 #### ForkJoin
 
-主要用于**并行计算**中，和 **MapReduce** 原理类似，都是把大的计算任务**拆分**成多个**小任务**并行计算。
+##### 1. 概述
+
+Fork/Join 框架是 Java7 提供了的一个用于**并行执行任务**的框架， 是一个把大任务分割成若干个小任务，最终汇总每个小任务结果后得到大任务结果的框架。  
+
+Fork 就是把一个大任务切分为若干子任务并行的执行，Join 就是**合并**这些子任务的执行结果，最后得到这个大任务的结果。比如计算1+2+.....＋10000，可以分割成 10 个子任务，每个子任务分别对 1000 个数进行求和，最终汇总这 10 个子任务的结果。
+
+ForkJoinPool 不是为了替代 ExecutorService，而是它的**补充**，在某些应用场景下性能比 ExecutorService 更好。
+
+ForkJoinPool 主要用于实现“分而治之”的算法，特别是分治之后递归调用的函数，例如 QuickSort 等。
+
+ForkJoinPool 最适合的是计算密集型的任务，如果存在 I/O，线程间同步，sleep() 等会造成线程长时间阻塞的情况时，最好配合使用 ManagedBlocker。
+
+主要用于**并行计算**中，和 **MapReduce** 原理类似，都是把大的计算任务**拆分**成多个**小任务并行计算**。
 
 ```java
 public class ForkJoinExample extends RecursiveTask<Integer> {
@@ -1618,46 +1630,123 @@ public static void main(String[] args) throws ExecutionException, InterruptedExc
 }
 ```
 
-ForkJoin 使用 **ForkJoinPool** 来启动，它是一个特殊的**线程池**，线程数量取决于 **CPU 核数**。
+ForkJoin 使用 **ForkJoinPool** 来启动，它是一个特殊的**线程池**，**线程数量**取决于 **CPU 核数**。
 
 ```java
 public class ForkJoinPool extends AbstractExecutorService
 ```
 
-ForkJoinPool 实现了**工作窃取算法**来提高 CPU 的利用率。每个线程都维护了一个**双端队列**，用来存储需要执行的任务。工作窃取算法允许空闲的线程从其它线程的双端队列中**窃取一个任务**来执行。窃取的任务必须是**最晚的**任务，**避免和队列所属线程发生竞争**。例如下图中，Thread2 从 Thread1 的队列中拿出 futureTask的 Task1 任务，Thread1 会拿出 Task2 来执行，这样就避免发生竞争。但是如果队列中**只有一个任务**时还是会发生竞争。
+ForkJoinPool 实现了==**工作窃取算法**==来提高 CPU 的利用率。每个**线程**都维护了一个**双端任务队列**，用来存储需要执行的任务。工作窃取算法允许**空闲线程**从其它线程的双端队列中**窃取一个任务**来执行。窃取的任务必须是**最晚的**任务，**避免和队列所属线程发生竞争**。例如下图中，Thread2 从 Thread1 的队列中拿出 futureTask的 Task1 任务，Thread1 会拿出 Task2 来执行，这样就避免发生竞争。但是如果队列中**只有一个任务**时还是会发生**竞争**。 
 
-<img src="assets/image-20200516222251270.png" alt="image-20200516222251270" style="zoom:70%;" />
+<img src="assets/image-20200516222251270.png" alt="image-20200516222251270" style="zoom:70%;" />、
 
+##### 2. 工作窃取算法
 
+工作窃取（work-stealing）算法是指某个线程从其他队列里窃取任务来执行。
 
-#### ConcurrentLinkedQueue
+我们需要做一个比较大的任务，我们可以把这个任务分割为**若干互不依赖的子任务**，为了减少线程间的竞争，于是把这些**子任务分别放到不同的队列**里，并为每个队列创建一个**单独的线程**来执行队列里的任务，**线程和队列一一对应**，比如 A 线程负责处理 A 队列里的任务。但是有的线程会先把自己队列里的任务干完，而其他线程对应的队列里还有任务等待处理。干完活的线程与其等着，不如去帮其他线程干活，于是它就去其他线程的队列里**窃取一个任务**来执行。而在这时它们会访问同一个队列，所以为了减少窃取任务线程和被窃取任务线程之间的竞争，通常会使用**双端队列**，**被窃取任务线程永远从双端队列的头部拿任务执行，而窃取任务的线程永远从双端队列的尾部拿任务执行。**
 
-##### 1. 定义
+工作窃取算法的优点是充分利用线程进行**并行计算**，并减少了线程间的竞争，其缺点是在某些情况下**还是存在竞争**，比如双端队列里**只有一个任务时**。并且消耗了更多的系统资源，比如创建多个线程和多个双端队列。
 
-**ConcurrentLinkedQueue** : 是一个适用于**高并发场景下的队列**，通过==**无锁**==的方式，实现了高并发状态下的高性能，通常 ConcurrentLinkedQueue 性能好于 BlockingQueue。 
-它是一个基于**链接节点**的**无界线程安全队列**，该队列的元素遵循**先进先出**的原则。 **头是最先加入的，尾是最近加入的，该队列不允许 null 元素。**
+详细如下：
 
-ConcurrentLinkedQueue 重要方法（这些都是 Queue 接口中的方法）:
+- ForkJoinPool 的每个**工作线程**都维护着一个**工作队列**（WorkQueue），这是一个**双端队列**（Deque），里面存放的对象是**任务**（ForkJoinTask）。
+- 每个工作线程在运行中产生新的任务（通常是因为调用了 fork()）时，会放入工作队列的**队尾**，并且工作线程在处理自己的工作队列时，使用的是 **LIFO** 方式，也就是说每次从队尾取出任务来执行。
+- 每个工作线程在处理自己的**工作队列**同时，会尝试**窃取一个任务**（或是来自于刚刚提交到 pool 的任务，或是来自于**其他**工作线程的工作队列），窃取的任务位于其他线程的工作队列的**队首**，也就是说工作线程在窃取其他工作线程的任务时，使用的是 **FIFO** 方式。
+- 在遇到 join() 时，如果需要 join 的任务**尚未完成**，则会先处理其他任务，并等待其完成。
+- 在既没有自己的任务，也没有可以窃取的任务时，进入**休眠**。  
 
-> **add() 和 offer()** ：都是加入元素的方法(在 ConcurrentLinkedQueue 中这俩个方法没有任何区别) 。
-> **poll() 和 peek()** ：都是取头元素节点，区别在于前者会删除元素，后者不会。
+##### 3. ForkJoin详解
 
-##### 2. 代码示例
+ForkJoinTask：我们要使用 ForkJoin 框架，必须首先创建一个 ForkJoin 任务。它提供在任务中执行 fork() 和 join() 操作的机制，通常情况下我们不需要直接继承 ForkJoinTask 类，而只需要继承它的子类，Fork/Join 框架提供了以下两个子类：  
+
+- **RecursiveAction**：用于**没有返回结果**的任务。(比如写数据到磁盘，然后就退出了。 一个 RecursiveAction 可以把自己的工作分割成更小的几块， 这样它们可以由独立的线程或者 CPU 执行。我们可以通过继承来实现一个RecursiveAction)。
+- **RecursiveTask** ：用于**有返回结果**的任务。(可以将自己的工作分割为若干更小任务，并将这些子任务的执行合并到一个集体结果。 可以有几个水平的分割和合并)。
+- CountedCompleter： 在任务**完成执行**后会触发执行一个自定义的**钩子**函数。
+
+ForkJoinPool ：ForkJoinTask 需要通过 ForkJoinPool 来执行，任务分割出的子任务会添加到当前工作线程所维护的双端队列中，进入队列的头部。当一个工作线程的队列里暂时没有任务时，它会随机从其他工作线程的队列的尾部获取一个任务。
+
+ForkJoin 框架执行流程如下：
+
+![image-20200617135524410](assets/image-20200617135524410.png)
+
+###### (1) 异常捕获
+
+ForkJoinTask 在执行的时候可能会**抛出异常**，但是我们没办法在主线程里直接捕获异常，所以 ForkJoinTask 提供了 isCompletedAbnormally() 方法来检查任务是否已经抛出异常或已经被取消了，并且可以通过 ForkJoinTask 的 getException 方法获取异常。示例如下：
 
 ```java
-ConcurrentLinkedQueue q = new ConcurrentLinkedQueue();
-q.offer("张三");
-q.offer("李四");
-q.offer("王五");
-q.offer("赵六");
-q.offer("大圣");
-// 从头获取元素,删除该元素
-System.out.println(q.poll());
-// 从头获取元素,不刪除该元素
-System.out.println(q.peek());
-// 获取总长度
-System.out.println(q.size());
+if(task.isCompletedAbnormally()){
+    System.out.println(task.getException());
+} 
 ```
+
+getException 方法返回 **Throwable 对象**，如果任务被取消了则返回 CancellationException。如果任务没有完成或者没有抛出异常则返回 null。  
+
+###### (2) 构造方法
+
+ForkJoinPool 构造方法如下
+
+```java
+private ForkJoinPool(int parallelism,
+                     ForkJoinWorkerThreadFactory factory,
+                     UncaughtExceptionHandler handler,
+                     int mode,
+                     String workerNamePrefix) {
+    this.workerNamePrefix = workerNamePrefix;
+    this.factory = factory;
+    this.ueh = handler;
+    this.config = (parallelism & SMASK) | mode;
+    long np = (long)(-parallelism); // offset ctl counts
+    this.ctl = ((np << AC_SHIFT) & AC_MASK) | ((np << TC_SHIFT) & TC_MASK);
+}
+```
+
+① **parallelism**：并行度（ the parallelism level），默认情况下跟我们机器的 CPU 个数保持一致，使用 Runtime.getRuntime().availableProcessors() 可以得到我们机器运行时可用的 CPU 个数。
+② **factory**：创建新线程的工厂（ the factory for creating new threads）。默认情况下使用 ForkJoinWorkerThreadFactory defaultForkJoinWorkerThreadFactory。
+③ **handler**：线程异常情况下的处理器（Thread.UncaughtExceptionHandler handler），该处理器在线程执行任务时由于某些无法预料到的错误而导致任务线程中断时进行一些处理，默认情况为 null。
+④ **asyncMode**：这个参数要**注意**，在 ForkJoinPool 中，每一个工作线程都有一个**独立的任务队列**，asyncMode 表示工作线程内的任务队列是采用何种方式进行调度，可以是先进先出 FIFO，也可以是后进先出 LIFO。如果为 true，则线程池中的工作线程则使用先进先出方式进行任务调度，默认情况下是 **false**。  
+
+###### (3) ForkJoinTask
+
+**fork**() 做的工作只有一件事，既是**把任务推入当前工作线程的工作队列里**。可以参看以下的源代码：  
+
+```java
+public final ForkJoinTask<V> fork() {
+    Thread t;
+    if ((t = Thread.currentThread()) instanceof ForkJoinWorkerThread)
+        ((ForkJoinWorkerThread)t).workQueue.push(this);
+    else
+        ForkJoinPool.common.externalPush(this);
+    return this;
+}
+```
+
+**join**() 方法的工作则复杂得多，也是 join() 可以使得线程**免于被阻塞**的原因——不像同名的 Thread.join()。  
+
+```java
+public final V join() {
+    int s;
+    if ((s = doJoin() & DONE_MASK) != NORMAL)
+        reportException(s);
+    return getRawResult();
+}
+```
+
+实际干活的是 doJoin 方法。
+
+```java
+private int doJoin() {
+    int s; Thread t; ForkJoinWorkerThread wt; ForkJoinPool.WorkQueue w;
+    return (s = status) < 0 ? s :
+    ((t = Thread.currentThread()) instanceof ForkJoinWorkerThread) ?
+        (w = (wt = (ForkJoinWorkerThread)t).workQueue).
+        tryUnpush(this) && (s = doExec()) < 0 ? s :
+    wt.pool.awaitJoin(w, this, 0L) :
+    externalAwaitDone();
+}
+```
+
+
 
 
 
@@ -1975,6 +2064,37 @@ public class ProducerAndConsumer {
         producerThread2.stopThread();
     }
 }
+```
+
+
+
+#### ConcurrentLinkedQueue
+
+##### 1. 定义
+
+**ConcurrentLinkedQueue** : 是一个适用于**高并发场景下的队列**，通过==**无锁**==的方式，实现了高并发状态下的高性能，通常 ConcurrentLinkedQueue 性能好于 BlockingQueue。 
+它是一个基于**链接节点**的**无界线程安全队列**，该队列的元素遵循**先进先出**的原则。 **头是最先加入的，尾是最近加入的，该队列不允许 null 元素。**
+
+ConcurrentLinkedQueue 重要方法（这些都是 Queue 接口中的方法）:
+
+> **add() 和 offer()** ：都是加入元素的方法(在 ConcurrentLinkedQueue 中这俩个方法没有任何区别) 。
+> **poll() 和 peek()** ：都是取头元素节点，区别在于前者会删除元素，后者不会。
+
+##### 2. 代码示例
+
+```java
+ConcurrentLinkedQueue q = new ConcurrentLinkedQueue();
+q.offer("张三");
+q.offer("李四");
+q.offer("王五");
+q.offer("赵六");
+q.offer("大圣");
+// 从头获取元素,删除该元素
+System.out.println(q.poll());
+// 从头获取元素,不刪除该元素
+System.out.println(q.peek());
+// 获取总长度
+System.out.println(q.size());
 ```
 
 
