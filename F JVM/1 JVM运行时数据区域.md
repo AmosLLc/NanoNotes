@@ -129,7 +129,9 @@ java -Xms1M -Xmx2M HackTheJava
 
 线程共享区域。
 
-用于存放已被加载的**类信息、常量、静态变量、即时编译器编译后的代码**等数据。有人喜欢称其为**永久代**。
+用于存放已被加载的**类信息、常量、==静态变量==、即时编译器编译后的代码**等数据。有人喜欢称其为**永久代**。
+
+静态变量的定义在方法区，但是其实际引用的对象是在**堆**中，这就是联系了。
 
 和堆一样不需要连续的内存，并且可以动态扩展，动态扩展失败一样会抛出 **OutOfMemoryError** 异常。
 
@@ -172,6 +174,8 @@ JDK 1.8 的时候，方法区（HotSpot 的永久代）被彻底移除了（JDK1
 
 #### **运行时常量池**
 
+##### 1. 概述
+
 <img src="assets/20170329213804490.png" alt="img" style="zoom:40%;" />
 
 运行时常量池是**方法区**的一部分。
@@ -181,6 +185,363 @@ Class 文件中的**常量池**（编译器生成的字面量和符号引用）�
 除了在编译期生成的常量，还允许**动态生成**（即运行期间将新的常量放入池中），例如 String 类的 intern()。
 
 **JDK1.7 及之后版本的 JVM 已经将运行时常量池从方法区中移了出来，在 Java 堆（Heap）中开辟了一块区域存放运行时常量池。**
+
+Class 常量池可以理解为是 **Class 文件中的资源仓库**。 Class 文件中除了包含类的版本、字段、方法、接口等描述信息外，还有一项信息就是**常量池(constant pool table)**，用于存放编译期生成的各种**字面量(Literal)和符号引用(Symbolic References)**。
+
+先看一个类 Math.class。
+
+```java
+package com.nano.jvm;
+
+public class Math {
+    public Math() {
+    }
+
+    public int compute() {
+        int a = 1;
+        int b = 2;
+        int c = (a + b) * 10;
+        return c;
+    }
+
+    public static void main(String[] args) {
+        Math math = new Math();
+        math.compute();
+    }
+}
+```
+
+下面是编译后的 Math.class 的文件。
+
+```java
+cafe babe 0000 0034 001e 0a00 0500 1a07
+001b 0a00 0200 1a0a 0002 001c 0700 1d01
+0006 3c69 6e69 743e 0100 0328 2956 0100
+0443 6f64 6501 000f 4c69 6e65 4e75 6d62
+6572 5461 626c 6501 0012 4c6f 6361 6c56
+6172 6961 626c 6554 6162 6c65 0100 0474
+6869 7301 0013 4c63 6f6d 2f6e 616e 6f2f
+6a76 6d2f 4d61 7468 3b01 0007 636f 6d70
+7574 6501 0003 2829 4901 0001 6101 0001
+4901 0001 6201 0001 6301 0004 6d61 696e
+0100 1628 5b4c 6a61 7661 2f6c 616e 672f
+5374 7269 6e67 3b29 5601 0004 6172 6773
+0100 135b 4c6a 6176 612f 6c61 6e67 2f53
+7472 696e 673b 0100 046d 6174 6801 000a
+536f 7572 6365 4669 6c65 0100 094d 6174
+682e 6a61 7661 0c00 0600 0701 0011 636f
+6d2f 6e61 6e6f 2f6a 766d 2f4d 6174 680c
+000d 000e 0100 106a 6176 612f 6c61 6e67
+2f4f 626a 6563 7400 2100 0200 0500 0000
+0000 0300 0100 0600 0700 0100 0800 0000
+2f00 0100 0100 0000 052a b700 01b1 0000
+0002 0009 0000 0006 0001 0000 0009 000a
+0000 000c 0001 0000 0005 000b 000c 0000
+0001 000d 000e 0001 0008 0000 0061 0002
+0004 0000 000d 043c 053d 1b1c 6010 0a68
+3e1d ac00 0000 0200 0900 0000 1200 0400
+0000 1000 0200 1100 0400 1200 0b00 1300
+0a00 0000 2a00 0400 0000 0d00 0b00 0c00
+0000 0200 0b00 0f00 1000 0100 0400 0900
+1100 1000 0200 0b00 0200 1200 1000 0300
+0900 1300 1400 0100 0800 0000 4a00 0200
+0200 0000 0ebb 0002 59b7 0003 4c2b b600
+0457 b100 0000 0200 0900 0000 0e00 0300
+0000 1700 0800 1800 0d00 1900 0a00 0000
+1600 0200 0000 0e00 1500 1600 0000 0800
+0600 1700 0c00 0100 0100 1800 0000 0200
+```
+
+一般不会去人工解析这种 16 进制的**字节码文件**，我们一般可以通过 **javap 命令生成更可读的 JVM 字节码指令文件**：
+
+```java
+javap -v Math.class
+```
+
+编译后得到的 **Constant Pool** 就是常量池信息。
+
+<img src="assets/image-20200622210535930.png" alt="image-20200622210535930" style="zoom:67%;" />
+
+常量池中主要存放两大类常量：**字面量和符号引用**。
+
+**字面量**
+
+**字面量就是指由字母、数字等构成的字符串或者数值常量**。
+
+字面量指等号**右边直接赋的值**，如：int a = 1 这里的 a 为左值，1 为右值。在这个例子中 1 就是字面量。
+
+```java
+int a = 1;
+int b = 2;
+int c = "abcdefg";
+```
+
+**符号引用**
+
+符号引用是**编译原理**中的概念，是相对于**直接引用**来说的。主要包括了以下三类常量：
+
+- 类和接口的**全限定名**
+- 字段的**名称和描述符**
+- 方法的**名称和描述符**
+
+上面的 a，b 就是字段名称，就是一种**符号引用**，还有 Math 类常量池里的 Lcom/nano/jvm/Math; 是类的**全限定名**， main 和 compute 是方法**名称**，() 是一种 UTF8 格式的描述符，这些都是符号引用。
+
+这些常量池现在是**静态信息**，可以看成是**静态常量池**，只有到**运行时被加载到内存**后，这些符号才有对应的**内存地址**信息，这些常量池一旦被装入内存就变成**运行时常量池**，对应的**符号引用**在程序**加载或运行**时会被**转变为被加载到==内存==区域的代码的直接引用**，也就是我们说的**动态链接**。
+
+例如，compute() 这个**符号引用**在运行时就会被转变为 compute() 方法具体**代码在方法区内存中的地址**，主要通过对象头里的**类型指针去转换直接引用**。
+
+##### 2. 字符串常量池
+
+###### (1) 字符串常量池的设计思想
+
+字符串的**分配**，和其他的对象分配一样，耗费高昂的时间与空间代价，作为最基础的数据类型，大量频繁的创建字符串，极大程度地影响程序的性能。JVM 为了提高性能和减少内存开销，在实例化**字符串常量**的时候进行了一些**优化**：
+
+- 为字符串字面量开辟一个**字符串常量池**，类似于**缓存区**。
+- 创建**字符串常量**时，首先**查询字符串常量池是否存在该字符串**。
+- 存在该**字符串**，返回**引用实例**，不存在，**实例化该字符串并放入池**中。
+
+###### (2) 三种字符串操作(Jdk1.7 及以上版本)
+
+- **直接赋值字符串**
+
+```java
+String s = "Lucy";  // s指向常量池中的引用
+```
+
+这种方式创建的字符串对象，**只会在常量池**中。
+
+因为有"Lucy"这个字面量，创建对象 s 的时候，JVM 会先去常量池中通过 equals(key) 方法，判断是否有相同的对象
+
+如果有，则直接返回该对象在常量池中的引用；
+
+如果没有，则会在常量池中创建一个新对象，再返回引用。
+
+- **new String();**
+
+```java
+String s1 = new String("Lucy");  // s1指向内存中的对象引用
+```
+
+这种方式会保证字符串常量池和堆中都有这个对象，没有就创建，最后返回内存中的对象引用。
+
+步骤大致如下：
+
+因为有 "Lucy" 这个字面量，所以会先检查字符串常量池中是否存在字符串 "Lucy"。
+
+不存在，先在字符串常量池里创建一个字符串对象；再去内存中创建一个字符串对象 "Lucy"；
+
+存在的话，就直接去内存中创建一个字符串对象 "Lucy"；
+
+最后，将内存中的**引用返回**。
+
+- **intern() 方法**
+
+```java
+String s1 = new String("hello");   
+String s2 = s1.intern();
+
+System.out.println(s1 == s2);
+```
+
+String 中的 intern 方法是一个 native 的方法，当调用 intern 方法时，如果池中已经包含一个等于此 String 对象的字符串（用 equals(oject) 方法确定），则返回池中的字符串。**否则，将 intern 返回的引用指向当前字符串 s1**(Jdk1.6 版本需要将 s1 复制到字符串常量池里)。
+
+###### (3) 字符串常量池位置
+
+- Jdk1.6及之前： 有永久代, 运行时常量池在永久代，运行时常量池包含字符串常量池。
+
+- Jdk1.7：有永久代，但已经逐步“去永久代”，字符串常量池从永久代里的运行时常量池分离到堆里。
+
+- Jdk1.8及之后： 无永久代，**运行时常量池在元空间**，**字符串常量池里依然在堆里**。
+
+用一个程序证明下字符串常量池在哪里：
+
+```java
+/**
+ * VM Args： -Xms10M -Xmx10M
+ */
+public class RuntimeConstantPoolOOM {
+    public static void main(String[] args) {
+
+        ArrayList<String> list = new ArrayList<>();
+        for (int i = 0; i < 100000000; i++) {
+            for (int j = 0; j < 1000000; j++) {
+                list.add(String.valueOf(i + j / 1000000).intern());  //
+            }
+        }
+    }
+}
+```
+
+运行结果：
+
+```java
+jdk7及以上：Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+jdk6：Exception in thread "main" java.lang.OutOfMemoryError: PermGen space
+```
+
+###### (4) 字符串常量池设计原理
+
+字符串常量池底层是hotspot的C++实现的，底层是一个 **HashTable**， 保存的本质上是字符串对象的引用。
+
+看一道比较常见的面试题，下面的代码创建了多少个 String 对象？
+
+```
+String s1 = new String("he") + new String("llo");
+String s2 = s1.intern();
+ 
+System.out.println(s1 == s2);
+// 在 JDK 1.6 下输出是 false，创建了 6 个对象
+// 在 JDK 1.7 及以上的版本输出是 true，创建了 5 个对象
+// 当然我们这里没有考虑GC，但这些对象确实存在或存在过
+```
+
+为什么输出会有这些变化呢？主要还是字符串池从永久代中脱离、移入堆区的原因， intern() 方法也相应发生了变化：
+
+1、在 JDK 1.6 中，调用 intern() 首先会在字符串池中寻找 equal() 相等的字符串，假如字符串存在就返回该字符串在字符串池中的引用；假如字符串不存在，虚拟机会重新在永久代上创建一个实例，将 StringTable 的一个表项指向这个新创建的实例。
+
+![img](assets/94680)
+
+ 
+
+2、在 JDK 1.7 (及以上版本)中，由于字符串池不在永久代了，intern() 做了一些修改，更方便地利用堆中的对象。字符串存在时和 JDK 1.6一样，但是字符串不存在时不再需要重新创建实例，可以直接指向堆上的实例。
+
+![img](assets/94679)
+
+ 
+
+　　由上面两个图，也不难理解为什么 JDK 1.6 字符串池溢出会抛出 OutOfMemoryError: PermGen space ，而在 JDK 1.7 及以上版本抛出 OutOfMemoryError: Java heap space 。
+
+**String常量池问题的几个例子**
+
+示例1：
+
+```java
+String s0="zhuge";
+String s1="zhuge";
+String s2="zhu" + "ge";
+System.out.println( s0==s1 ); //true
+System.out.println( s0==s2 ); //true
+```
+
+分析：因为例子中的 s0和s1中的”zhuge”都是字符串常量，它们在编译期就被确定了，所以 s0\==s1 为true；而”zhu”和”ge”也都是字符串常量，当一个字 符串由多个字符串常量连接而成时，它自己肯定也是字符串常量，所以s2也同样在编译期就被优化为一个字符串常量"zhuge"，所以s2也是常量池中” zhuge”的一个引用。所以我们得出s0\==s1==s2；
+
+示例2：
+
+```java
+String s0="zhuge";
+String s1=new String("zhuge");
+String s2="zhu" + new String("ge");
+System.out.println( s0==s1 );　　// false
+System.out.println( s0==s2 )；　 // false
+System.out.println( s1==s2 );　　// false
+```
+
+分析：用new String() 创建的字符串不是常量，不能在编译期就确定，所以new String() 创建的字符串不放入常量池中，它们有自己的地址空间。
+
+s0还是常量池 中"zhuge”的引用，s1因为无法在编译期确定，所以是运行时创建的新对象”zhuge”的引用，s2因为有后半部分 new String(”ge”)所以也无法在编译期确定，所以也是一个新创建对象”zhuge”的引用;明白了这些也就知道为何得出此结果了。
+
+示例3：
+
+```java
+  String a = "a1";
+  String b = "a" + 1;
+  System.out.println(a == b); //result = true 
+  
+  String a = "atrue";
+  String b = "a" + "true";
+  System.out.println(a == b); //result = true 
+  
+  String a = "a3.4";
+  String b = "a" + 3.4;
+  System.out.println(a == b); //result = true
+```
+
+分析：JVM对于字符串常量的"+"号连接，将在程序编译期，JVM就将常量字符串的"+"连接优化为连接后的值，拿"a" + 1来说，经编译器优化后在class中就已经是a1。在编译期其字符串常量的值就确定下来，故上面程序最终的结果都为true。
+
+示例4：
+
+```java
+String a = "ab";
+String bb = "b";
+String b = "a" + bb;
+
+System.out.println(a == b); //result = false
+```
+
+分析：JVM对于字符串引用，由于在字符串的"+"连接中，有字符串引用存在，而引用的值在程序编译期是无法确定的，即"a" + bb无法被编译器优化，只有在程序运行期来动态分配并将连接后的新地址赋给b。所以上面程序的结果也就为false。
+
+示例5：
+
+```java
+String a = "ab";
+final String bb = "b";
+String b = "a" + bb;
+
+System.out.println(a == b); //result = true
+```
+
+分析：和示例4中唯一不同的是bb字符串加了final修饰，对于final修饰的变量，它在编译时被解析为常量值的一个本地拷贝存储到自己的常量池中或嵌入到它的字节码流中。所以此时的"a" + bb和"a" + "b"效果是一样的。故上面程序的结果为true。
+
+示例6：
+
+```java
+String a = "ab";
+final String bb = getBB();
+String b = "a" + bb;
+
+System.out.println(a == b); //result = false
+
+private static String getBB() 
+{  
+    return "b";  
+ }
+```
+
+分析：JVM对于字符串引用bb，它的值在编译期无法确定，只有在程序运行期调用方法后，将方法的返回值和"a"来动态连接并分配地址为b，故上面 程序的结果为false。
+
+**关于String是不可变的**
+
+​       通过上面例子可以得出得知：
+
+```java
+String  s  =  "a" + "b" + "c";  //就等价于String s = "abc";
+String  a  =  "a";
+String  b  =  "b";
+String  c  =  "c";
+String  s1  =   a  +  b  +  c;
+```
+
+　　s1 这个就不一样了，可以通过观察其**JVM指令码**发现s1的"+"操作会变成如下操作：
+
+```java
+StringBuilder temp = new StringBuilder();
+temp.append(a).append(b).append(c);
+String s = temp.toString();
+```
+
+ **最后再看一个例子**：
+
+```java
+//字符串常量池："计算机"和"技术"     堆内存：str1引用的对象"计算机技术"  
+//堆内存中还有个StringBuilder的对象，但是会被gc回收，StringBuilder的toString方法会new String()，这个String才是真正返回的对象引用
+String str2 = new StringBuilder("计算机").append("技术").toString();   //没有出现"计算机技术"字面量，所以不会在常量池里生成"计算机技术"对象
+System.out.println(str2 == str2.intern());  //true
+//计算机技术 在池中没有，但是在heap中存在，则intern时，会直接返回该heap中的引用
+
+//字符串常量池："ja"和"va"     堆内存：str1引用的对象"java"  
+//堆内存中还有个StringBuilder的对象，但是会被gc回收，StringBuilder的toString方法会new String()，这个String才是真正返回的对象引用
+String str1 = new StringBuilder("ja").append("va").toString();    //没有出现"java"字面量，所以不会在常量池里生成"java"对象
+System.out.println(str1 == str1.intern());  //false
+//java是关键字，在JVM初始化的相关类里肯定早就放进字符串常量池了
+
+String s1=new String("test");  
+System.out.println(s1==s1.intern());   //false
+//"test"作为字面量，放入了池中，而new时s1指向的是heap中新生成的string对象，s1.intern()指向的是"test"字面量之前在池中生成的字符串对象
+
+String s2=new StringBuilder("abc").toString();
+System.out.println(s2==s2.intern());  //false
+//同上
+```
 
 
 
@@ -455,6 +816,8 @@ java ‐Xms2048M ‐Xmx2048M ‐Xmn1024M ‐Xss512K ‐XX:MetaspaceSize=256M ‐
 Tomcat 启动直接加在 bin 目录下 catalina.sh 文件里。
 
 **JVM 参数大小设置并没有固定标准，需要根据实际项目情况分析。**
+
+对于 Spring 项目，一般容器内的核心对象（如各种 Service 对象）经过多次 Minor GC 后会被分配到老年代中，而一些用于处理业务的临时对象尽量控制其在新生代中，比如处理一个订单中有一些订单对象是临时的，使用完后让其在新生代被回收掉即可，别让它们存活太多导致移动到老年代中了。
 
 
 

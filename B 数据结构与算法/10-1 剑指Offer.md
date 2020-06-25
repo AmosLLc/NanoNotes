@@ -16,7 +16,7 @@
 
 ##### 1. 题目描述
 
-在一个长度为 n 的数组里的所有数字都在 0 到 n-1 的范围内。数组中某些数字是重复的，但不知道有几个数字是重复的，也不知道每个数字重复几次。请找出数组中任意一个重复的数字。
+在一个**长度为 n** 的数组里的所有数字都在 **0 到 n-1** 的范围内。数组中某些数字是**重复**的，但不知道有几个数字是重复的，也不知道每个数字重复几次。请找出数组中**任意一个重复**的数字。
 
 ```html
 Input:
@@ -28,9 +28,11 @@ Output:
 
 ##### 2. 解题思路
 
-要求时间复杂度 O(N)，空间复杂度 O(1)。因此不能使用排序的方法，也不能使用额外的标记数组。
+这个题就是**数组大小和数的范围**都给了。
 
-对于这种数组元素在 [0, n-1] 范围内的问题，可以将值为 i 的元素调整到第 i 个位置上进行求解。
+要求时间复杂度 **O(N)**，空间复杂度 **O(1)**。因此**不能使用排序**的方法，也不能使用额外的标记数组。
+
+对于这种数组元素在 **[0, n-1] 范围**内的问题，可以将**值为 i 的元素调整到第 i 个位置上进行求解**。
 
 以 (2, 3, 1, 0, 2, 5) 为例，遍历到位置 4 时，该位置上的数为 2，但是第 2 个位置上已经有一个 2 的值了，因此可以知道 2 重复：
 
@@ -38,14 +40,20 @@ Output:
 
 ```java
 public boolean duplicate(int[] nums, int length, int[] duplication) {
+    // Base case
     if (nums == null || length <= 0)
         return false;
+    // 遍历一次数组
     for (int i = 0; i < length; i++) {
+        // 如果当前位置不等于索引则不断进行交换
         while (nums[i] != i) {
+            // 如果已经有了
             if (nums[i] == nums[nums[i]]) {
+                // 将重复的值记录到duplication[0]中
                 duplication[0] = nums[i];
                 return true;
             }
+            // 交换
             swap(nums, i, nums[i]);
         }
     }
@@ -67,7 +75,7 @@ private void swap(int[] nums, int i, int j) {
 
 ##### 1. 题目描述
 
-给定一个二维数组，其每一行从左到右递增排序，从上到下也是递增排序。给定一个数，判断这个数是否在该二维数组中。
+给定一个二维数组，其每一行**从左到右递增排序**，**从上到下也是递增排序**。给定一个数，判断这个数是否在该二维数组中。
 
 ```html
 Consider the following matrix:
@@ -93,10 +101,14 @@ Given target = 20, return false.
 
 ```java
 public boolean Find(int target, int[][] matrix) {
+    // Base case
     if (matrix == null || matrix.length == 0 || matrix[0].length == 0)
         return false;
+    // 获取行和列数
     int rows = matrix.length, cols = matrix[0].length;
-    int r = 0, c = cols - 1; // 从右上角开始
+    // 开始位置是右上角
+    int r = 0, c = cols - 1; 
+    // 从右上角开始,退出循环条件是找到了左下角
     while (r <= rows - 1 && c >= 0) {
         if (target == matrix[r][c])
             return true;
@@ -130,9 +142,9 @@ Output:
 
 ##### 2. 解题思路
 
-在字符串尾部填充任意字符，使得字符串的长度等于替换之后的长度。因为一个空格要替换成三个字符（%20），因此当遍历到一个空格时，需要在尾部填充两个任意字符。
+在字符串尾部填充任意字符，使得字符串的长度等于替换之后的长度。因为一个空格要替换成**三个字符**（%20），因此当遍历到一个空格时，需要在尾部填充**两个任意字符**。
 
-令 P1 指向字符串原来的末尾位置，P2 指向字符串现在的末尾位置。P1 和 P2 从后向前遍历，当 P1 遍历到一个空格时，就需要令 P2 指向的位置依次填充 02%（注意是逆序的），否则就填充上 P1 指向字符的值。
+令 P1 指向字符串原来的**末尾位置**，P2 指向字符串现在的末尾位置。P1 和 P2 **从后向前遍历**，当 P1 遍历到一个空格时，就需要令 P2 指向的位置依次填充 02%（注意是逆序的），否则就填充上 P1 指向字符的值。
 
 从后向前遍是为了在改变 P2 所指向的内容时，不会影响到 P1 遍历原来字符串的内容。
 
@@ -144,7 +156,6 @@ public String replaceSpace(StringBuffer str) {
     for (int i = 0; i <= P1; i++)
         if (str.charAt(i) == ' ')
             str.append("  ");
-
     int P2 = str.length() - 1;
     while (P1 >= 0 && P2 > P1) {
         char c = str.charAt(P1--);
@@ -168,7 +179,7 @@ public String replaceSpace(StringBuffer str) {
 
 ##### 1. 题目描述
 
-从尾到头反过来打印出每个结点的值。
+从**尾到头**反过来打印出每个结点的值。
 
 <img src="assets/1563521710781.png" alt="1563521710781" style="zoom:67%;" />
 
@@ -191,12 +202,14 @@ public ArrayList<Integer> printListFromTailToHead(ListNode listNode) {
 
 ###### ② 使用头插法
 
-使用头插法可以得到一个逆序的链表。
+使用**头插法**可以得到一个**逆序的链表**。
 
 头结点和第一个节点的区别：
 
 - 头结点是在头插法中使用的一个额外节点，这个节点不存储值；
 - 第一个节点就是链表的第一个真正存储值的节点。
+
+这个图不错啊。
 
 <div align="center"> <img src="assets/0dae7e93-cfd1-4bd3-97e8-325b032b716f.gif" width="370px"> </div><br>
 
@@ -223,7 +236,7 @@ public ArrayList<Integer> printListFromTailToHead(ListNode listNode) {
 
 ###### ③ 使用栈
 
-栈具有后进先出的特点，在遍历链表时将值按顺序放入栈中，最后出栈的顺序即为逆序。
+栈具有后进先出的特点，在遍历链表时将值按顺序放入栈中，最后出栈的顺序即为逆序。但是是使用了**额外**空间。
 
 <div align="center"> <img src="assets/9d1deeba-4ae1-41dc-98f4-47d85b9831bc.gif" width="300px"> </div><br>
 
@@ -249,13 +262,15 @@ public ArrayList<Integer> printListFromTailToHead(ListNode listNode) {
 
 ##### 1. 题目描述
 
-根据二叉树的前序遍历和中序遍历的结果，重建出该二叉树。假设输入的前序遍历和中序遍历的结果中都不含重复的数字。
+根据二叉树的**前序遍历和中序遍历的结果**，重建出该二叉树。假设输入的前序遍历和中序遍历的结果中都不含重复的数字。
 
 <img src="assets/1563521777675.png" alt="1563521777675" style="zoom:56%;" />
 
 ##### 2. 解题思路
 
-前序遍历的第一个值为根节点的值，使用这个值将中序遍历结果分成两部分，左部分为树的左子树中序遍历结果，右部分为树的右子树中序遍历的结果。
+**前序遍历**的第一个值为**根节点的值**，使用这个值将**中序遍历结果分成两部分**，左部分为树的**左子树中序遍历结果**，右部分为树的**右子树中序遍历的结果。**
+
+记住这个图，对一些选择题都是OK的。
 
 <div align="center"> <img src="assets/c269e362-1128-4212-9cf3-d4c12b363b2f.gif" width="330px"> </div><br>
 
@@ -264,17 +279,23 @@ public ArrayList<Integer> printListFromTailToHead(ListNode listNode) {
 private Map<Integer, Integer> indexForInOrders = new HashMap<>();
 
 public TreeNode reConstructBinaryTree(int[] pre, int[] in) {
+    // 把每个中序结点的值和索引放入map便于查询
     for (int i = 0; i < in.length; i++)
         indexForInOrders.put(in[i], i);
     return reConstructBinaryTree(pre, 0, pre.length - 1, 0);
 }
 
 private TreeNode reConstructBinaryTree(int[] pre, int preL, int preR, int inL) {
+    // Base case
     if (preL > preR)
         return null;
+    // 以前序遍历的第一个结点当做当前根结点
     TreeNode root = new TreeNode(pre[preL]);
+    // 从map中找对应的分隔索引
     int inIndex = indexForInOrders.get(root.val);
+    // 左树大小
     int leftTreeSize = inIndex - inL;
+    // 递归构造
     root.left = reConstructBinaryTree(pre, preL + 1, preL + leftTreeSize, inL);
     root.right = reConstructBinaryTree(pre, preL + leftTreeSize + 1, preR, inL + leftTreeSize + 1);
     return root;
@@ -289,7 +310,7 @@ private TreeNode reConstructBinaryTree(int[] pre, int preL, int preR, int inL) {
 
 ##### 1. 题目描述
 
-给定一个二叉树和其中的一个结点，请找出中序遍历顺序的下一个结点并且返回。注意，树中的结点不仅包含左右子结点，同时包含指向父结点的指针。
+给定一个二叉树和其中的一个结点，请找出**中序遍历**顺序的下一个结点并且返回。注意，树中的结点不仅包含左右子结点，同时包含**指向父结点**的指针。
 
 ```java
 public class TreeLinkNode {
@@ -342,11 +363,11 @@ public TreeLinkNode GetNext(TreeLinkNode pNode) {
 
 ##### 题目描述
 
-用两个栈来实现一个队列，完成队列的 Push 和 Pop 操作。
+用两个**栈**来实现一个**队列**，完成队列的 **Push** 和 **Pop** 操作。
 
 ##### 解题思路
 
-in 栈用来处理入栈（push）操作，out 栈用来处理出栈（pop）操作。一个元素进入 in 栈之后，出栈的顺序被反转。当元素要出栈时，需要先进入 out 栈，此时元素出栈顺序再一次被反转，因此出栈顺序就和最开始入栈顺序是相同的，先进入的元素先退出，这就是队列的顺序。
+**in 栈**用来处理**入栈（push）**操作，**out 栈**用来处理**出栈（pop）**操作。一个元素进入 in 栈之后，**出栈的顺序被反转**。当**元素要出栈时，需要先进入 out 栈**，此时元素出栈顺序再一次被反转，因此出栈顺序就和最开始入栈顺序是相同的，先进入的元素先退出，这就是队列的顺序。
 
 <div align="center"> <img src="assets/3ea280b5-be7d-471b-ac76-ff020384357c.gif" width="350"/> </div><br>
 
