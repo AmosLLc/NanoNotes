@@ -6,26 +6,26 @@
 
 ##### 1. 概述
 
-异常对象**都是派生于 Throwable 类**的一个实例。异常体系如下如所示。RuntimeException 下面是非受查异常。IOException 下面是受查异常。
+异常对象**都是派生于 ==Throwable== 类**的一个实例。异常体系如下如所示。RuntimeException 下面是**非受查异常**。IOException 下面是**受查异常**。
 
 <img src="assets/1563604669873.png" alt="1563604669873" style="zoom:77%;" />
 
-Throwable 可以用来表示任何可以作为异常抛出的**类**，分为两种： **Error（错误）**  和 **Exception（异常）**。异常和错误的区别是，异常是可以被处理的，而错误是没法处理的。 
+Throwable 可以用来表示任何可以作为异常抛出的**类**，分为两种： **Error（错误）**  和 **Exception（异常）**。异常和错误的区别是，**异常是可以被处理的，而错误是没法处理的**。 
 
 ##### 2. Error
 
-其中 Error 用来表示 JVM **无法处理的错误**，对于所有的编译时期的错误以及**系统错误**都是通过 Error 抛出的。
+其中 Error 用来表示 JVM **无法处理的错误**，对于所有的**编译时期**的错误以及**系统错误**都是通过 Error 抛出的。
 
-例子：**NoClassDefFoundError**：如果 JVM 或者 ClassLoader 实例**尝试加载**（可以通过正常的方法调用，也可能是使用new来创建新的对象）**类的时候却找不到类的定义**。要查找的类在**编译的时候是存在**的，**运行的时候却找不到**了。这个错误往往是你使用 new 操作符来创建一个新的对象但却找不到该对象对应的类。这个时候就会导致 NoClassDefFoundError。
+例子：**NoClassDefFoundError**：如果 JVM 或者 ClassLoader 实例**尝试加载**（可以通过正常的方法调用，也可能是使用 new 来创建新的对象）**类的时候却找不到类的定义**。要查找的类在**编译的时候是存在**的，**运行的时候却找不到**了。这个错误往往是你使用 new 操作符来创建一个新的对象但却找不到该对象对应的类。这个时候就会导致 NoClassDefFoundError。
 
 ##### 3. Exception
 
 **Exception** 是异常，主要分为两种：
 
-- **受查异常** ：发生在==**编译阶段**==，必须要使用 try…catch（或者throws）否则编译不通过。 需要用 **try...catch...** 语句捕获并进行处理，并且可以从异常中恢复；就是**可以检查**到的，与 **IO 操作相关**的很多异常就是这个。比如 ：ClassNotFoundException，NoSuchFieldException，NoSuchMetodException。除了 **RuntimeException** 及其子类以外，都是 Checked Exception。
-- **非受查异常** ：是程序==**运行时**==错误，例如除 0 会引发 ArithmeticException，此时程序崩溃并且无法恢复。派生于 **Error** 类和 **RuntimeException 类**的异常。运行时才能发现的异常，所以是不能检查的异常。
+- **受查异常** ：程序==**编译阶段**==发生异常，必须要使用 **try…catch**（或者 throws）进行处理否则编译不通过；受查就是**可以检查**到的，与 **IO 操作相关**的很多异常就是这个。比如 ：ClassNotFoundException，NoSuchFieldException，NoSuchMetodException。除了 **RuntimeException** 及其子类以外，都是受查异常。
+- **非受查异常** ：程序==**运行时**==错误，例如除 0 会引发 ArithmeticException，此时程序崩溃并且无法恢复。派生于 **Error** 类和 **RuntimeException 类**的异常。程序运行过程中才能发现的异常，所以是**不能检查**的异常。
 
-**常见的 RuntimeException 表（非受查异常）**
+**常见的 RuntimeException 表（非受查异常）**，有时候面试会叫说几个。
 
 |             异常              |                 类型                 |
 | :---------------------------: | :----------------------------------: |
@@ -45,25 +45,28 @@ Throwable 可以用来表示任何可以作为异常抛出的**类**，分为两
 ##### 1. Throwable类API
 
 ```java
-Throwable(); 	// 构造一个新的 Throwabie 对象， 这个对象没有详细的描述信息
-Throwable(String message); // 构造一个新的throwable对象， 这个对象带有特定的详细描述信息。习惯上所有派生的异常类都支持一个默认的构造器和一个带有详细描述信息的构造器
-String getMessage(); // 获得Throwable 对象的详细描述信息
+// 构造一个新的Throwable对象，这个对象没有详细的描述信息
+Throwable(); 	
+// 构造一个新的throwable对象，这个对象带有特定的详细描述信息。习惯上所有派生的异常类都支持一个默认的构造器和一个带有详细描述信息的构造器
+Throwable(String message); 
+// 获得Throwable对象的详细描述信息
+String getMessage(); 
 ```
 
 ##### 2. 异常声明与抛出
 
-受查异常使用 ==throws== 关键词声明异常。
+**受查异常**使用 ==**throws**== 关键词**声明**异常。
 
 ```java
-class MyAnimation{
+class MyAnimation {
     // 可以同时声明多个可能抛出的异常
     public Image loadlmage(String s) throws FileNotFoundException, EOFException{
-        ...
+        //...
     }
 }
 ```
 
-非受查异常使用 ==throw== 关键词**抛出**异常。
+**非受查异常**使用 ==**throw**== 关键词**抛出**异常。
 
 ```java
 EOFException e = new EOFException();    // 构造异常对象
@@ -75,22 +78,21 @@ throw new EOFException("File is not found");    // 抛出异常对象且带异�
 
 **再次抛出异常与异常链**
 
-**异常链**是指在进行一个**异常处理时抛出了另外一个异常**，由此产生了一个**异常链条**，大多用于将受检查异常（checked exception）**封装**成为非受检查异常（unchecked exception) 或者 RuntimeException。特别注意如果你因为一个异常而决定抛出另一个新的异常时一定要包含原有的异常，这样处理程序才可以通过 **getCause**() 和 initCause() 方法来访问异常最终的根源。
-
-有一好的处理方法，将原始异常设置为新异常的“**原因**”：
+**异常链**是指在进行一个**异常处理时抛出了另外一个异常**，从而产生了一个**异常链条**，大多用于将**受查异常封装**成为非受查异常或者 RuntimeException。如果封装原有一个异常而抛出另一个**新的**异常时一定要**包含原有**的异常，将原始异常设置为新异常的**原因**，这样处理程序才可以通过 **getCause**() 和 initCause() 方法来访问异常最终的**根源**。
 
 ```java
-try{
+try {
     // access the database
 } catch (SQLException e) {
     // 构造新的异常对象
     Throwable se = new ServletException ("database error"); 
-    se.initCause(e);    // 把原来的原因e传入新对象中
+    // 把原本异常e传入新异常对象
+    se.initCause(e);    
     throw se;   // 抛出新对象
 }
 ```
 
-当捕获到异常时， 就可以使用下面这条语句重新得到原始异常：
+当捕获到异常时， 就可以使用下面这条语句**重新**得到原始异常：
 
 ```java
 Throwable e = se.getCause();
@@ -98,25 +100,70 @@ Throwable e = se.getCause();
 
 **强烈建议**使用这种包装技术。
 
+##### 4. 自定义异常类
+
+自定义异常类只需**继承 Exception** 类或者其子类即可。
+
+```java
+class FileFormatException extends IOException {
+    public FileFormatException() {
+        this("The file format is not good.");
+    }
+    public FileFormatException(String gripe) {
+        super(gripe);
+    }
+}
+```
+
+##### 5. 覆写父类异常方法
+
+如果在子类中**覆写**了超类的一个方法， **子类**方法中声明的受查异常**不能比超类方法中声明的异常更通用** （子类方法中可以抛出**更特定**的异常， 或者根本不抛出任何异常）。
+
+如果超类方法没有抛出任何受查异常，子类也不能抛出任何受查异常。
+
+总之就是，**超类异常范围最广泛**，子类抛出的异常**只能更加详细**。**覆写的方法不能拓展父类异常的范围**。
+
+```java
+public class SuperClass{
+    public void someMethod throws Exception1 {
+        ....
+    }
+}
+
+public class SubClass extends SuperClass {
+    // Error子类方法比父类异常范围更大
+    @Override
+    public void someMethod throws Exception1, Exception2 {	
+        ....
+    }
+}
+
+public class SubClass extends SuperClass {
+    // 如果Exception3继承Exception1是可以的
+    @Override
+    public void someMethod throws Exception3 {	
+        //....
+    }
+}
+```
+
 
 
 #### try-catch-finally
 
 ##### 1. 概述
 
-finally 多用于**回收资源**。涉及**资源操作**的都需要执行！！比如文件打开，Redis 或 MySQL 连接等。
-
-不管是**否有异常被捕获**， finally 子句中的代码**都被执行**。
+finally 用于**回收资源**。涉及**资源操作**的都需要执行！！比如文件打开、Redis 或 MySQL 连接等。不管是**否有异常被捕获**， finally 子句中的代码**都被执行**。
 
 try 语句可以只有 finally 子句，而没有 catch 子句。
 
 finally 语句中**可能也会产生异常**！如资源关闭 close() 方法的异常。此时原始的异常将会丢失，转而抛出 close 方法的异常。
 
-注意：就算 **try 语句中含有 return 语句，那么 finally 语句依然会执行**。try 代码块中的 **break 或 continue** 语句也可能使控制权进入 finally 代码块。
+**注意**：就算 **try 语句中含有 return 语句，那么 finally 语句依然会执行**。try 代码块中的 **break 或 continue** 语句也可能使控制权进入 finally 代码块。
 
 ##### 2. 带return的finally语句
 
-当 **finally 子句包含 return 语句**时，将会出现一种**意想不到**的结果，假设利用 return 语句从 **try** 语句块中**退出**。**在方法返回前，finally 子句的内容将被执行**。如果 finally 子句中也有一个 return 语句，这个返回值将会==**覆盖**==原始的返回值。
+当 **finally 子句包含 return 语句**时，将会出现一种**意想不到**的结果，假设利用 return 语句从 **try** 语句块中**退出**。**在方法返回前，finally 子句的内容将被执行**。如果 finally 子句中也有一个 return 语句，这个返回值将会==**覆盖**==原始的**返回值**。
 
 ```java
 public static int f(int n){
@@ -124,8 +171,7 @@ public static int f(int n){
         int r = n * n;
         // 如果try子句含有return
         return r;
-    }
-    finally{
+    } finally{
         if (n == 2) {
             // finally中的return覆盖try中的return
             return 0;
@@ -138,7 +184,7 @@ public static int f(int n){
 
 **不要在 finally 语句中使用 return，这不是 finally 语句的用处。**
 
-##### 3. 带资源的 try 语句
+##### 3. 带资源的try语句
 
 如果需要**关闭资源**，最好使用带资源的 try 语句。前提是这个资源实现了 **AutoCloseable** 接口， Java SE7 为这种代码模式提供了一个很有用的快捷方式。AutoCloseable 接口有一个方法：
 
@@ -168,82 +214,33 @@ PrintWriter out = new Pri ntWriter("out.txt")){
 }
 ```
 
-不论这个块如何退出，in 和 out 都会关闭。
+不论这个块如何退出，in 和 out 都会**关闭**。
 
 ##### 4. 问题总结
 
-> **如果执行 finally 代码块之前方法返回了结果或者 JVM 退出了，这时 finally 块中的代码还会执行吗？**
+> **如果执行finally代码块之前方法返回了结果或者JVM退出了，这时finally块中的代码还会执行吗？**
 
 只有在 try 里面通过 **System.exit(0)** 来**退出 JVM** 的情况下 finally 块中的代码才**不会**执行，其他 return 等情况**都会调用**，所以在**不终止 JVM 的情况下 finally 中的代码一定会执行**。
 
-> **Java 中 finally 块一定会执行吗？**
+> **finally语句块一定会执行吗？**
 
-不一定，分情况。因为首先想要执行 finally 块的**前提是必须执行到了 try 块**，当在 try 块或者 catch 块中**有 System.exit(0);** 这样的语句存在时 finally 块就**不会被执行**到了，因为程序**被结束**了。此外当在 try 块或者 catch 块里 return 时 finally 会被执行；而且 finally 块里 return 语句会把 try 块或者 catch 块里的 return 语句效果给覆盖掉**且吞掉了异常**。当一个线程在执行 try 语句块或者 catch 语句块时被打断（interrupted）或者被终止（killed），与其相对应的 finally 语句块可能不会执行。还有更极端的情况，就是在线程运行 try 语句块或者 catch 语句块时，突然死机或者断电。可能有人认为死机、断电这些理由有些强词夺理，没有关系，我们只是为了说明这个问题。
-
-
-
-#### 自定义异常类
-
-继承 Exception 类或者其子类即可。
-
-```java
-class FileFormatException extends IOException{
-    public FileFormatException() {
-    	this("The file format is not good.");
-    }
-    public FileFormatException(String gripe){
-        super(gripe);
-    }
-}
-```
-
-
-
-#### 覆写父类异常方法
-
-如果在子类中**覆写**了超类的一个方法， **子类**方法中声明的受查异常**不能比超类方法中声明的异常更通用** （子类方法中可以抛出更特定的异常， 或者根本不抛出任何异常）。
-
-如果超类方法没有抛出任何受查异常，子类也不能抛出任何受查异常。
-
-总之就是，**超类异常范围最广泛**。
-
-```java
-public class SuperClass{
-    public void someMethod throws Exception1 {
-        ....
-    }
-}
-
-public class SubClass extends SuperClass {
-    @Override
-    public void someMethod throws Exception1, Exception2{	// Error 子类方法比父类异常范围更大
-        ....
-    }
-}
-
-public class SubClass extends SuperClass {
-    @Override
-    public void someMethod throws Exception3{	// OK if Exception3 exntends Exception1
-        ....
-    }
-}
-
-```
-
-**覆写的方法不能拓展父类异常的范围**。
+不一定，分情况。因为首先想要执行 finally 块的**前提是必须执行到了 try 块**，当在 try 块或者 catch 块中**有 System.exit(0);** 这样的语句存在时 finally 块就**不会被执行**到了，因为程序**被结束**了。此外当在 try 块或者 catch 块里 return 时 finally 会被执行；而且 finally 块里 return 语句会把 try 块或者 catch 块里的 return 语句效果给覆盖掉**且吞掉了异常**。当一个线程在执行 try 语句块或者 catch 语句块时被打断（interrupted）或者被终止（killed），与其相对应的 finally 语句块可能不会执行。还有更极端的情况，就是在线程运行 try 语句块或者 catch 语句块时，突然**断电**。
 
 
 
 #### 使用异常技巧
 
+来自 Java Core。
+
 - 多使用代码检查机制。**捕获异常的开销非常大**。
 - 不要过分细化异常。
 - 利用异常层次结构，不要只抛出 RuntimeException 异常。应该寻找更加适当的子类或创建自己的异常类。不要只捕获 Thowable 异常， 否则，会使程序代码更难读、更难维护。将一种异常转换成另一种更加适合的异常时不要犹豫。
-- 不要压制异常。
-- 在检测错误时，“ 苛刻 ” 要比放任更好。
-- 不要羞于传递异常。
+- 不要压制异常。不要羞于传递异常。
+- 在检测错误时，"苛刻" 要比放任更好。
 - 早抛出，晚捕获。
 - 多个 catch 块的次序应该是具体异常放在其祖先类的前面，否则后面的 catch 语句可能进入不了。
+
+
 
 
 

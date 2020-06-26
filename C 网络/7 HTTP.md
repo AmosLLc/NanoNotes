@@ -789,7 +789,7 @@ Cookie 和 Session **都是用来跟踪浏览器用户身份的会话方式**，
 
 **Cookie 数据保存在客户端(浏览器端)，Session 数据保存在服务器端。**
 
-Cookie 存储在客户端中，而Session存储在服务器上，相对来说 Session 安全性更高。如果要在 Cookie 中存储一些敏感信息，不要直接写入 Cookie 中，最好能将 Cookie 信息加密然后使用到的时候再去服务器端解密。
+Cookie 存储在客户端中，而 Session 存储在服务器上，相对来说 Session 安全性更高。如果要在 Cookie 中存储一些敏感信息，不要直接写入 Cookie 中，最好能将 Cookie 信息加密然后使用到的时候再去服务器端解密。
 
 - Cookie 只能存储 **ASCII** 码字符串，而 Session 则可以存储**任何类型的数据**，因此在考虑数据**复杂**性时首选 Session；
 - Cookie 存储在浏览器中，容易被恶意查看。如果非要将一些隐私数据存在 Cookie 中，可以将 **Cookie 值进行加密**，然后在服务器进行解密；

@@ -2,7 +2,9 @@
 
 ### 泛型
 
-#### 本节重点
+#### 基础
+
+##### 1. 杂记
 
 - 泛型可有泛型**类**、泛型**方法**、泛型**接口**。
 - 泛型方法的返回类型之前是==**类型参数**==，可以对类型参数进行**限定**。如 **\<T extends Comparable>**。
@@ -10,45 +12,45 @@
 - 编译期进行泛型**类型擦除**会把**类型变量**替换为相应的**限定类型**。
 - 泛型的诸多限制多半是由**类型擦除**造成的。
 
+##### 2. 泛型概述
 
+使用泛型可以让编译器对**类型进行检查**，避免**插入错误类型**的对象。它提供了**编译期的类型安全**，确保你只能把**正确类型**的对象放入集合中，避免了在运行时出现 **ClassCastException**。
 
-#### 泛型概述
+泛型只在**编译阶段**有效而不会进入到运行时阶段。在**编译过程**中，正确**检验泛型结果**后，会将泛型的相关信息**擦除**，并且在对象进入和离开方法的边界处**添加类型检查和类型转换**的方法。
 
-使用泛型可以让编译器对**类型进行检查**，避免**插入错误类型**的对象。它提供了**编译期的类型安全**，确保你只能把正确类型的对象放入集合中，避免了在运行时出现 ClassCastException。泛型只在编译阶段有效。在**编译过程**中，正确**检验泛型结果**后，会将泛型的相关信息**擦除**，并且在对象进入和离开方法的边界处**添加类型检查和类型转换**的方法。也就是说，泛型信息不会进入到运行时阶段。
+泛型的**好处**：**安全性、可读性**。安全性是指编译器会帮检测类型错误，使类型安全；可读是指编码的时候直接就知道集合里面是什么类型。
 
-泛型的好处：安全性、可读性。安全性是指编译器会帮检测类型错误，使类型安全。
+**泛型的本质是==类型参数化==**，也就是所操作的**数据类型被指定为一个参数**。
 
-**泛型的本质是参数化类型**，也就是所操作的**数据类型被指定为一个参数**。
+##### 3. 泛型基本用法
 
-#### 泛型基本用法
+###### (1) 泛型类
 
-##### 1. 泛型类
-
-一个泛型类就是具有一个或多个**类型变量**的类。泛型的类型参数只能是引用类型，不能是基本数据类型。
+一个泛型类就是具有一个或多个**类型变量**的类。泛型的类型参数只能是**引用类型**，不能是基本数据类型。
 
 ```java
 /*
  * 泛型类
- * Java库中 E表示集合的元素类型，K 和 V分别表示表的关键字与值的类型
- * T（需要时还可以用临近的字母 U 和 S）表示“任意类型”
+ * Java库中E表示集合的元素类型，K和V分别表示表的关键字与值的类型
+ * T（需要时还可以用临近的字母U和S）表示“任意类型”
  */
 public class Pair<T> {
     // key这个成员变量的类型为T,T的类型由外部指定  
     private T first;
     private T second;
 
-    public Pair() { first = null; second = null; }
+    public Pair() {first = null; second = null;}
     
     // 泛型构造方法形参key的类型也为T，T的类型由外部指定
     public Pair(T first, T second) { 
         this.first = first;  this.second = second; 
     }
 	// 泛型方法getKey的返回值类型为T，T的类型由外部指定
-    public T getFirst() { return first; }
-    public T getSecond() { return second; }
+    public T getFirst() {return first;}
+    public T getSecond() {return second;}
 
-    public void setFirst(T newValue) { first = newValue; }
-    public void setSecond(T newValue) { second = newValue; }
+    public void setFirst(T newValue) {first = newValue;}
+    public void setSecond(T newValue) {second = newValue;}
 }
 
 // 两个类型变量的泛型类
@@ -89,13 +91,13 @@ class ArrayAlg{
 
 定义的泛型类，就**一定要传入泛型类型实参么**？并不是这样，在使用泛型的时候如果传入泛型实参，则会根据传入的泛型实参做**相应的限制**，此时泛型才会起到本应起到的**限制作用**。如果**不传入泛型类型实参**的话，在泛型类中使用泛型的方法或成员变量定义的类型可以为**任何的类型**。
 
-##### 2. 泛型方法
+###### (2) 泛型方法
 
 一个方法是不是泛型的，与其所在的**类**是不是泛型的**没有**关系。泛型方法也可以定义在**普通类**里面。
 
 可以定义带有==**类型参数**==的方法。调用泛型方法时，在**方法名前的尖括号**中放人具体的类型。
 
-**重要★**：**\<T>**是**类型参数**，**T 是返回类型**，类型参数放在**返回值之前**。**\<T extends Comparable>** 也是**类型参数**，限定**传入的类型**。
+**重要★**：==**\<T>**是**类型参数**，**T 是返回类型**==，类型参数放在**返回值之前**。**\<T extends Comparable>** 也是**类型参数**，限定**传入的类型**。
 
 与泛型类不同，调用方法时一般不需要特意指定类型参数的实际类型， 一般 Java 编译器可以**自动推断**出来。
 
@@ -124,12 +126,11 @@ class ArrayAlg {
 
 // 调用泛型方法 注意下面的写法
 String middle = ArrayAlg.<String>getMiddle("]ohnM", "Test", "Public");
-String middle = ArrayAlg.getMiddle("]ohnM", "Test", "Public");   // 省略类型参数
-
-indexOf(new Integer[]{1, 3, 5, 6, 8}, 10);
+// 省略类型参数
+String middle = ArrayAlg.getMiddle("]ohnM", "Test", "Public");   
 ```
 
-##### 3. 泛型接口
+###### (3) 泛型接口
 
 **接口**也可以是泛型的，如下。使用时需要指定**具体的类型**。
 
@@ -147,28 +148,22 @@ public class Book implements Comparable<Integer> {
 }
 ```
 
+##### 4. 类型参数
 
+###### (1) 概述
 
-#### 类型参数
+泛型方法声明方式：**访问修饰符 <T,K,S...> 返回类型 方法名(方法参数) {方法体}**。访问修饰符与返回类型中间的 **<T,K,S...>** 等就是属于**类型参数**。
 
-##### 1. 概述
+在泛型中，如果不对类型参数加以限制，它就可以**接受任意的**数据类型，只要它是被定义过的。但很多时候我们只需要一部分数据类型就够了，用户传递其他数据类型可能会引起错误。**类型参数**能够限定类型**必须实现某些接口或者继承某个类**。
 
-泛型方法声明方式：**访问修饰符 <T,K,S...> 返回类型 方法名(方法参数) {方法体}**。
+###### (2) 基本使用
 
-访问修饰符与返回类型中间有个 **<T,K,S...>**，T、K、S等就是属于**类型参数**。
-
-在泛型中，如果不对类型参数加以限制，它就可以**接受任意的**数据类型，只要它是被定义过的。但是，很多时候我们只需要一部分数据类型就够了，用户传递其他数据类型可能会引起错误。所以类型参数用于限定类型**必须实现某些接口或者继承某个类**，多个限定的类、接口中间用&分隔，类必须放在限定列表中所有接口的前面。
-
-##### 2. 基本使用
-
-对类型进行限定 ：
+类型参数上界可以是**类或接口**，此时 **T** 必须**实现**这个接口或者继承这个类。如果有多个类型变量和多个限定类型，限定类型用 **& 分隔**，类型变量用**逗号分隔**。
 
 ```java
 // 限定min方法只能被实现了Comparab1e接口的类调用
 public static <T extends Comparable> T min(T[] a){...}
 ```
-
-如果有多个类型变量和多个限定类型，限定类型用 **& 分隔**，类型变量用**逗号分隔**。
 
 如果用一个**类作为限定**，它必须是限定列表中的**第一个**。
 
@@ -177,12 +172,10 @@ public static <T extends Comparable> T min(T[] a){...}
 public static <T extends Students & Comparab1e & Serializable> Pair<T> min(T[] a){...}
 ```
 
-**上界**可以是一个具体的**类**，也可以是一个**接口**，此时 **T** 必须**实现**这个接口。
-
 ```java
 /**
-* 泛型方法 <T extends Comparable> 为类型限定参数  Pair<T> 为返回类型  T[]为入参
-*/
+ * 泛型方法 <T extends Comparable> 为类型限定参数  Pair<T> 为返回类型  T[]为入参
+ */
 public static <T extends Comparable> Pair<T> minmax(T[] a) {
       if (a == null || a.length == 0) return null;
       T min = a[0];
@@ -201,57 +194,47 @@ public static <T extends Comparable> Pair<T> minmax(T[] a) {
 
 ##### 1. 概述
 
-除了用 \<T> 表示泛型外，还有 \<?> 这种形式。**？** 被称为通配符。
-
-既然已经有了 \<T> 的形式了，为什么还要引进 \<?> 这样的概念呢？
+除了用 \<T> 表示泛型外，还有 **\<?>** 这种形式。**？** 被称为**通配符**。既然已经有了 \<T> 的形式了，为什么还要引进 \<?> 这样的概念呢？在现实编码中可能希望泛型能够**处理某一范围内的数据类型**，比如**某个类和它的子类**，对此 Java 引入了通配符这个概念。**通配符的出现是为了指定泛型中的类型范围**。
 
 举个栗子：
 
 ```java
 class Base{}	// 父类
-
 class Sub extends Base{}	// 子类
 
 Sub sub = new Sub();
 Base base = sub;
 ```
 
-上面代码显示，Base 是 Sub 的父类，它们之间是**继承关系**，所以 Sub 的实例可以给一个 Base 引用赋值，那么
+上面代码显示，Base 是 Sub 的**父类**，它们之间是**继承关系**，所以 Sub 的实例可以给一个 Base 引用赋值，但是：
 
 ```java
 List<Sub> lsub = new ArrayList<>();
 List<Base> lbase = lsub;
 ```
 
-最后一行代码成立吗？编译会通过吗？
-
-答案是**否定的**。
-
-编译器不会让它通过的。Sub 是 Base 的子类，**不代表 List\<Sub> 和 List\<Base> 有继承关系**。Java 中**集合是不能协变**的，也就是说 List\<Base> 不是 List\<Sub> 的父类，这时候就可以用到**通配符**了。
-
-但是，在现实编码中，确实有这样的需求，希望泛型能够**处理某一范围内的数据类型**，比如**某个类和它的子类**，对此 Java 引入了通配符这个概念。所以，**通配符的出现是为了指定泛型中的类型范围**。
-
-使用通配符对参数类型进行**限定**。
+上述第二行是不行的，**编译通不过**。Sub 是 Base 的子类，**不代表 List\<Sub> 和 List\<Base> 有继承关系**。Java 中**集合是==不能协变==**的，也就是说 List\<Base> 不是 List\<Sub> 的父类，这时候就可以用到**通配符**了。
 
 ##### **2. 通配符分类**
 
-通配符是较难理解的一部分.。主要有以下三类:
+通配符主要有以下三类：
 
-- **无边界的通配符**(Unbounded Wildcards), 就是==**\<?>**==, 比如 **List<?>**：无边界的通配符的主要作用就是让**泛型能够接受==未知类型==**的数据。
+- **无边界的通配符**：就是 ==**\<?>**==, 比如 **List<?>**。无边界的通配符的主要作用就是让**泛型能够接受==未知类型==**的数据。
+- **固定上边界**的通配符：使用**固定上边界**的通配符的泛型, 就能够接受**指定类及其子类类型**的数据。要声明使用该类通配符, 采用 ==**<? extends E> **== 的形式，这里的 **E** 就是该泛型的**上边界**。注意：这里虽然用的是 **extends** 关键字, 却不仅限于继承了父类 E 的子类, 也可以代指实现了**接口** E 的**类**。
+- **固定下边界**的通配符：使用**固定下边界**的通配符的泛型, 就能够接受**指定类及其父类类型**的数据。要声明使用该类通配符, 采用 ==**<? super E>**== 的形式, 这里的 **E** 就是该泛型的**下边界**。
 
-- **固定上边界**的通配符(Upper Bounded Wildcards)：使用**固定上边界**的通配符的泛型, 就能够接受**指定类及其子类**类型的数据. 要声明使用该类通配符, 采用 ==**<? extends E> **== 的形式, 这里的 **E** 就是该泛型的**上边界**. 注意: 这里虽然用的是 extends 关键字, 却不仅限于继承了父类 E 的子类, 也可以代指实现了**接口** E 的类. 
-
-- **固定下边界**的通配符(Lower Bounded Wildcards)：使用固定**下边界**的通配符的泛型, 就能够接受指定**类及其父类类型**的数据. 要声明使用该类通配符, 采用 ==**<? super E>**== 的形式, 这里的 **E** 就是该泛型的**下边界**。注意: 你可以为一个泛型指定上边界或下边界, 但是**不能同时**指定上下边界。
+注意：你可以为一个泛型指定上边界或下边界, 但是**不能同时**指定上下边界。
 
 ##### 3. 基本使用方法
 
-###### **① 无边界的通配符的使用**
+###### (1) 无边界通配符的使用
 
-我们以在集合 List 中使用 **<?>** 为例。
+以在集合 List 中使用 **<?>** 为例。
 
 ```java
 public static void printList(List<?> list) {
     for (Object o : list) {
+        // 这里只是读取集合元素
         System.out.println(o);
     }
 }
@@ -270,11 +253,13 @@ public static void main(String[] args) {
 }
 ```
 
-这种使用 **List<?>** 的方式就是**父类引用指向子类对象**. 注意, 这里的 printList 方法**不能写成** public static void printList(List\<**Object**> list)的形式, 虽然 Object 类是所有类的父类, 但是 List\<Object> 跟其他泛型的 List 如 List\<String> ,  List\<Integer> 不存在继承关系, 因此会报错。
+这种使用 **List<?>** 的方式就是**父类引用指向子类对象**。注意，这里的 printList 方法**不能写成** public static void printList(List\<**Object**> list) 的形式, 虽然 Object 类是所有类的父类，但是 List\<Object> 跟其他泛型的 List 如 List\<String>，List\<Integer> **不存在**继承关系，因此会报错。
 
-有一点我们必须明确, **我们不能对 List<?> 使用 add 方法（前面也说了，单使用 ？只读，不能修改了）, 仅有一个例外, 就是 add(null)**. 为什么呢? 因为我们**不确定**该 List 的类型, 不知道 add 什么类型的数据才对, 只有 null 是所有引用数据类型都具有的元素。即只能读不能写，**问号  ？ 就是表示类型安全未知**。
+**问号  ？ 表示类型安全未知，即只能读不能写**。
 
-请看下面代码:
+所以**不能对 List<?> 使用 add 方法（单使用 ？只读，不能修改了）, 仅有一个例外, 就是 add(null)**。因为我们**不确定**该 List 的类型，不知道 add 什么类型的数据才对，只有 null 是所有引用数据类型都**具有**的元素。
+
+请看下面代码：
 
 ```java
 public static void addTest(List<?> list) {
@@ -286,8 +271,7 @@ public static void addTest(List<?> list) {
 }
 ```
 
-由于我们根本不知道 list 会接受到具有什么样的泛型 List, 所以除了 null 之外什么**也不能** add。
-还有, **List<?> 也不能使用 get 方法, 只有 Object 类型是个例外**. 原因也很简单, 因为我们不知道传入的 List 是什么泛型的, 所以无法接受得到的 get, 但是 **Object** 是所有数据类型的父类, 所以只有接受他可以, 请看下面代码:
+还有，**List<?> 也不能使用 get 方法, 只有 Object 类型是个例外**。原因也很简单, 因为我们不知道传入的 List 是什么泛型的, 所以无法接受得到的 get, 但是 **Object** 是所有数据类型的父类，所以可以用于接受数据：
 
 ```java
 public static void getTest(List<?> list) {
@@ -297,11 +281,11 @@ public static void getTest(List<?> list) {
 }
 ```
 
-不是有强制类型转换么? 是有, 但是我们不知道会传入什么类型, 比如我们将其强转为 String, 编译是通过了, 但是如果传入个 Integer 泛型的 List, 一运行还会出错。那么保证传入的 String 类型的数据不就好了么? 那样是没问题了, 但是那还用 <?> 干嘛呀? 直接 List\<String> 不就行了。
+不是有**强制类型转换**么? 但是我们根本**不知道**会传入什么类型，比如我们将其强转为 String，编译是通过了, 但是如果传入个 Integer 泛型的 List，一运行还会出错。那么保证传入的 String 类型的数据不就好了么? 那样是没问题了, 但是那还用 <?> 干嘛? 直接 List\<String> 就行了。
 
-###### **② 固定上边界的通配符的使用**
+###### (2) 固定上边界通配符的使用
 
- 仍旧以 List 为例来说明。它失去了**写操作**的能力。
+ 仍以 List 为例来说明。它失去了**写操作**的能力。
 
 ```java
 public static double sumOfList(List<? extends Number> list) {
@@ -321,28 +305,28 @@ public static void main(String[] args) {
 }
 ```
 
-有一点我们需要记住的是, **List<? extends E> 不能使用 add 方法（也就是前面的例子中 extends 只读不能修改！）**, 请看如下代码:
+**List<? extends E> 不能使用 add 方法（也就是前面的例子中 extends 只读不能修改！）**。
 
 ```java
 public static void addTest2(List<? extends Number> l) {
     // l.add(1);   // 编译报错
-    // l.add(1.1); //编译报错
+    // l.add(1.1); // 编译报错
     l.add(null);
 }
 ```
 
-原因很简单, 泛型 **<? extends E>** 指的是 E 及其子类, 这里传入的可能是 Integer, 也可能是 Double, 我们在写这个方法时**不能确定传入什么类型的数据**, 如果我们调用:
+原因很简单，泛型 **<? extends E>** 指的是 **E 及其子类**，这里传入的可能是 Integer，也可能是 Double，但是在写这个方法时**不能确定传入什么类型的数据**，如果我们调用：
 
 ```java
 List<Integer> list = new ArrayList<>();
 addTest(list);
 ```
 
-那么我们之前写的 add(1.1) 就会出错, 反之亦然, 所以**除了 null 之外什么也不能 add**. ==但是 **get 的时候是可以得到一个 Number**, 也就是**上边界类型**的数据的, 因为不管存入什么数据类型都是 Number 的**子类型**==, 得到这些就是一个**父类引用指向子类**对象。有点东西，这就是上边界的作用。
+那么我们之前写的 add(1.1) 就会出错，反之亦然，所以**除了 null 之外什么也不能 add**。==但是 **get 的时候是可以得到一个 Number**，也就是**上边界类型**的数据的，因为不管存入什么数据类型都是 Number 的**子类型**==，得到这些就是一个**父类引用指向子类**对象。有点东西，这就是**上边界**的作用。
 
 ###### ③ 固定下边界通配符的使用
 
-这个较前面的两个有点难理解, 首先仍以 List 为例。它拥有**一定程度的写操作**的能力。
+这个较前面的两个有点难理解，仍以 List 为例。它拥有**一定程度的写操作**的能力。
 
 ```java
 public static void addNumbers(List<? super Integer> list) {
@@ -363,7 +347,7 @@ public static void main(String[] args) {
 }
 ```
 
-我们看到, **List<? super E>** 是能够调用 **add 方法**的, 因为我们在 addNumbers 所 **add 的元素就是 Integer 类型的**, 而传入的 list 不管是什么, 都一定是 Integer 或其父类泛型的 List, 这时 add 一个 Integer 元素是没有任何疑问的. 但是, **我们==不能使用 get 方法==**，除非使用 **Object** 类型来接收，请看如下代码:
+**List<? super E>** 是能够调用 **add 方法**的，因为我们在 addNumbers 方法中所 **add 的元素就是 Integer 类型的**，而传入的 list 不管是什么，都一定是 Integer 或其父类泛型的 List，这时 add 一个 Integer 元素是没有任何疑问的。但是，**我们==不能使用 get 方法==**，除非使用 **Object** 类型来接收。
 
 ```java
 public static void getTest2(List<? super Integer> list) {
@@ -372,12 +356,12 @@ public static void getTest2(List<? super Integer> list) {
 }
 ```
 
-这个原因也是很简单的, 因为我们所传入的类都是 **Integer 的类或其父类**, 所传入的数据类型可能是 **Integer 到 Object** 之间的任何类型, 这是**无法预料**的, 也就无法接收. 唯一能确定的就是 **Object**, 因为所有类型都是其**子类型**.
-使用 <? super E> 还有个常见的场景就是 **Comparator**. 
+这是因为我们所传入的类都是 **Integer 的类或其父类**，所**传入**的数据类型可能是 **Integer 到 Object** 之间的**任何类型**，这是**无法预料**的，也就无法接收。唯一能确定的就是 **Object**, 因为所有类型都是其**子类型**。
+使用 **<? super E>** 还有个常见的场景就是 **Comparator**。
 
-##### 4. 类型参数与通配符的使用条件
+###### (4) 类型参数与通配符的使用条件
 
-一般而言，通配符能干的事情都可以用类型参数替换。 比如
+一般而言，**通配符**能干的事情都可以用**类型参数替换**。 比如：
 
 ```java
 public void testWildCards(Collection<?> collection){}
@@ -389,9 +373,9 @@ public void testWildCards(Collection<?> collection){}
 public <T> void test(Collection<T> collection){}
 ```
 
-值得注意的是，如果用**泛型方法**来取代通配符，那么上面代码中 collection 是**能够进行写操作**的。只不过要进行**强制转换**。泛型方法中的泛型参数对象是**可修改**的，因为**类型参数 T 是确定**的（在调用方法时确定），因为 T 可以用范围内任意类型指定。但是通配符本身就**代表类型未知**，所以可能出现**无法修改**或者**只读**的情况，限制更多。
+如果用**泛型方法**来取代通配符，那么上面代码中 collection 是**能够进行写操作**的。只不过要进行**强制转换**。泛型方法中的泛型参数对象是**可修改**的，因为**类型参数 T 是确定**的（在调用方法时确定），因为 T 可以用范围内任意类型指定。但是通配符本身就**代表类型未知**，所以可能出现**无法修改**或者**只读**的情况，限制更多。
 
-此外，**类型参数**适用于**参数之间的类别依赖关系**，举例说明，比如下面 E T 两个参数之间是有**依赖关系**的时候。E 类型是 T 类型的子类，显然这种情况**类型参数**更适合。 
+此外，**类型参数**适用于**参数之间的类别依赖关系**，举例说明，比如下面 **E T 两个**参数之间是有**依赖关系**的时候。E 类型是 T 类型的子类，显然这种情况**类型参数**更适合。 
 
 ```java
 public class Test2 <T, E extends T>{
@@ -402,75 +386,24 @@ public class Test2 <T, E extends T>{
 
 ```java
 public <D, S extends D> void test(D d, S s){
-
 }
 ```
 
-如果一个方法的返回类型**依赖**于参数的类型，那么通配符也无能为力。
+如果一个方法的**返回类型**依赖于**参数的类型**，那么通配符也无能为力。
 
 
 
 #### 类型擦除
 
-**泛型信息只存在于代码编译阶段，在进入 JVM 之前，与泛型相关的信息会被擦除掉，专业术语叫做类型擦除**。通俗地讲，泛型类和普通类在 java 虚拟机内是没有什么特别的地方。
+##### 1. 概述
 
-虚拟机**没有**泛型类型对象，虚拟机不知道泛型，所有对象都属于**普通类**。无论何时定义一个**泛型类型**，都自动提供了一个相应的**原始类型**(raw type)。
+Java 泛型是通过**类型擦除**实现的。 **类型擦除**指的是**泛型相关的信息在编译后被擦除的情况**，其过程就是**擦除(erased) 类型变量**, 并**替换**为相应的**限定类型**。**类型参数**给类型擦除指定一个**边界**，类型擦除之后所有的类型参数都用它们的**限定类型替换**，无限定类型的变量用 **Object** 替换。所以泛型信息只存在于代码**编译阶段**。
 
-Java 泛型是通过**类型擦除**实现的。 
+虚拟机**没有**泛型类型对象，虚拟机不知道泛型，所有对象都属于**普通类**，泛型类和普通类在 Java 虚拟机内是没有什么特别的地方。
 
-类型擦除的过程即**擦除(erased) 类型变量**, 并**替换**为相应的**限定类型** (无限定的变量用 **Object**)。相当于给类型擦除指定一个**边界**，指定边界之后，类型擦除之后就**不会变为 Object**，而是所有的类型参数都用它们的**限定类型替换**。原始类型的名字就是删去类型参数后的泛型类型名。
+###### (1) 没有限定类型参数
 
-##### 1. 没有限定类型参数
-
-如下泛型方法
-
-```java
-public Pair(T first, T second) { 
-    this.first = first;  this.second = second; 
-}
-```
-
-类型擦除后原始类型变为
-
-```java
-public Pair(Object first, Object second) { 
-    this.first = first;  this.second = second; 
-}
-```
-
-由于**没有限定类型**，所以 T 换为 ==**Object**==。
-
-##### 2. 有限定类型参数
-
-另一个类如下
-
-```java
-public class Test <T extends Comparable> implements Serializable{
-    private T lower;
-    private T upper;
-    public Test (T first, T second){
-        if (first.compareTo(second) <= 0) { lower = first; upper = second; }
-        else { lower = second; upper = first; }
-    }
-}
-```
-
-由于其有**限定类型**为 Comparable，所以其原始类型中 **T 变为 Comparable** 得到如下类。类型擦除也会出现在泛型方法中。
-
-```java
-// 擦除后变成限定类型
-public class Test implements Serializable {
-    private Comparable lower;
-    private Comparable upper;
-    public Test (Comparable first, Comparable second) { . . . }
-}
-```
-
-类型擦除后变成了**限定的类型**而不是 Object 了。
-
-##### 3. 实测
-
-测试一下上面的内容，自定义一个泛型类。
+自定义一个**泛型类**。
 
 ```java
 public class Erasure<T> {
@@ -487,21 +420,22 @@ public class Erasure<T> {
 ```java
 Erasure<String> erasure = new Erasure<String>("hello");
 Class erasureClass = erasure.getClass();
-System.out.println("erasure class is:" + erasureClass.getName());
+System.out.println("Erasure class is:" + erasureClass.getName());
 ```
 
-输出
+**输出**
 
 ```java
-erasure class is:javase.genericity.Erasure
+Erasure class is:javase.genericity.Erasure
 ```
 
-Class 的类型仍然是 Erasure 并不是 Erasure\<T> 这种形式，那我们再看看泛型类中 T 的类型在 JVM 中是什么具体类型。
+Class 的**类型**是 **Erasure** 而不是 Erasure\<T> 的形式，再用反射看看泛型类中 **T 的类型**在 **JVM** 中具体是什么类型。
 
 ```java
 Field[] fs = erasureClass.getDeclaredFields();
 for (Field f : fs) {
-    System.out.println("Field name: " + f.getName() + ", type:" + 	f.getType().getName());
+    System.out.println("Field name: " + f.getName() + 
+                       ", type:" + f.getType().getName());
 }
 ```
 
@@ -509,12 +443,14 @@ for (Field f : fs) {
 Field name: object, type:java.lang.Object
 ```
 
-那我们可不可以说，泛型类被类型擦除后，相应的类型就被替换成 **Object** 类型呢？
+由于**没有限定类型**，所以 T 换为 ==**Object**== 类型。
 
-更改一下这个泛型类，注意对比。
+###### (2) 有限定类型参数
+
+再给**类型参数**加上更多的限定如下。
 
 ```java
-public class Erasure<T extends String> {
+public class Erasure <T extends String> {
     T object;
 
     public Erasure(T object) {
@@ -523,19 +459,17 @@ public class Erasure<T extends String> {
 }
 ```
 
-再跑一下结果：可以看到替换成了类型上限 String。
+可以看到 T 类型替换成了**类型上限 String**。
 
 ```java
 Field name: object, type:java.lang.String
 ```
 
-我们现在可以下结论了，在泛型类被**类型擦除**的时候，之前泛型类中的类型参数部分如果**没有指定上限**，如 \<T> 则会被转译成普通的 **Object** 类型，如果指定了上限如 \<T extends String> 则类型参数就被**替换成类型上限**。
+所以：在泛型类被**类型擦除**的时候，如果类型参数**没有指定上限**，如 \<T> 则会被转译成普通的 **Object** 类型，如果指定了类型参数上限如 \<T extends String> 则类型参数就被**替换成类型上限**。
 
+##### 2. 泛型的约束与局限性
 
-
-#### 泛型的约束与局限性
-
-使用泛型存在的局限性**多半是由类型擦除**引起。
+由于**类型擦除**机制的存在，会引起诸多泛型使用的**约束与局限性**。
 
 **1. 不能用基本类型实例化类型参数**
 
@@ -543,8 +477,7 @@ Field name: object, type:java.lang.String
 
 **2. 运行时类型查询只适用于==原始类型==**
 
-虚拟机中的对象总有一个特定的非泛型类型。因此所有的类型查询只产生**原始**类型。
-**getClass** 方法总是返回**原始类型**。例如：
+虚拟机中的对象总有一个特定的非泛型类型。因此 **getClass** 方法查询得到的是**原始**类型。
 
 ```java
 Pair<String> stringPair = . .
@@ -552,40 +485,9 @@ Pair<Employee> employeePair = . .
 if (stringPair.getClass() == employeePair.getClass()) // true
 ```
 
-其比较的结果是 true, 这是因为两次调用 getClass 都将返回其原始类型 **Pair.class**。
+其比较的结果是 true, 这是因为两次调用 getClass 都将返回其**原始**类型 **Pair.class**。
 
-**3. 不能创建具体类型的数组**
-
-不能实例化参数化类型的数组， 例如：
-
-```java
-Pair<String>[] table = new Pair<String>[10]; // 错误 传入String已经是参数化了
-List<Integer>[] li2 = new ArrayList<Integer>[];
-List<Boolean>[] li3 = new ArrayList<Boolean>[];
-```
-
-这三行代码是无法在编译器中编译通过的。原因还是类型擦除带来的影响。擦除之后，table 的**类型是 Pair[]**。 可以把它转换为 Object[]:
-
-```java
-Object[] objarray = table;
-```
-
-List\<Integer> 和 List\<Boolean> 在 JVM 中等同于 **List\<Object>** ，所有的类型信息都被擦除，程序也无法分辨一个数组中的元素**类型具体**是 List\<Integer>类型还是 List\<Boolean> 类型。
-
-数组会**记住**它的元素类型， 如果试图存储其他类型的元素，就会抛出一个 ArrayStoreException 异常。
-
-**但是**可以向**参数个数可变的方法**传递一个泛型类型的实例。如下面的参数可变的方法:
-
-```java
-public static <T> void addAll(Collections coll, T... ts){
-    for (t : ts) coll.add(t);
-}
-```
-
-为了调用这个方法，Java 虚拟机必须建立一个 Pair\<String> 数组，这就违反了前面的规则。不过，这种情况只会得到一个**警告**，而不是错误。
-可以在 addAll 方法上标注解 @SafeVarargs 或注解 @SuppressWanings("unchecked") 来抑制此警告。可以使用  @SafeVarargs 标注来消除创建泛型数组的有关限制，但是有些危险。
-
-**4. 不能通过类型参数创建对象**
+**3. 不能通过类型参数创建对象**
 
 **不能**使用像 **new T(...)  new T[...]  或  T.class**  这样的表达式中的类型变量。最好的是让调用者提供一个**构造器**表达式。
 
@@ -596,13 +498,14 @@ public Pair() {
     second = new T(); 
 } 
 
-Pair<String> p = Pair.makePair(String::new);    // 提供构造表达式 合法
+Pair<String> p = Pair.makePair(String::new);    // 提供构造表达式：合法
 ```
 
 如果需要**根据类型创建对象**，可以通过**反射**的方式实现。
 
 ```java
-first = T.class.newInstance(); // 非法 T.class非法，会转为Object.class
+// 非法 T.class非法，会转为Object.class
+first = T.class.newInstance(); 
 // 可以通过以下的API得到class对象
 public static <T> Pair<T> makePair(Class<T> cl){
     try { 
@@ -615,15 +518,48 @@ public static <T> Pair<T> makePair(Class<T> cl){
 Pair<String> p = Pair.makePair(String.class);
 ```
 
-**5. 不能创建泛型数组**
+**4. 不能创建具体类型的数组**
 
-数组本身也有类型，用来监控存储在虚拟机中的数组。这个类型会被**擦除**。
+不能实例化参数化类型的**数组**， 例如：
 
 ```java
-public static <T extends Comparable> T[] minmax(T[] a) { T[] mm = new T[2]; ...} // 非法
+Pair<String>[] table = new Pair<String>[10]; // 错误 传入String已经是参数化了
+List<Integer>[] li2 = new ArrayList<Integer>[];
+List<Boolean>[] li3 = new ArrayList<Boolean>[];
 ```
 
-类型擦除会让这个方法**永远构造 Comparable[2] 数组**。如果现实需要能够存放**泛型对象**的容器，可以使用**原始类型**的数组。如。
+这三行代码是**无法**在编译器中编译通过的。原因还是**类型擦除**带来的影响。擦除之后，table 的**类型是 Pair[]**。 可以把它转换为 Object[]：
+
+```java
+Object[] objarray = table;
+```
+
+而 List\<Integer> 和 List\<Boolean> 在 JVM 中等同于 **List\<Object>** ，所有的类型信息**都被擦除**，程序也无法分辨一个数组中的元素**类型具体**是 List\<Integer>类型还是 List\<Boolean> 类型。
+
+数组会**记住**它的**元素类型**， 如果试图存储其他类型的元素，就会抛出一个 ArrayStoreException 异常。
+
+**但是**可以向**参数个数可变的方法**传递一个泛型类型的实例。如下面的参数可变的方法:
+
+```java
+public static <T> void addAll(Collections coll, T... ts){
+    for (t : ts) coll.add(t);
+}
+```
+
+为了调用这个方法，Java 虚拟机必须建立一个 Pair\<String> 数组，这就违反了前面的规则。不过这种情况只会得到一个**警告**，而不是错误。
+
+**5. 不能创建泛型数组**
+
+**数组本身也有类型**，用来监控存储在虚拟机中的数组。这个类型会被**擦除**。
+
+```java
+public static <T extends Comparable> T[] minmax(T[] a) { 
+    // 非法
+    T[] mm = new T[2]; 
+} 
+```
+
+类型擦除会让这个方法**永远构造 Comparable[2] 数组**。如果现实需要能够存放**泛型对象**的容器，可以使用**原始类型**的数组，如。
 
 ```java
 Pair[] options = new Pair {
@@ -642,27 +578,23 @@ String[] ss = ArrayAlg.minmax(String[]::new, "Tom", "Dick", "Harry");
 
 
 
-#### 泛型面试题
+#### 面试题
 
-> **Java 的泛型是如何工作的 ? 什么是类型擦除 ?**
+> **Java的泛型是如何工作的 ? 什么是类型擦除 ?**
 
-泛型是通过**类型擦除**来实现的，编译器在编译时擦除了所有类型相关的信息，所以在运行时不存在任何类型相关的信息。例如 List\<String> 在运行时仅用一个 List 来表示。这样做的目的，是确保能和 Java 5之前的版本开发二进制类库进行**兼容**。你**无法在运行时访问到类型参数**，因为编译器已经把泛型类型转换成了**原始类型**。根据你对这个泛型问题的回答情况，你会得到一些后续提问，比如为什么泛型是由类型擦除来实现的或者给你展示一些会导致编译器出错的错误泛型代码。
+泛型是通过**类型擦除**来实现的，编译器在**编译**时**擦除了所有类型相关的信息**，所以在**运行时不存在任何类型相关的信息**。
 
 >  **什么是泛型中的限定通配符和非限定通配符 ?**
 
-这是另一个非常流行的 Java 泛型面试题。限定通配符对类型进行了限制。有两种限定通配符，一种是 **\<? extends T>** 它通过确保类型必须是 T 的子类来设定类型的**上界**，另一种是 **\<? super T>** 它通过确保类型必须是 T 的父类来设定类型的**下界**。泛型类型必须用限定内的类型来进行初始化，否则会导致编译错误。另一方面 **\<?>** 表示了非限定通配符，因为 <?> 可以用**任意类型**来替代。
+这是一个非常流行的面试题。限定通配符对**类型**进行了限制。有两种**限定通配符**，一种是 **\<? extends T>** 它通过确保类型必须是 T 的子类来设定类型的**上界**，另一种是 **\<? super T>** 它通过确保类型必须是 T 的父类来设定类型的**下界**。泛型类型必须用限定内的类型来进行初始化，否则会导致编译错误。还有一个 **\<?>** 表示了**非限定通配符**，因为 <?> 可以用**任意类型**来替代。
 
 > **List<? extends T>和List <? super T>之间有什么区别 ?**
 
-这和上一个面试题有联系，有时面试官会用这个问题来评估你对泛型的理解，而不是直接问你什么是限定通配符和非限定通配符。这两个 List 的声明都是**限定通配符**的例子，List<? extends T> 可以接受任何继承自 T 的类型的List，而 List<? super T> 可以接受任何 T 的父类构成的 List。例如 List<? extends Number> 可以接受List\<Integer> 或 List\<Float>。
-
-> **编写一段泛型程序来实现 LRU 缓存?**
-
-给个提示，**LinkedHashMap** 可以用来实现固定大小的 LRU 缓存，当 LRU 缓存已经满了的时候，它会把最老的键值对移出缓存。LinkedHashMap 提供了一个称为 removeEldestEntry() 的方法，该方法会被 put() 和 putAll() 调用来删除最老的键值对。当然，如果你已经编写了一个可运行的 JUnit 测试，你也可以随意编写你自己的实现代码。
+这两个 List 的声明都是使用了**限定通配符**，List<? extends T> 可以**接受任何继承自 T 的类型**的 List，而 List<? super T> 可以**接受任何 T 的父类构成的 List**。例如 List<? extends Number> 可以接受 List\<Integer> 或 List\<Float>。
 
 > **你可以把List\<String>传递给一个接受List\<Object>参数的方法吗？**
 
-对任何一个不太熟悉泛型的人来说，这个 Java 泛型题目看起来令人疑惑，因为乍看起来 String 是一种Object，所以List\<String> 应当可以用在需要List\<Object>的地方，但是**事实并非如此**。真这样做的话会导致编译错误。如果你再深一步考虑，你会发现 Java 这样做是有意义的，因为 List\<Object> 可以存储任何类型的对象包括 String, Integer等等，而 List\<String> 却只能用来存储 Strings。　
+因为乍看起来 String 是一种 Object，所以 List\<String> 应当可以用在需要 List\<Object>的地方，但是**事实并非如此**。这就是前面提到的集合是**不能协变**的。真这样做的话会导致**编译错误**。　
 
 ```java
 List<Object> objectList;
@@ -672,7 +604,7 @@ objectList = stringList;  // compilation error incompatible types
 
 > **Array中可以用泛型吗?**
 
-这可能是 Java 泛型面试题中最简单的一个了，当然前提是你要知道 Array 事实上**并不支持泛型**，这也是为什么 Effective Java 一书中建议使用 List 来代替 Array，因为 **List 可以提供编译期的类型安全保证，而 Array 却不能**。
+Array 事实上**并不支持泛型**，这也是为什么 Effective Java 一书中建议使用 List 来代替 Array，因为 **List 可以提供编译期的类型安全保证，而 Array 却不能**。
 
 
 
