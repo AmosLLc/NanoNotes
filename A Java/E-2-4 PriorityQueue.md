@@ -2,25 +2,16 @@
 
 ### PriorityQueue
 
-#### 概述
+#### 基础
 
-- 优先级队列，基于**堆**实现。堆是一种数据结构，**概念上是==树==，存储上是==数组==**，父子有特殊顺序，根是最大/最小值，构建、添加、删除效率都很高。
+##### 1. 杂记
 
-- 实现了队列接口 **Queue**，每个元素都有优先级，**队头**的元素永远都是**优先级最高**的。
+- PriorityQueue 优先级队列，实现了队列接口 **Queue**，每个元素都有优先级，**队头**的元素永远都是**优先级最高**的。内部元素**不是完全有序**，但是**逐个**出队列会得到**完全有序**的输出（从源码上看入列操作并**没有**对所有加入的元素**进行优先级排序**。**仅仅保证数组==第一个==元素是最小的即可**）。
+- **效率**：基于**堆**实现。堆在**概念上是==树==，存储上是==数组==**，父子有特殊顺序，根是最大/最小值，构建、添加、删除效率都很高。查看头部元素效率很高，为 O(1)， 入队、出队效率比较高，为 O(log2(N))，构建堆 **heapify** 的效率为 O(N)。
 
-- 内部元素**不是完全有序**，但是**逐个**出队列会得到**完全有序**的输出。
+- **线程安全**：PriorityQueue 也是线程**不安全**的队列。
 
-- 最先出队的总是优先级最高的，即排序中的**第一个**。
-
-- 查看头部元素效率很高，为O(1)， 入队、出队效率比较高，为 O(log2(N))，构建堆 **heapify** 的效率为 O(N)。
-
-- PriorityQueue 是一种**无界**的，线程**不安全**的队列。
-
-- 从源码上看 PriorityQueue 的入列操作并**没有**对所有加入的元素**进行优先级排序**。**仅仅保证数组==第一个==元素是最小的即可。**
-
-    
-
-#### 基本使用
+##### 2. 基本使用
 
 PriorityQueue 使用跟**普通队列**一样，唯一区别是 PriorityQueue 会根据**排序规则**决定谁在队头，谁在队尾。
 
@@ -54,7 +45,7 @@ public static void main(String[] args) {
 }
 ```
 
-使用自然序比较器。
+使用**自然序**比较器。
 
 ```java
 PriorityQueue<String> priorityQueue = new PriorityQueue<>(Comparator.naturalOrder());
@@ -82,18 +73,18 @@ public class PriorityQueue<E> extends AbstractQueue<E>
     transient Object[] queue;    
     // 队列长度即数据个数
     private int size = 0;  
-    // 队列比较器， 传入比较器为null使用自然排序
+    // 队列比较器， 不传入则使用自然排序
     private final Comparator<? super E> comparator;  
     // 记录结构性变化次数
     transient int modCount = 0; 
 }
 ```
 
-可以看出 PriorityQueue 内部也是使用**数组存储**元素的，而且也有记录结构性变化的 **modCount** 变量，不过这是自己定义的了，不像 ArrayList 是继承而来的。
+PriorityQueue 内部也是使用**数组存储**元素的（用于实现**堆**结构），而且也有记录结构性变化的 **modCount** 变量，不过这是自己定义的了，不像 ArrayList 是继承而来的。
 
 ##### 2. 初始化
 
-构造方法如下，有很多个重载方法，可以传入**数组大小，比较器**，以及 Collection 对象等参数。利用 Collection 对象**构造堆**后面详述。
+有很多个重载构造方法，可以传入**数组大小、比较器**，以及 Collection 对象等参数。利用 Collection 对象**构造堆**后面详述。
 
 ```java
 public PriorityQueue() {
@@ -116,7 +107,7 @@ public PriorityQueue(int initialCapacity, Comparator<? super E> comparator) {
 
 ##### 3. 添加元素
 
-队列的添加元素有两种方法，add 和 offer。add 方法如下。
+队列的**添加元素**有两种方法，**add 和 offer**。add 方法如下。
 
 ```java
 public boolean add(E e) {
@@ -124,7 +115,7 @@ public boolean add(E e) {
 }
 ```
 
-其内部调用 offer 方法。
+其内部调用 **offer** 方法。
 
 ```java
 public boolean offer(E e) {
@@ -150,14 +141,14 @@ public boolean offer(E e) {
 }
 ```
 
-扩容的方法 grow 如下。当容量小于 64 时容量扩展为原来的**两倍 + 2**，如果大于等于 64 时扩容为原来的 **1.5 倍**。
+扩容的方法 **grow** 如下。当容量**小于 64** 时容量扩展为原来的**两倍 + 2**，如果大于等于 64 时扩容为原来的 **1.5 倍**。
 
 ```java
 private void grow(int minCapacity) {
     // 旧的队列长度
     int oldCapacity = queue.length;
     // Double size if small; else grow by 50%
-    // 当容量小于 64 时容量为原来的两倍 + 2，如果大于等于 64 时扩容为原来的 1.5 倍
+    // 当容量小于64时容量为原来的两倍+2，如果大于等于64时扩容为原来的1.5倍
     int newCapacity = oldCapacity + ((oldCapacity < 64) ?
                                      (oldCapacity + 2) :
                                      (oldCapacity >> 1));
@@ -171,13 +162,13 @@ private void grow(int minCapacity) {
 }
 ```
 
-之后便是插入过程了，参考下面的插入 6 的过程。
+之后便是插入过程了，参考下面的插入 6 的过程（小顶堆）。
 
 <img src="assets/image-20200505235435005.png" alt="image-20200505235435005" style="zoom:87%;" />
 
-由于新插入元素后，可能会导致小顶堆的结构被破坏，因此需要将**新插入的元素**（在小顶堆的最低层）**向上调整**，如果插入的元素比**父节点大**，那么就把**父节点调下来**，记录父节点的位置后继续向上调整，直到其比**父节点元素值大为止**。
+新的元素被放到**数组的最后**，对应到**完全二叉树**的最后一个叶子结点。由于新插入元素后，可能会导致小顶堆的结构被破坏，因此需要将**新插入的元素**（在小顶堆的最低层）**向上调整**，如果插入的元素比**父节点大**，那么就把**父节点调下来**，记录父节点的位置后继续向上调整，直到新元素其比**父节点元素值小为止**。
 
-下面看看上浮操作 **siftUp** 方法！
+下面看看**上浮**操作 **siftUp** 方法！
 
 ```java
 private void siftUp(int k, E x) {
@@ -188,9 +179,7 @@ private void siftUp(int k, E x) {
 }
 ```
 
-可以看到主要是看有没有传入自定义的比较器，然后进行不同的操作。
-
-先看没有自定义比较器的情况。
+可以看到主要是看有没有传入**自定义**的比较器，然后进行不同的操作。先看没有自定义比较器的情况。
 
 ```java
 private void siftUpComparable(int k, E x) {
@@ -201,7 +190,7 @@ private void siftUpComparable(int k, E x) {
         int parent = (k - 1) >>> 1;
         // 获取父节点元素
         Object e = queue[parent];
-        // 如果插入的元素大于父节点（构成小顶堆），结束循环，这里就相当于直接就放好位置了
+        // 如果插入的元素大于父节点（构成小顶堆）则退出循环，这里就相当于直接就放好位置了
         if (key.compareTo((E) e) >= 0)
             break;
         // 如果插入的元素小于父节点元素，交换这个位置的父节点位置的元素，实现上浮
@@ -214,7 +203,7 @@ private void siftUpComparable(int k, E x) {
 }
 ```
 
-如果是使用了自定义的比较器，那么就是下面的方法。
+如果是使用了**自定义**的比较器，那么就是下面的方法，其实都差不多。
 
 ```java
 private void siftUpUsingComparator(int k, E x) {
@@ -235,11 +224,11 @@ private void siftUpUsingComparator(int k, E x) {
 
 ##### 4. 删除元素
 
-移除元素的方法也有两个，分别是 `remove` 与 `poll`，与 `remove` 不同的是 `poll` 每次移除的是**堆顶**的元素，也就是最小的元素，`remove` 可以移除**指定的任意元素**，并且这个移除只会移除第一次出现的该元素，如果后面也有该元素是不会移除的。
+移除元素的方法也有两个，分别是 `remove` 与 `poll`，与 `remove` 不同的是 `poll` 每次移除的是**堆顶**的元素，也就是最小的元素，`remove` 可以移除**指定的任意元素**，并且这个移除只会移除**第一次**出现的该元素，如果后面也有该元素是不会移除的。
 
-因为 poll 每次移除的是**堆顶**的元素，那么在调整二叉堆的时候只需要**从头开始调整**就好了(把**队尾**的元素移到**队首**)，如果孩子节点比父节点小，就把较小的孩子节点移到父节点的位置，记录移动的孩子的节点的位置，不断**下沉调整**即可。而 remove 方法移除的元素可能是介于堆顶与堆尾的元素，这时就不仅需要向下调整了，必要的时候也需要向上进行调整才能维持小顶堆。
+因为 **poll** 每次移除的是**堆顶**的元素，移除之后**需要把数组最后的元素移到堆顶（也就是堆顶），进而不断进行下沉操作。**而 remove 方法移除的元素可能是介于堆顶与堆尾的元素，这时就不仅需要向下调整了，必要的时候也需要向上进行调整才能维持小顶堆。
 
-主要关注 **poll** 方法吧。首先看看过程图示。
+主要关注 **poll** 方法吧。首先看看过程图示。（堆中左子结点不一定比右子节点小啊）
 
 <img src="assets/image-20200506000716096.png" alt="image-20200506000716096" style="zoom:80%;" />
 
@@ -248,7 +237,7 @@ private void siftUpUsingComparator(int k, E x) {
 public E poll() {
     if (size == 0)
         return null;
-    // 弹出后size-1
+    // 弹出一个元素后size-1
     int s = --size;
     modCount++;
     // 获取队首的元素
@@ -264,7 +253,7 @@ public E poll() {
 }
 ```
 
-siftDown 如下：
+下沉操作 siftDown 如下：
 
 ```java
 private void siftDown(int k, E x) {
@@ -276,7 +265,7 @@ private void siftDown(int k, E x) {
 }
 ```
 
-同 offer 方法一样，poll 方法在调整小顶堆时也分了**自然比较器与自定义比较器**两种情况，这里只看其中一个自然排序的方法 siftDownComparable。
+同 offer 方法一样，poll 方法在调整小顶堆时也分了**自然比较器与自定义比较器**两种情况，这里只看其中一个**自然排序**的方法 siftDownComparable。
 
 ```java
 private void siftDownComparable(int k, E x) {
@@ -309,9 +298,9 @@ private void siftDownComparable(int k, E x) {
 
 remove 方法这里就不深究了。
 
-##### 5. 构造堆
+##### 5. heapify构造堆
 
-前面构造方法部分可知，可也以直接传入集合类型进行优先级队列的构造，看看过程。
+前面构造方法部分可知，可也以**直接传入集合类型**进行优先级队列的**构造**，看看过程。
 
 ```java
 public PriorityQueue(Collection<? extends E> c) {
@@ -327,7 +316,7 @@ public PriorityQueue(Collection<? extends E> c) {
     }
     else {
         this.comparator = null;
-        // 从集合进行初始化
+        // 通过集合进行初始化
         initFromCollection(c);
     }
 }
@@ -343,30 +332,93 @@ private void initFromCollection(Collection<? extends E> c) {
 }
 ```
 
-这里两步，第一步是将传入的集合类进初始化，将元素放到对应的 queue 数组中。
+这里两步，第一步是将传入的集合类进初始化，将**元素**放到对应的 **queue 数组**中。
 
-第二步就是调用了 heapify 方法对 queue 数组进行堆的构造。
+第二步就是**调用了 heapify 方法对 queue 数组进行堆的构造**，也就是将普通数组**堆化**。
 
 ```java
 private void heapify() {
+    // 从数组的后面往前面不断进行下沉操作
     for (int i = (size >>> 1) - 1; i >= 0; i--)
         siftDown(i, (E) queue[i]);
 }
 ```
 
-可以看到是**循环调用** siftDown 完成下沉操作。
+可以看到是**循环调用** siftDown 完成**下沉**操作。
 
-通过上面源码，也可看出 PriorityQueue 并**不是线程安全队列**，因为 offer/poll 都没有对队列进行**锁定**，所以，如果要拥有线程安全的优先级队列，需要额外进行加锁操作。
+从源码也可看出 PriorityQueue 并**不是线程安全队列**，因为 offer/poll 都没有对队列进行**锁定**，所以，如果要拥有线程安全的优先级队列，需要额外进行加锁操作。
 
 
 
 #### 应用实例
 
-##### 1. ==TopK== 问题
+##### 1. TopK问题
 
-用 PriorityQueue 默认是自然顺序排序，**要选择最大的k个数，构造最小堆**，每次取数组中剩余数与堆顶的元素进行比较，如果新数比堆顶元素大，则删除堆顶元素，并添加这个新数到堆中。可用于元素个数不确定还需要实时**动态添加**的问题。也可以求**第 K 个**元素。
+**方法一**：对源数据中所有数据进行排序，取出前 K 个数据，就是 TopK。但是当数据量很大时，只需要 k 个最大的数，整体排序很耗时，效率不高。
 
-Java 中的 PriorityQueue 来实现堆，用 PriorityQueue 的实现的代码如下：
+**方法二**：基于**快排**实现。
+
+```java
+public class TopKPartitionSort {
+
+    public static void main(String[] args) {
+        int[] num = { 2, 20, 3, 7, 9, 1, 17, 18, 0, 4 };
+        partitionSort(num, 0, num.length - 1, 3);
+        System.out.println(Arrays.toString(num));
+    }
+
+    public static void partitionSort(int[] nums, int low, int high, int K) {
+        if (low < high) {
+            int pointKey = partitionSortCore(nums, low, high);
+            // TopK问题的核心，就是如果返回的下标为K-1
+            // 说明已经排序好了K个最大/最小的数，但是之间的顺序是不确定的
+            if (K - 1 == pointKey)
+                return;
+            partitionSort(nums, low, pointKey - 1, K);
+            partitionSort(nums, pointKey + 1, high, K);
+        }
+    }
+
+    /**
+     * 快排的核心
+     * 
+     * @param nums
+     * @param low
+     * @param high
+     * @return 返回排序好以后的位置
+     */
+    public static int partitionSortCore(int[] nums, int low, int high) {
+        // 以第一个座位标志位来比对
+        int pivotkey = nums[low];
+        while (low < high) {
+            // 从pivotkey往最后一个位置比较
+            while (low < high && pivotkey <= nums[high]) {
+                --high;
+            }
+            // 开始交换pivotkey和nums[high]
+            int temp = nums[low];
+            nums[low] = nums[high];
+            nums[high] = temp;
+            // 此时nums[high]对应于pivotkey
+            while (low < high && pivotkey >= nums[low]) {
+                ++low;
+            }
+            // 找到比pivotkey大的书了，那就交换
+            temp = nums[low];
+            nums[low] = nums[high];
+            nums[high] = temp;
+            // 这时，pivotkey对应于nums[low]
+        }
+        return low;// 返回pivotkey对应的正确位置
+    }
+}
+```
+
+**方法三**：利用**堆**实现。
+
+用 PriorityQueue 构造一个具有 **k 个数的小顶堆**，每次取一个数于**堆顶**的元素进行比较，如果新数比堆顶元素大，则删除堆顶元素，并把这个新数放到堆中。这可用于元素个数不确定还需要实时**动态添加**的问题。也可以求**第 K 个**元素。
+
+用 PriorityQueue 的实现的代码如下：
 
 ```java
 public class findTopK {
@@ -374,16 +426,18 @@ public class findTopK {
     public static int[] findKMax(int[] nums, int k) {
         // 队列默认自然顺序排列，小顶堆，不必重写compare
         PriorityQueue<Integer> pq = new PriorityQueue<>(k);
-
+		
         for (int num : nums) {
+            // 堆中元素小于K时直接放入元素即可
             if (pq.size() < k) {
                 pq.offer(num);
-            } else if (pq.peek() < num) { // 如果堆顶元素 < 新数，则删除堆顶，加入新数入堆
+                // 如果堆顶元素<新数，则删除堆顶，加入新数入堆
+            } else if (pq.peek() < num) { 
                 pq.poll();
                 pq.offer(num);
             }
         }
-
+		// 依次弹出数据就行了
         int[] result = new int[k];
         for (int i = 0; i < k && !pq.isEmpty(); i++) {
             result[i] = pq.poll();
@@ -393,19 +447,15 @@ public class findTopK {
 
     public static void main(String[] args) {
         int[]arr=new int[]{1, 6, 2, 3, 5, 4, 8, 7, 9};
+        // 输出：[5, 6, 7, 8, 9]
         System.out.println(Arrays.toString(findKMax(arr,5)));
     }
 }
-/**
-* 输出：[5, 6, 7, 8, 9]
-*/
 ```
 
+##### 2. 利用堆求中值
 
-
-##### 2. ==求中值==
-
-求中值的一个基本思路是排序，排序之后找到中间值。如果元素会**动态添加**，就可以使用堆。**维护两个堆，一个最大堆，一个最小堆。**
+求中值的一个基本思路是**排序**，排序之后找到中间值。如果元素会**动态添加**，就可以使用堆。**维护两个堆，一个最大堆，一个最小堆。**
 
 思路如下：
 
@@ -474,6 +524,10 @@ public static void main(String[] args) {
     System.out.println(integerMidian.getM());
 }
 ```
+
+##### 3. 堆排序
+
+详见数据结构与算法部分。
 
 
 

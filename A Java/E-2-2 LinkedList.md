@@ -2,38 +2,17 @@
 
 ### LinkedList
 
-#### 要点
+#### 基础
 
-- 同样实现了 List 接口，内部基于**双向链表**实现，所以其特点与 ArrayList 几乎**相反**。
+##### 1. 杂记
 
+- LinkedList 也实现了 List 接口，内部基于**双向链表**实现，所以其特点与 ArrayList 几乎**相反**。
 - LinkedList 还实现了 **Deque** 接口，可以按照**队列、栈和双端队列**的方式进行操作。
+- LinkedList 也是线程**不安全**的队列。
 
-- LinkedList 是线程**不安全**的队列。
+##### 2. API及基本使用
 
-    
-
-#### API及基本使用
-
-这个笔试面试的时候经常用啊，用来实现队列、栈等结构，非常方便，要**记牢几个 API**。
-
-```java
-LinkedList() 	// 用于创建一个新的空linkedList
-LinkedList(Collection<? extends E> c) // 使用一个集合创建一个新的linkedList
-```
-
-```java
-public class Main {
-    public static void main(String[] args) {
-        LinkedList<String> linkedList1 = new LinkedList<>();
-        System.out.println(linkedList1);
-        String[] arr = {"H", "E", "L", "L", "O"};
-        LinkedList<String> linkedList2 = new LinkedList<>(Arrays.asList(arr));
-        System.out.println(linkedList2);
-    }
-}
-```
-
-其他 API
+**笔试面试**的时候可以用来实现**队列、栈**等结构，非常方便，要**记牢几个 API**。实现了Queue 接口，所以 API 有点多。
 
 ```java
 int size();  	// 它返回此列表中元素的数量
@@ -58,19 +37,30 @@ boolean remove(Object O);		// 它用于从链表中移除一个特定的元素�
 Object removeLast();			// 它用于删除并返回链接列表的最后一个元素
 ```
 
+```java
+public class Main {
+    public static void main(String[] args) {
+        LinkedList<String> linkedList1 = new LinkedList<>();
+        String[] arr = {"H", "E", "L", "L", "O"};
+        LinkedList<String> linkedList2 = new LinkedList<>(Arrays.asList(arr));
+        System.out.println(linkedList2);
+    }
+}
+```
+
 
 
 #### 源码解析
 
-##### 1. 结点类
+##### 1. 内部结点类
 
 基于**双向链表**实现，使用内部节点类 **Node** 存储链表节点信息。
 
 ```java
 private static class Node<E> {
-    E item;
-    Node<E> next;
-    Node<E> prev;
+    E item;			// 数据
+    Node<E> next;	// 后继结点指针
+    Node<E> prev;	// 前驱结点指针
      
     Node(Node<E> prev, E element, Node<E> next) {
     	this.item = element;
@@ -80,7 +70,7 @@ private static class Node<E> {
 }
 ```
 
-每个链表存储了 next 和 prev 指针，LinkedList 中的**属性**如下
+每个链表存储了 next 和 prev 指针，LinkedList 中的**重要属性**如下
 
 ```java
 // 链表的节点个数
@@ -91,31 +81,21 @@ transient Node<E> first;
 transient Node<E> last;
 ```
 
-头尾指针都是 transient 修饰的。
+头尾指针都是 **transient** 修饰的。
 
 <img src="assets/LinkedList_base-1591168327338.png" alt="1567326494424" style="zoom:60%;" />
 
 ##### 2. 添加元素
 
-对于**链表**这种数据结构来说，添加元素的操作无非就是在**表头**插入元素，又或者在**指定位置**插入元素。因为 LinkedList 有头指针和尾指针，所以在**表头**进行插入元素只需要 **O(1)** 的时间，而在**指定位置**插入元素则需要先**遍历一下链表**，所以复杂度为 **O(N)**。
+对于**链表**这种数据结构来说，添加元素的操作无非就是在**表头**插入元素，又或者在**指定位置**插入元素。因为 LinkedList 有**头指针和尾指针**，所以在**表头**进行插入元素只需要 **O(1)** 的时间，而在**指定位置**插入元素则需要先**遍历一下链表**，所以复杂度为 **O(N)**。
 
-在**表头**添加元素的过程如下：
-
-![1567329260161](assets/1567329260161.png)
-
-当向**表头**插入一个节点时，很显然当前节点的**前驱**一定为 **null**，而**后继**结点是 first 指针指向的节点，当然还要修改 first 指针指向新的头节点。除此之外，原来的头节点变成了第二个节点，所以还要修改原来头节点的前驱指针，使它指向表头节点。
-
-当向**表尾**插入一个节点时，很显然当前节点的**后继**一定为 **null**，而前驱结点是 last指针指向的节点，然后还要修改 last 指针指向新的尾节点。此外，还要修改原来尾节点的后继指针，使它指向新的尾节点，此处不赘述。
-
-最后，在指定节点之前插入，如图所示
+在队列尾部和在指定节点之前插入元素，如图所示：
 
 <img src="assets/LinkedList_add-1591168403304.png" alt="1567329526899" style="zoom:71%;" />
 
 当向指定节点之前插入一个节点时，当前节点的**后继为指定节点**，而**前驱结点为指定节点的前驱节点**。此外，还要修改前驱节点的后继为当前节点，以及后继节点的前驱为当前节点。
 
-看了上面的基础方法，现在看看 LinkedList 源码如何实现插入结点的，是插入到头部还是尾部。
-
-最普通的插入元素方法为 add。
+最普通的插入元素方法为 **add**。
 
 ```java
 public boolean add(E e) {
@@ -124,7 +104,7 @@ public boolean add(E e) {
 }
 ```
 
-调用了 LinkLast 方法。所以最基本的 **add** 方法其实是**尾插入**的。由于是双向链表，所以尾插入也很 easy。linkLast 对于包外是无法调用的。
+调用了 LinkLast 方法，所以最基本的 **add** 方法其实是**尾插入**的。由于是维护了一个**尾指针**，所以尾插入也很 easy。linkLast 对于包外是无法调用的。
 
 ```java
 /**
@@ -147,7 +127,7 @@ void linkLast(E e) {
 }
 ```
 
-还可以在指定的位置加入元素：
+还可以在**指定**的位置加入元素：
 
 ```java
 /**
@@ -168,7 +148,7 @@ public void add(int index, E element) {
 }
 ```
 
-linkBefore 方法如下，即在链表中间插入，在非空节点 succ 之前插入节点值 e。主要就是要各种**修改指针**。
+**linkBefore** 方法如下，即在**链表中间**插入，在非空节点 succ 之前插入节点值 e。主要就是要各种**修改指针**。
 
 ````java
 /**
@@ -177,14 +157,14 @@ linkBefore 方法如下，即在链表中间插入，在非空节点 succ 之前
 void linkBefore(E e, Node<E> succ) {
     // assert succ != null;
     final Node<E> pred = succ.prev;
-    //构建一个prev值为succ.prev,节点值为e,next值为succ的新节点newNode
+    // 构建一个prev值为succ.prev,节点值为e,next值为succ的新节点newNode
     final Node<E> newNode = new Node<>(pred, e, succ);
-    //设置newNode为succ的前节点
+    // 设置newNode为succ的前节点
     succ.prev = newNode;
-    //如果succ.prev为null，即如果succ为首节点，则将newNode设置为首节点
+    // 如果succ.prev为null，即如果succ为首节点，则将newNode设置为首节点
     if (pred == null)
         first = newNode;
-    else        //如果succ不是首节点
+    else        // 如果succ不是首节点
         pred.next = newNode;
     size++;
     modCount++;	// 记录修改次数
@@ -206,7 +186,7 @@ public boolean offerFirst(E e) {
 }
 ```
 
-在头部加元素时最后都会调用 linkFirst **私有方法**。
+在**头部**加元素时最后都会调用 linkFirst **私有方法**。
 
 ```java
 /**
@@ -225,7 +205,7 @@ private void linkFirst(E e) {
 }
 ```
 
-对于在尾部添加数据，有
+对于在**尾部**添加数据，有
 
 ```java
 public boolean offer(E e) {
@@ -233,7 +213,7 @@ public boolean offer(E e) {
 }
 ```
 
-offer 默认调用 add 方法。此外还有如下方法。
+offer **默认**调用 add 方法。此外还有如下方法。
 
 ```java
 public void addLast(E e) {
@@ -282,7 +262,7 @@ public boolean contains(Object o) {
 
 ##### 4. 获取数据
 
-**get**(int) 方法用于获取指定位置的数据。首先判断位置信息是否**合法**（大于等于0，小于当前 LinkedList 实例的Size），然后**遍历**到具体位置，获得节点的业务数据（element）并返回。
+**get**(int) 方法用于获取**指定位置**的数据。首先判断位置信息是否**合法**（大于等于0，小于当前 LinkedList 实例的 Size），然后**遍历**到具体位置，获得节点的业务数据（element）并返回。
 
 ```java
 public E get(int index) {
@@ -293,7 +273,7 @@ public E get(int index) {
 }
 ```
 
-然后调用内部方法 node 获取元素。注意：**为了提高效率，需要根据获取的位置判断并决定从头还是从尾开始遍历。**这样可以提高查找效率。
+然后调用 node 的**内部方法**获取元素。注意：由于具有**双向指针**，所以查找时会判断待搜索的**索引**与整个链表的**长度**关系，如果**小于链表长度一半**，那么就从头遍历，否则从尾部遍历，这样最多也就遍历半个链表长度。可以**提高查找效率**。
 
 ```java
 /**
@@ -316,11 +296,11 @@ Node<E> node(int index) {
 }
 ```
 
-注意细节：**位运算**与直接做除法的区别。先将 index 与长度 size 的**一半**比较，如果 index < size / 2，就只从位置 **0 往后**遍历到位置 index 处，而如果 index > size / 2，就只从位置 size 往前遍历到位置 index 处。这样可以直接**减少一半**不必要的遍历。
+注意细节：**位运算**与直接做除法的区别。先将 index 与长度 size 的**一半**比较，如果 index < size / 2，就只从位置 **0 往后**遍历到位置 index 处，而如果 index > size / 2，就只从位置 size 往前遍历到位置 index 处。
 
 ##### 5. 删除数据
 
-删除指定位置的元素用 remove 方法。
+**删除**指定位置的元素用 remove 方法。
 
 <img src="assets/LinkedList_remove.png" alt="1567330247769" style="zoom:71%;" />
 
@@ -372,6 +352,7 @@ E unlink(Node<E> x) {
     // 指定非空结点存储的元素设为null
     x.item = null;
     size--;
+    // 记录结构变化
     modCount++;
     // 返回指定非空结点存储的元素
     return element;
@@ -382,14 +363,11 @@ E unlink(Node<E> x) {
 
 ##### 6. 其他
 
-其他的很多方法其实都比较简单，多半都是对双向链表的简单操作。
-
-LinkedList 实现了 Cloneable 接口，所以看看克隆方法。
+其他的很多方法其实都比较简单，多半都是对双向链表的简单操作。LinkedList 实现了 Cloneable 接口，所以看看**克隆**方法。
 
 ```java
 /**
  * 克隆，浅拷贝
- *
  * @return a shallow copy of this {@code LinkedList} instance
  */
 public Object clone() {
@@ -419,18 +397,10 @@ private LinkedList<E> superClone() {
 
 
 
-#### 比较
+#### 与ArrayList比较
 
-- ArrayList 基于**动态数组**实现，LinkedList 基于**双向链表**实现；
-- ArrayList 支持**随机访问**，LinkedList 不支持；
-- LinkedList 在**任意位置**添加删除元素**更快**。
-
-**1. 是否保证线程安全：** `ArrayList` 和 `LinkedList` 都是不同步的，也就是不保证线程安全；
-
-**2. 底层数据结构：** `Arraylist` 底层使用的是 **`Object` 数组**；`LinkedList` 底层使用的是 **双向链表** 数据结构（JDK1.6之前为循环链表，JDK1.7取消了循环。注意双向链表和双向循环链表的区别，下面有介绍到！）
-
-**3. 插入和删除是否受元素位置的影响：** ① **`ArrayList` 采用数组存储，所以插入和删除元素的时间复杂度受元素位置的影响。** 比如：执行`add(E e) `方法的时候， `ArrayList` 会默认在将指定的元素追加到此列表的末尾，这种情况时间复杂度就是O(1)。但是如果要在指定位置 i 插入和删除元素的话（`add(int index, E element) `）时间复杂度就为 O(n-i)。因为在进行上述操作的时候集合中第 i 和第 i 个元素之后的(n-i)个元素都要执行向后位/向前移一位的操作。 ② **`LinkedList` 采用链表存储，所以对于`add(E e)`方法的插入，删除元素时间复杂度不受元素位置的影响，近似 O(1)，如果是要在指定位置`i`插入和删除元素的话（`(add(int index, E element)`） 时间复杂度近似为`o(n))`因为需要先移动到指定位置再插入。**
-
-**4. 是否支持快速随机访问：** `LinkedList` 不支持高效的随机元素访问，而 `ArrayList` 支持。快速随机访问就是通过元素的序号快速获取元素对象(对应于`get(int index) `方法)。
-
-**5. 内存空间占用：** ArrayList的空 间浪费主要体现在在list列表的结尾会预留一定的容量空间，而LinkedList的空间花费则体现在它的每一个元素都需要消耗比ArrayList更多的空间（因为要存放直接后继和直接前驱以及数据）。
+- **数据结构与实现**：ArrayList 基于**动态数组**实现，LinkedList 基于**双向链表**实现；
+- **线程安全性**：ArrayList 和 LinkedList **都不**保证线程安全。
+- **元素访问**：ArrayList 支持快速**随机访问**，LinkedList **不支持**。
+- **增删元素效率**： ArrayList 采用**数组**存储，插入元素到数组末尾复杂度为 O(1)，但是在指定位置插入元素与删除元素复杂度为 O(N)。LinkedList 采用**链表**存储，在删除元素的时候不需要挪动后面的元素，操作基本都是修改指针，LinkedList 在**任意位置**添加删除元素**更快**。
+- **内存空间占用**：ArrayList 的空间浪费主要体现在 list 列表的结尾会预留一定的**容量空间**，而 LinkedList 的空间花费则体现在它的每一个结点都需要消耗比 ArrayList 更多的空间。

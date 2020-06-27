@@ -2,21 +2,22 @@
 
 ### HashMap
 
-#### 本节要点
+#### 基础
+
+##### 1. 概述
 
 - **建议通看源码**。面试非常喜欢问！
-- 内部使用 Node 数组存储数据。
-- 使用**拉链法**解决哈希冲突。
-- **内部数组长度**为 2 的**幂次方**，输入不是也会转为 2 的幂次方。这是为了快速的计算 hash 值，因为这可以改变成位运算。
-- 不够存储时会进行**扩容再哈希**。并发环境下的 resize 扩容 JDK7 采用头插法，可能产生循环链表。JDK8 采用尾插法。
+- 使用**拉链法**解决哈希冲突。内部使用 Node 数组存储数据。**内部数组长度**为 2 的**幂次方**，输入不是也会转为 2 的幂次方。这是为了快速的计算 hash 值，因为这可以利用**位运算**高效计算。
+- 元素到底一定程度后会进行**扩容再哈希**。并发环境下的 resize 扩容 JDK7 采用**头插法**，多线程下可能产生**循环链表**。JDK8 采用**尾插法**解决了这个问题。
 - Java8 之后链表太长会转为**红黑树**。
-- 可以存储  **null** 类型的**键值**，将存放在 **0 号键槽**中。但是**键为 null** 只能存在**一个**。
+- 可以存储  **null** 类型的**键值**。但是**键为 null** 只能存在**一个**，将存放在 **0 号键槽**中。
+- HashMap **不是线程安全**的，如果需要满足线程安全，可以用 Collections 的 synchronizedMap 方法使 HashMap 具有线程安全的能力，或者使用 **ConcurrentHashMap**。
 
 
 
 #### 源码解析
 
-源码版本 JDK 1.8。从结构实现来讲，HashMap 是**数组+链表+红黑树**（JDK1.8增加了红黑树部分）实现的。HashMap 的内部功能实现很多，重点是根据 key 获取哈希桶数组**索引位置**、put 方法的详细执行、扩容过程三个具有代表性的点。
+源码版本 JDK 1.8。HashMap 基于**数组+链表+红黑树**（JDK1.8 增加了红黑树部分）实现的。HashMap 内部功能实现很多，**重点**是根据 key 获取哈希桶数组**索引位置**、**put 方法**的详细执行、**扩容过程**三个具有代表性的点。
 
 ##### 1. 存储结构
 
@@ -25,43 +26,44 @@ HashMap 中的元素是用**内部类** Node 进行存储。实现了 **Map.Entr
 Node 类的源码如下：
 
 ```java
-static class Node<K,V> implements Map.Entry<K,V> {
-        final int hash;    // 用来定位数组索引位置
-        final K key;
-        V value;
-        Node<K,V> next;   // 链表的下一个node
+static class Node<K, V> implements Map.Entry<K, V> {
+    // 用来定位数组索引位置
+    final int hash;    
+    final K key;
+    V value;
+    Node<K,V> next;   // 链表的下一个node
 
-        Node(int hash, K key, V value, Node<K,V> next) { ... }
-		// 覆写hashCode方法
-        public final int hashCode() {
-            // 使用了Objects工具类直接生成
-            return Objects.hashCode(key) ^ Objects.hashCode(value);
-        }
-	    // 覆写equals方法
-        public final boolean equals(Object o) {
-            // 先判断是否是同一个对象
-            if (o == this)
+    Node(int hash, K key, V value, Node<K,V> next) { ... }
+    // 覆写hashCode方法
+    public final int hashCode() {
+        // 使用了Objects工具类直接生成
+        return Objects.hashCode(key) ^ Objects.hashCode(value);
+    }
+    // 覆写equals方法（参考前面的章节，套路是一样的）
+    public final boolean equals(Object o) {
+        // 先判断是否是同一个对象
+        if (o == this)
+            return true;
+        // 在判断对象类型是否正确
+        if (o instanceof Map.Entry) {
+            // 进行类型转换
+            Map.Entry<?, ?> e = (Map.Entry<?, ?>)o;
+            // 接着对每个域都比较
+            if (Objects.equals(key, e.getKey()) &&
+                Objects.equals(value, e.getValue()))
                 return true;
-            // 在判断对象类型是否正确
-            if (o instanceof Map.Entry) {
-                // 进行类型转换
-                Map.Entry<?,?> e = (Map.Entry<?,?>)o;
-                // 接着对每个域都比较
-                if (Objects.equals(key, e.getKey()) &&
-                    Objects.equals(value, e.getValue()))
-                    return true;
-            }
-            return false;
         }
-    
-        public final K getKey(){ ... }
-        public final V getValue() { ... }
-	    public final V setValue(V newValue) { ... }
-        public final String toString() { ... }
+        return false;
+    }
+
+    public final K getKey(){ ... }
+    public final V getValue() { ... }
+    public final V setValue(V newValue) { ... }
+    public final String toString() { ... }
 }
 ```
 
-这里同时覆写了 hashCode 和 equals 方法。
+这里同时**覆写**了 hashCode 和 equals 方法。
 
 ##### 2. 拉链法与哈希碰撞
 
@@ -71,32 +73,17 @@ HashMap 就是使用**哈希表**来存储的。哈希表为**解决冲突**，�
 map.put("Nano","123");
 ```
 
-调用 "Nano" 这个 key 的 hashCode() 方法得到其 **hashCode** 值（该方法适用于每个 Java 对象），然后再通过 Hash 算法的后两步运算（高位运算和取模运算，下文有介绍）来**定位该键值对的存储位置**，有时两个 key 会定位到**相同**的位置，表示发生了 **Hash 碰撞**。当然 Hash 算法计算结果越分散均匀，Hash 碰撞的概率就越小，map 的存取效率就会越高。
+调用 "Nano" 这个 key 的 hashCode() 方法得到其 **hashCode** 值（每个对象都有的方法），然后再通过 Hash 算法来**定位该键值对的存储的桶位置**，如果两个 key 定位到**相同**的位置，表示发生了 **Hash 碰撞**。Hash 算法计算结果越分散均匀，Hash 碰撞的概率就越小，map 的存取效率就会越高。
 
-HashMap 内部包含了一个 **Node 类型**的数组 table。
+HashMap 内部维护了一个 **Node 类型**的数组 table。
 
 ```java
 transient Node<K, V>[] table;
 ```
 
-Entry 存储着**键值对**。它包含了四个字段，从 next 字段我们可以看出 Entry 是一个**链表**。即数组中的每个位置被当成一个**桶**，一个桶存放一个**链表**。HashMap 使用==**拉链法**==来解决**哈希冲突**，同一个**链表中存放哈希值**相同的 Entry。
+Entry 存储着**键值对**。从 next 字段可以看出 Entry 是一个**链表**。即数组中的每个位置被当成一个**桶**，一个桶存放一个**链表**，同一个**链表中存放哈希值相同**的 Entry。
 
 <img src="assets/1567483909960.png" alt="1567483909960" style="zoom:57%;" />
-
-```java
-HashMap<String, String> map = new HashMap<>();
-map.put("K1", "V1");
-map.put("K2", "V2");
-map.put("K3", "V3");
-```
-
-- 插入 &lt;K1, V1> 键值对，先计算 K1 的 **hashCode** 为 115，使用除留余数法得到所在的**桶下标** 115%16 = 3。
-- 插入 &lt;K2, V2> 键值对，先计算 K2 的 **hashCode** 为 118，使用除留余数法得到所在的**桶下标** 118%16 = 6。
-- 插入 &lt;K3, V3> 键值对，先计算 K3 的 **hashCode** 为 118，使用除留余数法得到所在的**桶下标** 118%16 = 6，插在 &lt;K2, V2> **前面**。
-
-<img src="assets/1582460415920.png" alt="1582460415920" style="zoom:70%;" />
-
-
 
 如果**哈希桶数组很大**，即使较差的 Hash 算法也会比较分散，如果哈希桶数组数组很小，即使好的 Hash 算法也会出现较多碰撞，所以就需要在**空间成本和时间成本**之间权衡，其实就是在根据实际情况确定**哈希桶数组**的大小，并在此基础上设计好的 hash 算法减少 Hash 碰撞。那么通过什么方式来控制 map 使得 Hash 碰撞的概率又小，哈希桶数组（Node[] table）占用空间又少呢？答案就是好的 **Hash 算法和扩容机制**。
 
@@ -104,50 +91,20 @@ map.put("K3", "V3");
 
 ##### 3. 基本属性
 
-基本属性如下。
+HashMap **基本属性**如下。各个字段释义如下：
 
-```java
-public class HashMap<K,V> extends AbstractMap<K,V>
-    implements Map<K,V>, Cloneable, Serializable {
-	
-    // 哈希桶数组
-    transient Node<K, V>[] table;
-
-	// HashMap将数据转换成set的另一种存储形式
-    transient Set<Map.Entry<K, V>> entrySet;
-
-	// 实际存储元素的数量
-    transient int size;
-
-	// 记录结构被改变的次数
-    transient int modCount;
-
-	// HashMap的扩容阈值
-    int threshold;
-	
-    // HashMap的负载因子 threshold = loadFactor * table.length
-    final float loadFactor;
-}
-```
-
-可以看到实现了 Map 接口。各个字段释义如下：
-
-- **table**：哈希桶**数组**存放 Node 结点链表， table 的长度总是 **2 的幂**。Node[] table 的初始化长度 **length 默认值**是16。
+- **table**：哈希桶**数组**存放 Node 结点链表， table 的**长度**必须是 **2 的幂**。Node[] table 的初始化长度 **length 默认值**是 **16**。**常规的设计**是把**桶的大小设计为素数**来减小哈希冲突，比如 **Hashtable** 初始化桶大小为 **11**，就是桶大小设计为素数的应用（Hashtable 扩容后**不能**保证还是素数）。HashMap 之所以采用这种**非常规**设计，主要是为了在**取模和扩容时做优化**，同时为了减少冲突， HashMap 定位哈希桶索引位置时加入了**高位参与运算**的过程。
+- **size**：**实际**存储元素的**数量**，size() 方法实际返回的就是这个值，isEmpty() 也是判断该值是否为空。
+- **modCount**：记录**结构被改变的次数**，fail-fast 机制。内部结构发生变化指的是元素增删，某个 key 对应的 value 值被**覆盖修改**不属于结构变化。
+- **loadFactor**：**负载因子**。默认为 **0.75**，这是对**空间和时间效率**的一个**平衡选择**，建议用默认值，除非在时间和空间比较特殊的情况下，如果内存空间很多而又对时间效率要求很高，可以**降低**负载因子 loadFactor 的值；相反如果内存空间紧张而对时间效率要求不高，可以增加 loadFactor 的值，这个值**可以大于 1**。
+- **threshold**：**扩容阈值**，在 HashMap 中存储的 Node 键值对**超过这个数量**时，就会触发扩容 resize。threshold 是当前 HashMap 所能容纳的**最大数据量的 Node (键值对)个数**。在数组定义好长度之后，负载因子**越大**，所能容纳的键值对**个数越多**。**扩容阈值**：**threshold = loadFactor * table.length**。
 - **entrySet：HashMap** 将数据转换成 set 的另一种存储形式，这个变量主要用于**迭代功能**。
-- **size**：实际存储元素的**数量**，size() 方法实际返回的就是这个值，isEmpty() 也是判断该值是否为空。
-- **modCount**：记录**结构被改变的次数**，fail-fast 机制，主要用于迭代的快速失败。强调一点，内部结构发生变化指的是结构发生变化，例如 put 新键值对，但是某个 key 对应的 value 值被**覆盖**不属于结构变化。
-- **loadFactor**：HashMap 的负载因子，可计算出当前 table 长度下的**扩容阈值**：**threshold = loadFactor * table.length**。
-- **threshold**：HashMap 的**扩容阈值**，在 HashMap 中存储的 Node 键值对**超过这个数量**时，自动扩容容量为原来的二倍。threshold 是 HashMap 所能容纳的**最大数据量的 Node (键值对)个数**。也就是说，在数组定义好长度之后，负载因子**越大**，所能容纳的键值对**个数越多**。
 
-结合负载因子的定义公式可知，threshold 就是在此 Load factor 和 length (数组长度)对应下**允许的最大元素数目**，超过这个数目就重新 **resize (扩容)**，扩容后的 HashMap 容量是之前容量的**两倍**。默认的负载因子 0.75 是对**空间和时间效率**的一个**平衡选择**，建议大家不要修改，除非在时间和空间比较特殊的情况下，如果内存空间很多而又对时间效率要求很高，可以降低负载因子 Load factor 的值；相反，如果内存空间紧张而对时间效率要求不高，可以增加负载因子 loadFactor 的值，这个值**可以大于 1**。
+对于拉链法而言，即使负载因子和 Hash 算法设计的**再合理**，也免不了会出现**拉链过长**的情况，一旦出现拉链过长，则会严重影响 HashMap 的性能，退化成**链表**。于是 JDK8 引入了**红黑树**。而当**链表长度太长（默认超过 8）且元素个数大于 64 时，链表就转换为红黑树**，利用红黑树快速增删改查的特点提高 HashMap 的性能，其中会用到红黑树的插入、删除、查找等算法。
 
-在 HashMap 中，哈希桶数组 table 的长度 length 大小必须为 **2 的 n 次方**(一定是合数)，这是一种**非常规**的设计，常规的设计是把**桶的大小设计为素数**。相对来说素数导致冲突的概率要小于合数，具体证明可以参考http://blog.csdn.net/liuqiyao_01/article/details/14475159，**Hashtable** 初始化桶大小为 **11**，就是桶大小设计为素数的应用（Hashtable 扩容后**不能**保证还是素数）。HashMap 之所以采用这种非常规设计，主要是为了在**取模和扩容时做优化**，同时为了减少冲突， HashMap 定位哈希桶索引位置时，也加入了高位参与运算的过程。
+<img src="assets/image-20200627191602455.png" alt="image-20200627191602455" style="zoom:67%;" />
 
-这里存在一个问题，即使负载因子和 Hash 算法设计的**再合理**，也免不了会出现**拉链过长**的情况，一旦出现拉链过长，则会严重影响 HashMap 的性能。于是，在 JDK1.8 版本中，对数据结构做了进一步的优化，引入了**红黑树**。而当**链表长度太长（默认超过 8）时，链表就转换为红黑树**，利用红黑树快速增删改查的特点提高 HashMap 的性能，其中会用到红黑树的插入、删除、查找等算法。
-
-<img src="assets/hashmap-rb-link.jpg" alt="15824604159210" style="zoom:35%;" />
-
-下面是一些静态常量。
+下面是一些**静态常量**。
 
 ```java
 // 默认的初始容量（容量为HashMap中槽的数目）是16，且实际容量必须是2的整数次幂
@@ -159,10 +116,10 @@ static final int MAXIMUM_CAPACITY = 1 << 30;
 // 默认装填因子0.75，如果当前键值对个数 >= HashMap最大容量*装填因子，进行rehash操作
 static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
-// JDK1.8 新加，Entry链表最大长度，当桶中节点数目大于该长度时，将链表转成红黑树存储
+// JDK1.8新加，Entry链表最大长度，当桶中节点数目大于该长度时，将链表转成红黑树存储
 static final int TREEIFY_THRESHOLD = 8;
 
-// JDK1.8 新加，当桶中节点数小于该长度，将红黑树转为链表存储
+// JDK1.8新加，当桶中节点数小于该长度，将红黑树转为链表存储
 static final int UNTREEIFY_THRESHOLD = 6;
 
 // 桶可能被转化为树形结构的最小容量
@@ -173,9 +130,9 @@ static final int MIN_TREEIFY_CAPACITY = 64;
 
 ##### 4. 数组容量的确定
 
-前面说到存储数组的容量默认是 16，但是也可以自己定义数组大小。HashMap 构造函数允许用户传入的容量**不是 2 的 n 次方**，因为它可以**自动地**将传入的容量转换为 **2 的 n 次方**。
+存储数组的容量默认是 **16**，但是也可以自定义数组大小。HashMap 构造函数允许用户传入的容量**不是 2 的 n 次方**，可以**自动地**将传入的容量转换为 **2 的 n 次方**。
 
-先考虑如何求一个数的掩码，对于 10010000，它的掩码为 11111111，可以使用以下方法得到：
+先考虑如何求一个数的**掩码**，对于 10010000，它的掩码为 11111111，可以使用以下方法得到：
 
 ```java
 mask |= mask >> 1    11011000
@@ -183,11 +140,11 @@ mask |= mask >> 2    11111110
 mask |= mask >> 4    11111111
 ```
 
-mask + 1 是大于原始数字的最小的 2 的 n 次方。
+mask + 1 是**大于**原始数字的**最小**的 2 的 n 次方。
 
 ```java
-num     10010000
-mask+1 100000000
+num       10010000
+mask + 1  100000000
 ```
 
 看这个构造方法
@@ -222,7 +179,7 @@ static final int tableSizeFor(int cap) {
 }
 ```
 
-> **HashMap 的长度为什么是 2 的幂次方?**
+> **HashMap的长度为什么是2的幂次方?**
 
 为了能让 HashMap 存取高效，尽量较少碰撞，也就是要尽量把数据分配均匀。我们上面也讲到了过了，Hash 值的范围值 -2147483648 到 2147483647，前后加起来大概 40 亿的映射空间，只要哈希函数映射得比较均匀松散，一般应用是很难出现碰撞的。但问题是一个 40 亿长度的数组，内存是放不下的。所以这个散列值是不能直接拿来用的。用之前还要先做对数组的长度**取模运算**，得到的余数才能用来要存放的位置也就是对应的数组下标。这个数组下标的计算方法是“ `(n - 1) & hash`”。（n 代表数组长度）。
 
@@ -250,7 +207,7 @@ static int indexFor(int h, int length) {
 }
 ```
 
-这里的 Hash 算法本质上就是三步：**取 key 的 hashCode 值、高位运算、取模运算**。
+这里的 Hash 算法本质上就是**三步**：==**取 key 的 hashCode 值、高位运算、取模运算**==。
 
 注意上述的方法二，在 JDK8 没有，但是它只是整合到了其他方法体中而不是一个单独的方法了，其实思想一模一样。
 
@@ -317,7 +274,7 @@ y%x : 00000010
 
 上图计算时 n 为默认的 16，n - 1 就是 15，也就是十六进制的 **1111**。上面计算得到桶的下标为 5。
 
-##### 6. 添加元素
+##### 6. put添加元素
 
 分析了如果获取 hash 和数据桶的位置下标。下面看看是如何添加元素的。
 
