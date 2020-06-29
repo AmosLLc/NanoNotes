@@ -206,25 +206,17 @@ SSL/TLS 握手是为了**安全**地协商出一份**对称加密**的秘钥，�
 
 握手第一步是客户端向服务端发送 Client Hello 消息，这个消息里包含了一个客户端生成的随机数 **Random1**、客户端支持的**加密套件**（Support Ciphers）和 SSL Version 等信息。
 
-
-
 ###### （2）server hello
 
 第二步是服务端向客户端发送 Server Hello 消息，这个消息会从 Client Hello 传过来的 Support Ciphers 里确定一份加密套件，这个套件决定了后续加密和生成摘要时具体使用哪些算法，另外还会生成一份随机数 **Random2**。注意，至此客户端和服务端都拥有了两个随机数（Random1+ Random2），这两个随机数会在后续生成对称秘钥时用到。
-
-
 
 ###### （3）server certificate
 
 这一步是服务端将自己的证书下发给客户端，让客户端验证自己的身份，客户端验证通过后取出证书中的公钥。
 
-
-
 ###### （4）Server Hello Done
 
 Server Hello Done 通知客户端 Server Hello 过程结束。
-
-
 
 ###### （5）Client Key Exchange
 
@@ -232,49 +224,33 @@ Server Hello Done 通知客户端 Server Hello 过程结束。
 
 为什么要使用三个随机数呢？这是因为 SSL/TLS 握手过程的数据都是明文传输的，并且多个随机数种子来生成秘钥不容易被暴力破解出来。
 
-
-
 ###### （6）Change Cipher Spec(Client)
 
 这一步是客户端通知服务端后面再发送的消息都会使用前面协商出来的秘钥加密了，是一条事件消息。
-
-
 
 ###### （7）Finished(Client)
 
 客户端发送Finished报文。该报文包含连接至今全部报文的整理校验值。这次握手协议是否能成功，要以服务器是否能够正确解密该报文作为判定标准。
 
-
-
 ###### （8）Change Cipher Spec(Server)
 
 服务器同样发送Change Cipher Spec报文给客户端
-
-
 
 ###### （9）Finished(Server)
 
 服务器同样发送Finished报文给客户端
 
-
-
 ###### （10-11）Application Data
 
 到这里，双方已安全地协商出了同一份秘钥，所有的应用层数据都会用这个秘钥加密后再通过 TCP 进行可靠传输。 
-
-
 
 ###### （12）Alert：warning, close notify
 
 最后由客户端断开连接。断开连接时，发送close_notify报文。上图做了一些省略，在这步之后再发送一种叫做MAC（Message Authentication Code）的报文摘要。MAC能够查知报文是否遭到篡改，从而保护报文的完整性。
 
-
-
 ###### （*）demand client certificate
 
 Certificate Request 是服务端要求客户端上报证书，这一步是可选的，对于安全性要求高的场景会用到。
-
-
 
 ###### （*）check server certificate
 
@@ -290,11 +266,11 @@ Certificate Request 是服务端要求客户端上报证书，这一步是可选
 
 RSA 是一种**公钥密码算法**，我们简单的走一遍它的加密解密过程  
 
-**加密算法**：密文 = (明文^E) mod N，其中公钥为{E, N}，即”求明文的 E 次方的对 N 的余数“  
+**加密算法**：密文 = (明文^E) mod N，其中公钥为{E, N}，即”求明文的 E 次方的对 N 的余数“。  
 
-**解密算法**：明文 = (密文^D) mod N，其中秘钥为{D, N}，即”求密文的 D 次方的对 N 的余数“  
+**解密算法**：明文 = (密文^D) mod N，其中秘钥为{D, N}，即”求密文的 D 次方的对 N 的余数“。
 
-例：我们已知公钥为{5, 323}，私钥为{29, 323}，明文为 300，请写出加密和解密的过程：  
+例：我们已知公钥为{5, 323}，私钥为{29, 323}，明文为 300，请写出加密和解密的过程：
 
 **加密**：密文 = 123 ^ 5 mod 323 = 225  
 

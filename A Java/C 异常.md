@@ -171,6 +171,9 @@ public static int f(int n){
         int r = n * n;
         // 如果try子句含有return
         return r;
+    } catch (Exception e) {
+        // catch里面也有return
+        return 4;
     } finally{
         if (n == 2) {
             // finally中的return覆盖try中的return
@@ -180,7 +183,7 @@ public static int f(int n){
 }
 ```
 
-如果调用 f(2), 那么 try 语句块的计算结果为 r = 4, 并执行 return 语句. 然而在方法真正**返回前**，还要执行 finally 子句。finally 子句将使得**方法返回 0**, 这个返回值**覆盖**了原始的返回值 4。
+如果调用 f(2), 那么 try 语句块的计算结果为 r = 4, 并执行 return 语句. 然而在方法真正**返回前**，还要执行 finally 子句。finally 子句将使得**方法返回 0**, 这个返回值**覆盖**了原始的返回值 4。如果 catch 语句块里面有 return 语句，那么 finally **依然会覆盖**这个结果。
 
 **不要在 finally 语句中使用 return，这不是 finally 语句的用处。**
 
