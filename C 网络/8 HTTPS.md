@@ -52,7 +52,7 @@ HTTPS 并不是新协议，而是让 HTTP 先和 **SSL**（Secure Sockets Layer�
 
 <img src="assets/1563596371003-1590926744330.png" alt="1563596371003" style="zoom:65%;" />
 
-##### 2.非对称密钥加密
+##### 2. 非对称密钥加密
 
 非对称密钥加密，又称**公开密钥加密**（Public-Key Encryption），加密和解密使用**不同的密钥**。
 

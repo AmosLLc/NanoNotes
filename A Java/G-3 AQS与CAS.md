@@ -1,27 +1,27 @@
 [TOC]
 
-### AQS
+### AQS与CAS
 
-AQS 的全称为（**AbstractQueuedSynchronizer**），这个类在 **java.util.concurrent.locks** 包下面。
+AQS 的全称为（**AbstractQueuedSynchronizer**），这个类在 **java.util.concurrent.locks** 包下面。AQS 是 JUC 的核心。JUC 当中的大多数**同步器**实现都是围绕着**共同的基础行为**，比如**等待队列、条件队列、独占获取、共享获取**等，而这个行为的抽象就基于 AQS 实现，AQS 定义了一套**多线程访问共享资源的同步器框架**，是一个**依赖状态(state)的同步器**。
 
 <img src="assets/image-20200509112113728.png" alt="image-20200509112113728" style="zoom:77%;" />
 
 可以看到这个包下的东西主要是上面的内容。
 
-AQS 是一个用来**构建锁和同步器的框架**，使用 AQS 能简单且高效地构造出应用广泛的**大量的同步器**，比如我们提到的 ReentrantLock，Semaphore，其他的诸如 ReentrantReadWriteLock，SynchronousQueue，FutureTask 等等皆是基于 AQS 的。当然我们自己也能**利用 AQS** 非常轻松容易地构造出符合我们自己需求的**同步器**。
+AQS 是一个用来**构建锁和同步器的框架**，使用 AQS 能简单且高效地构造出应用广泛的**大量的同步器**，比如ReentrantLock，Semaphore，ReentrantReadWriteLock，SynchronousQueue，FutureTask 等等皆是基于 AQS 的。当然也能**利用 AQS** 非常轻松容易地构造出符合自己需求的**自定义同步器**。
 
-AQS (AbstractQueuedSynchronizer) 被认为是 J.U.C 的核心。它提供了一个**基于 FIFO 队列**，这个队列可以用来构建锁或者其他相关的同步装置的基础框架。下图是 AQS 底层的数据结构：
+AQS 提供了一个**基于 FIFO 的队列**，这个**队列**可以用来构建**锁**或者其他相关的**同步装置**的基础框架。下图是 AQS 底层的数据结构：
 
 <img src="assets/616953-20160403170136176-573839888.png" style="zoom:70%;" />
 
-它底层使用的是**双向列表**，是队列的一种实现 , 因此也可以将它当成一种队列。
+它底层使用的是**双向列表**，是**队列**的一种实现 , 因此也可以将它当成一种队列。
 
-- Sync queue 是同步列表，它是**双向链表** , 包括 head，tail 节点。其中 head 节点主要用来后续的调度 ;
-- Condition queue 是**单向链表** , 不是必须的 , 只有当程序中**需要** Condition 的时候，才会存在这个单向链表 , 并且可能会有多个 Condition queue。
+- Sync queue（**CLH 队列**）是同步**链表**，它是**双向链表** , 包括 **head，tail** 节点。其中 head 节点主要用来后续的调度 ;
+- Condition queue（**条件队列**）是**单向链表** , 不是必须的 , 只有当程序中**需要** Condition 的时候才会存在这个单向链表 , 并且可能会有**多个** Condition queue。
 
-JUC 当中的大多数**同步器**实现都是围绕着**共同的基础行为**，比如等待队列、条件队列、独占获取、共享获取等，而这个行为的抽象就是基于 AbstractQueuedSynchronizer 简称 AQS，AQS 定义了一套**多线程访问共享资源的同步器框架**，是一个**依赖状态(state)的同步器**。
+不管是**条件队列**还是 **CLH 等待队列**，都是基于 **AQS 内部类 Node 构建**。**等待队列是双向链表，条件队列是单向链表**。条件队列里面 prev = null，next = null。
 
-**AQS具备特性**
+**AQS具备特性**：
 
 - 阻塞等待队列
 
@@ -33,131 +33,83 @@ JUC 当中的大多数**同步器**实现都是围绕着**共同的基础行为*
 
 - 允许中断
 
-不管是条件队列还是 CLH 等待队列，都是基于 AQS 内部类 Node 构建。等待队列是双向链表，条件队列是单向链表。条件队列里面 prev = null，next = null。
+
 
 ### AQS源码分析
 
-谈到并发，不得不谈 ReentrantLock；而谈到 ReentrantLock，不得不谈 AbstractQueuedSynchronizer（AQS）！
-
-类如其名，**抽象的队列式的同步器**，AQS 定义了一套**多线程访问共享资源的同步器框架**，许多同步类实现都**依赖于它**，如常用的 ReentrantLock/Semaphore/CountDownLatch...。
+AQS 就是 **AbstractQueuedSynchronizer**，即**抽象的队列式的同步器**，AQS 定义了一套**多线程访问共享资源的同步器框架**，许多同步类实现都**依赖于它**。
 
 #### 框架
 
 <img src="assets/image-20200509112927403.png" alt="image-20200509112927403" style="zoom:80%;" />
 
-它维护了一个 **volatile int state**（代表共享资源）和一个 **FIFO 线程等待队列**（多线程争用资源被**阻塞时会进入此队列**）。这里 volatile 是**核心**关键词，具体 volatile 的语义，在此不述。state 的访问方式有三种:
+它维护了一个 **==volatile int state==**（代表共享资源）和一个 **FIFO 线程等待队列（==CLH== 队列）**（多线程争用资源被**阻塞时会进入此队列**）。这里 volatile 是**核心**关键词，具体 volatile 的语义。**state** 的访问方式有三种:
 
-- getState()
-- setState()
-- compareAndSetState()
+- **getState**()
+- **setState**()
+- **compareAndSetState**()
 
-AQS 定义两种资源共享方式：**Exclusive**（**独占**，只有一个线程能执行，如 ReentrantLock）和 **Share**（**共享**，多个线程可同时执行，如 Semaphore/CountDownLatch）。
+AQS 定义**两种资源共享方式（同步方式）**：
 
-不同的自定义同步器争用共享资源的方式也不同。**自定义同步器在实现时只需要实现共享资源 state 的获取与释放方式即可**，至于具体线程等待队列的维护（如获取资源失败入队/唤醒出队等），AQS 已经在顶层实现好了。自定义**同步器实现时主要实现以下几种方法：**
+- **Exclusive**：**独占模式**，只有一个线程能执行，如 **ReentrantLock**。
+- **Share**：**共享模式**，多个线程可同时执行，如 Semaphore/CountDownLatch。
 
-- **isHeldExclusively**()：该线程是否正在**独占**资源。只有用到 condition 才需要去实现它。
-- **tryAcquire**(int)：独占方式。尝试获取资源，成功则返回 true，失败则返回 false。
-- **tryRelease**(int)：独占方式。尝试释放资源，成功则返回 true，失败则返回 false。
-- **tryAcquireShared**(int)：共享方式。尝试获取资源。负数表示失败；0表示成功，但没有剩余可用资源；正数表示成功，且有剩余资源。
-- **tryReleaseShared**(int)：共享方式。尝试释放资源，如果释放后允许唤醒后续等待结点返回 true，否则返回 false。
+不同的**自定义**同步器争用共享资源的方式也不同。**自定义同步器在实现时只需要实现共享资源 state 的获取与释放方式即可**，至于具体线程等待队列的维护（如获取资源失败入队/唤醒出队等），AQS 已经在**顶层**实现好了。自定义**同步器实现时主要实现以下几种方法：**
 
-以 ReentrantLock 为例，state 初始化为 0，表示未锁定状态。A 线程 lock() 时，会调用 **tryAcquire**() 独占该锁并将 **state+1**。此后，其他线程再 tryAcquire() 时就会失败，直到 A 线程 unlock() 到 state=0（即释放锁）为止，其它线程才有机会获取该锁。当然，释放锁之前，A 线程自己是可以**重复获取此锁**的（state会累加），这就是**可重入**的概念。但要注意，获取多少次就要释放多么次，这样才能保证 state 是能**回到零态**的。
+- **isHeldExclusively**()：该线程是否正在**独占**资源。只有用到 **condition** 才需要去实现它。
+- **tryAcquire**(int)：**独占**方式。尝试**获取**资源，成功则返回 true，失败则返回 false。
+- **tryRelease**(int)：**独占**方式。尝试**释放**资源，成功则返回 true，失败则返回 false。
+- **tryAcquireShared**(int)：**共享**方式。尝试获取资源。**负数表示失败**；0 表示成功，但没有剩余可用资源；**正数****表示成功**，且有剩余资源。
+- **tryReleaseShared**(int)：**共享**方式。尝试释放资源，如果释放后允许唤醒后续等待结点返回 true，否则返回 false。
 
-再以 CountDownLatch 以例，任务分为 N 个子线程去执行，state 也初始化为 N（注意 N 要与线程个数一致）。这 N 个子线程是并行执行的，每个子线程执行完后 countDown() 一次，state 会 CAS 减 1。等到所有子线程都执行完后(即 state=0)，会 unpark() 主调用线程，然后主调用线程就会从 await() 函数返回，继续后余动作。
+以 ReentrantLock 为例，**state 初始化为 0**，表示**未锁定**状态。A 线程 lock() 时，会调用 **tryAcquire**() 独占该锁并将 **state+1**。此后，其他线程再 tryAcquire() 时就会失败，直到 A 线程 unlock() 到 **state=0**（即释放锁）为止，其它线程才有机会获取该锁。当然，释放锁之前，A 线程自己是可以**重复获取此锁**的（state 会**累加**），这就是**可重入锁**的概念。但要注意，获取多少次就要释放多么次，这样才能保证 state 是能**回到零值**的。
 
-AQS 支持**两种同步**方式：
-
-　　**1.独占式**
-
-　　**2.共享式**
+再以 CountDownLatch 以例，任务分为 N 个子线程去执行，**state 也初始化为 N**（注意 N 要与线程个数一致）。这 N 个子线程是**并行**执行的，每个子线程执行完后 countDown() 一次，**state 会 CAS 减 1**。等到所有子线程都执行完后(即 state = 0)，会 **unpark**() 主调用线程，然后主调用线程就会从 **await**() 方法返回，继续后余动作。
 
 这样方便使用者实现不同类型的**同步组件**，**独占式**如 ReentrantLock，**共享式**如 Semaphore，CountDownLatch，**组合式**的如 ReentrantReadWriteLock。总之，AQS 为使用提供了底层支撑，如何组装实现，使用者可以自由发挥。
 
-一般来说，自定义同步器要么是**独占方式**，要么是**共享方式**，他们也只需实现 **tryAcquire-tryRelease、tryAcquireShared-tryReleaseShared** 中的**一种**即可（当然也有独占和共享都有的）。但 AQS 也支持自定义同步器同时实现独占和共享两种方式，如 ReentrantReadWriteLock。
+一般来说，自定义同步器要么是**独占方式**，要么是**共享方式**，他们也只需实现 **tryAcquire-tryRelease、tryAcquireShared-tryReleaseShared** 中的**一种**即可（当然也有独占和共享**都有**的如 ReentrantReadWriteLock）。
 
 #### 源码详解
 
-AQS 维护一个**共享资源 state**，通过内置的 **FIFO** 来完成获取资源线程的排队工作。（这个内置的同步队列称为 "CLH" 队列）。该队列由一个一个的 **Node 结点**组成，每个 Node 结点维护一个 prev 引用和 next 引用，分别指向自己的**前驱和后继结点**。AQS 维护两个指针，分别指向队列**头部 head 和尾部 tail**。
+AQS 维护一个**共享资源 ==state==**，通过内置的 **==CLH 等待队列==（FIFO队列）** 来完成获取资源线程的**排队**工作。该队列即静态内部类 **Node 结点**组成的链表，每个 Node 结点维护一个 prev 引用和 next 引用，分别指向自己的**前驱和后继结点**。AQS 自身维护两个指针，分别指向队列**头部 head 和尾部 tail**。
 
 <img src="assets/image-20200510112337397.png" alt="image-20200510112337397" style="zoom:37%;" />
 
-其实就是个**双端双向链表**。当线程获取资源失败（比如 tryAcquire 时试图设置 state 状态失败），会被构造成一个结点加入 **CLH 队列**中，同时当前线程会被**阻塞**在队列中（通过 **LockSupport.park** 实现，其实是**等待态**）。当持有同步状态的线程释放同步状态时，会唤醒后继结点，然后此结点线程继续加入到对同步状态的争夺中。
+其实就是个**双端双向链表**。当线程**获取资源失败**（比如 tryAcquire 时试图**设置 state 状态失败**），**线程被封装并被构造**成**一个结点**加入 **CLH 队列**中（Node 结点的一个**属性**就是 Thread），同时当前**线程**会被**阻塞**在队列中（通过 **LockSupport.park** 实现，其实是**等待态**）。当持有同步状态的线程**释放同步状态**时，会**唤醒**后继结点，然后此结点线程继续加入到对同步状态的争夺中。
 
-AQS 中 **state** 字段（int 类型，32 位），此处 state 上分别描述**读锁和写锁的数量**，于是将 state 变量“按位切割”切分成了两个部分：
+AQS 中 **state** 字段（int 类型，32 位），此处 state 上分别描述**读锁和写锁的数量**，于是将 state 变量“按**位**切割”切分成了两个部分：
 
-- **高 16 位**表示**读锁**状态（读锁个数）。
+- **高 16 位**表示**读锁**状态（**读锁个数**）。
 
-- **低 16 位**表示**写锁**状态（写锁个数）。
+- **低 16 位**表示**写锁**状态（**写锁个数**）。
 
 ![image-20200611195954373](assets/image-20200611195954373.png)
 
-##### Node结点
+##### 1. Node结点
 
-Node 结点是 AbstractQueuedSynchronizer 中的一个**静态内部类**，我们捡 Node 的几个重要属性来说一下。
+###### (1) 基本属性
 
-```java
-static final class Node {
-    /** waitStatus值，表示线程已被取消（等待超时或者被中断）*/
-    static final int CANCELLED =  1;
-    /** waitStatus值，表示后继线程需要被唤醒（unpaking）*/
-    static final int SIGNAL    = -1;
-    /**waitStatus值，表示结点线程等待在condition上，当被signal后，会从等待队列转移到同步到队列中 */
-    /** waitStatus value to indicate thread is waiting on condition */
-    static final int CONDITION = -2;
-    /** waitStatus值，表示下一次共享式同步状态会被无条件地传播下去 */
-    static final int PROPAGATE = -3;
-    /** 等待状态，初始为0 */
-    volatile int waitStatus;
-    /**当前结点的前驱结点 */
-    volatile Node prev;
-    /** 当前结点的后继结点 */
-    volatile Node next;
-    /** 与当前结点关联的排队中的线程 */
-    volatile Thread thread;
-    /** ...... */
-}
-```
-
-本节开始讲解 AQS 的源码实现。依照 **acquire-release**、**acquireShared-releaseShared** 的次序来。
-
-##### 1. 结点状态waitStatus
-
-这里我们说下静态内部类 **Node**。Node 结点是对**每一个等待获取资源的线程的封装**，其包含了**需要同步的线程本身**及其**等待状态**，如是否被阻塞、是否等待唤醒、是否已经被取消等。变量 **waitStatus** 则表示当前 Node 结点的**等待状态**，共有 5 种取值 CANCELLED、SIGNAL、CONDITION、PROPAGATE、0。
-
-- **CANCELLED**(1)：表示当前结点已取消调度。当 timeout 或被中断（响应中断的情况下），会触发变更为此状态，进入该状态后的结点将不会再变化。
-- **SIGNAL**(-1)：表示后继结点在等待当前结点唤醒。后继结点入队时，会将前继结点的状态更新为 SIGNAL。
-- **CONDITION**(-2)：表示结点等待在 Condition 上，当其他线程调用了 Condition 的 signal() 方法后， CONDITION 状态的结点将**从等待队列转移到同步队列中**，等待获取同步锁。
-- **PROPAGATE**(-3)：共享模式下，前继结点不仅会唤醒其后继结点，同时也可能会唤醒后继的后继结点。
-- **0**：新结点入队时的默认状态。
-
-注意，**负值表示结点处于有效等待状态，而正值表示结点已被取消。所以源码中很多地方用>0、<0来判断结点的状态是否正常**。
+Node 结点是 AbstractQueuedSynchronizer 中的一个**静态内部类**，是构成 CLH 队列的重要类。
 
 ```java
 static final class Node {
-    /** 表示节点正在共享模式下等待的标记*/
-    static final Node SHARED = new Node();
-    /** 表示节点正在独占模式下等待的标记*/
-    static final Node EXCLUSIVE = null;
-
-    /** waitStatus：表示当前结点已取消调度*/
+    // waitStatus值，表示线程已被取消（等待超时或者被中断）
     static final int CANCELLED =  1;
-    /** waitStatus：表示后继结点在等待当前结点唤醒*/
+    // waitStatus值，表示后继线程需要被唤醒（unpaking）
     static final int SIGNAL    = -1;
-    /** waitStatus：表示结点等待在Condition上*/
+    // waitStatus值，表示结点线程等待在condition上，当被signal后，会从等待队列转移到同步到队列中 
     static final int CONDITION = -2;
-    /** waitStatus：共享模式下，前继结点不仅会唤醒其后继结点，同时也可能会唤醒后继的后继结点*/
+    // waitStatus值，表示下一次共享式同步状态会被无条件地传播下去
     static final int PROPAGATE = -3;
-	
-    // 重要：表示当前 Node 结点的等待状态，包括五种状态（上面四种值+0）
+    // 重要：表示当前Node结点的等待状态，包括五种状态（上面四种值+默认的初始值0）
     volatile int waitStatus;
-	
-    // 结点指针
+    // 当前结点的前驱结点
     volatile Node prev;
+    // 当前结点的后继结点
     volatile Node next;
-
-    // 线程
+    // 封装与当前结点关联的排队中的线程
     volatile Thread thread;
-
     // 下一个等待结点
     Node nextWaiter;
 
@@ -190,6 +142,20 @@ static final class Node {
 }
 ```
 
+本节开始讲解 AQS 的源码实现。依照 **acquire-release**、**acquireShared-releaseShared** 的**次序**来。
+
+###### (2) 结点状态waitStatus
+
+Node 结点是对**每一个等待获取资源的线程的封装**，其包含了**需要同步的线程本身**及其**等待状态**，如是否被阻塞、是否等待唤醒、是否已经被取消等。变量 **waitStatus** 则表示当前 Node 结点的**等待状态**，共有 **5** 种取值 CANCELLED、SIGNAL、CONDITION、PROPAGATE、0。
+
+- **CANCELLED**(1)：表示**当前结点已取消调度**。当 timeout 或被中断（响应中断的情况下），会触发变更为此状态，进入该状态后的结点将不会再变化。
+- **SIGNAL**(-1)：表示后继结点在**等待当前结点唤醒**。后继结点入队时，会将前继结点的状态更新为 SIGNAL。
+- **CONDITION**(-2)：表示结点**等待在 Condition 上**，当其他线程调用了 Condition 的 **signal**() 方法后， CONDITION 状态的结点将**从等待队列转移到同步队列中**，等待获取**同步锁**。
+- **PROPAGATE**(-3)：共享模式下，前继结点**不仅会**唤醒其后继结点，同时也可能会**唤醒后继的后继结点**。
+- **0**：新结点入队时的默认状态。
+
+注意，**==负值表示结点处于有效等待状态，而正值表示结点已被取消。所以源码中很多地方用 > 0、< 0来判断结点的状态是否正常==**。
+
 ##### 2. 独占式获取同步状态acquire(int)
 
 此方法是**独占模式**下线程获取**共享资源**的顶层入口。如果**获取到资源**，线程**直接返回**，否则进入**等待队列**，直到获取到资源为止，且整个过程忽略中断的影响。这也正是 **lock() 的语义**，当然不仅仅只限于 lock()。获取到资源后，线程就可以去执行其临界区代码了。下面是 acquire() 的源码：
@@ -204,10 +170,10 @@ public final void acquire(int arg) {
 
  函数流程如下：
 
-- **tryAcquire**() 尝试直接去**获取资源**，如果成功则直接返回（这里体现了**非公平锁**，每个线程获取锁时会尝试直接抢占加塞一次，而 CLH 队列中可能还有别的线程在等待）；
-- **addWaiter**() 将该线程加入等待队列的尾部，并标记为**独占模式**；
-- **acquireQueued**() 使线程阻塞在等待队列中获取资源，一直获取到资源后才返回。如果在整个等待过程中被中断过，则返回 true，否则返回 false。
-- 如果线程在等待过程中**被中断过**，它是**不响应**的。只是获取资源后才再进行自我中断 selfInterrupt()，将中断补上。
+- **tryAcquire**() 尝试直接去**获取资源**，如果成功则直接返回（这里体现了**非公平锁**，每个线程获取锁时会尝试直接抢占一次，而 CLH 队列中可能还有别的线程在等待）；
+- **addWaiter**() 将该线程加入**等待队列的尾部**，并标记为**独占模式**；
+- **acquireQueued**() 使线程阻塞在**等待队列**中获取资源，一直获**取到资源后才返回**。如果在整个等待过程中被中断过，则返回 true，否则返回 false。
+- 如果线程在等待过程中**被中断过**，它是**不响应**的。只是**获取资源后**才再进行自我中断 **selfInterrupt**()，将**中断补上**。
 
 ###### tryAcquire()
 
